@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
+import 'package:supabase_client/supabase_client.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
