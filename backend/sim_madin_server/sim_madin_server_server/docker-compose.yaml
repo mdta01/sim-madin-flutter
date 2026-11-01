@@ -1,0 +1,44 @@
+services:
+  # Development services
+  postgres:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "8090:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: sim_madin_server
+      POSTGRES_PASSWORD: "dmGwSjUH-uhWnB3gFAj5sNm7jqLoQ1Ue"
+    volumes:
+      - sim_madin_server_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:6.2.6
+    ports:
+      - "8091:6379"
+    command: redis-server --requirepass "TLWl80tVT9QVwTF0WcuSvLwG-Z_2VoTQ"
+    environment:
+      - REDIS_REPLICATION_MODE=master
+
+  # Test services
+  postgres_test:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "9090:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: sim_madin_server_test
+      POSTGRES_PASSWORD: "0a-TnbWEF3A9oZXrz9kTN3GLp9dtZa3m"
+    volumes:
+      - sim_madin_server_test_data:/var/lib/postgresql/data
+
+  redis_test:
+    image: redis:6.2.6
+    ports:
+      - "9091:6379"
+    command: redis-server --requirepass "e8k2D3cpVEiGY5JEuiAdVuzvd8gUHsOx"
+    environment:
+      - REDIS_REPLICATION_MODE=master
+
+volumes:
+  sim_madin_server_data:
+  sim_madin_server_test_data:

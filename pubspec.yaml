@@ -1,0 +1,11 @@
+name: sim_madin_flutter_workspace
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+
+# This is a virtual pubspec for the melos workspace root.
+# Real package pubspecs are in each subdirectory.
+# Run `melos bootstrap` to install all dependencies.
+
+dev_dependencies:
+  melos: ^6.3.2

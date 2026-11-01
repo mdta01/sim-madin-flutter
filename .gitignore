@@ -1,0 +1,65 @@
+# Dart / Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+**/build/
+**/.dart_tool/
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+*.log
+.DS_Store
+
+# Generated code
+*.g.dart
+*.freezed.dart
+*.gr.dart
+**/generated/**
+backend/sim_madin_server/generated/
+backend/sim_madin_server/test/generated/
+
+# Local env / config
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+**/config.local.*
+**/secrets/
+
+# Coverage
+coverage/
+**/coverage/
+
+# Melos
+melos_imelos_list*.yaml
+
+# Platform-specific build outputs
+*.apk
+*.aab
+*.ipa
+*.app
+*.exe
+*.msix
+*.dmg
+*.deb
+*.rpm
+# Allow download/ dir to keep built APKs for sharing
+!download/**/*.apk
+
+# Serverpod local
+backend/sim_madin_server/build/
+backend/sim_madin_server/lambda/
+backend/sim_madin_server/public/
+backend/sim_madin_server/.dart_tool/
+
+# Database dumps / temp
+*.dump
+*.sql.gz
+tmp/

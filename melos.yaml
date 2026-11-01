@@ -1,0 +1,176 @@
+name: sim_madin_flutter
+repository: https://github.com/mdta01/sim-madin-flutter
+
+packages:
+  - apps/*
+  - packages/*
+  - backend/sim_madin_server
+
+command:
+  bootstrap:
+    usePubspecOverrides: true
+    environment:
+      sdk: ">=3.6.0 <4.0.0"
+      flutter: ">=3.27.0"
+
+    dependencies:
+      # State management
+      flutter_riverpod: ^2.6.1
+      riverpod_annotation: ^2.6.1
+      # Routing
+      go_router: ^14.6.0
+      # Network
+      dio: ^5.7.0
+      http: ^1.2.2
+      # Local storage
+      shared_preferences: ^2.3.2
+      flutter_secure_storage: ^9.2.2
+      # Supabase
+      supabase_flutter: ^2.8.0
+      # Serialization
+      freezed_annotation: ^2.4.4
+      json_annotation: ^4.9.0
+      # Logging
+      logger: ^2.4.0
+      # Utils
+      intl: ^0.19.0
+      uuid: ^4.5.1
+      collection: ^1.18.0
+
+    dev_dependencies:
+      # Code generation
+      build_runner: ^2.4.13
+      freezed: ^2.5.7
+      json_serializable: ^6.8.0
+      riverpod_generator: ^2.6.3
+      custom_lint: ^0.6.7
+      riverpod_lint: ^2.6.3
+      # Testing
+      flutter_test:
+        sdk: flutter
+      mocktail: ^1.0.4
+      # Linting
+      flutter_lints: ^4.0.0
+      very_good_analysis: ^6.0.0
+
+scripts:
+  # Bootstrap all packages
+  bootstrap:
+    run: melos bootstrap
+    description: Install dependencies for all packages
+
+  # Build runner (code generation) for all packages with overrides
+  gen:
+    run: dart run build_runner build --delete-conflicting-outputs
+    description: Run build_runner (freezed/json/riverpod generators)
+    packageFilters:
+      dependsOn: build_runner
+
+  gen:watch:
+    run: dart run build_runner watch --delete-conflicting-outputs
+    description: Watch mode build_runner
+    packageFilters:
+      dependsOn: build_runner
+
+  # Test
+  test:
+    run: flutter test
+    description: Run tests in all packages
+    packageFilters:
+      dirExists: test
+
+  test:unit:
+    run: flutter test
+    description: Run unit tests
+    packageFilters:
+      dirExists: test
+
+  # Analyze
+  analyze:
+    run: dart analyze .
+    description: Static analysis across all packages
+
+  # Format
+  format:
+    run: dart format .
+    description: Format all Dart code
+
+  # Clean
+  clean:
+    run: flutter clean
+    description: Clean all packages
+    packageFilters:
+      dirExists: lib
+
+  # Build mobile apps
+  build:apk:wali:
+    run: flutter build apk --release
+    description: Build APK for Wali app
+    packageFilters:
+      scope: "*mobile_wali*"
+
+  build:apk:guru:
+    run: flutter build apk --release
+    description: Build APK for Guru app
+    packageFilters:
+      scope: "*mobile_guru*"
+
+  build:apk:bendahara:
+    run: flutter build apk --release
+    description: Build APK for Bendahara app
+    packageFilters:
+      scope: "*mobile_bendahara*"
+
+  build:apk:kepala:
+    run: flutter build apk --release
+    description: Build APK for Kepala app
+    packageFilters:
+      scope: "*mobile_kepala*"
+
+  # Build desktop admin
+  build:windows:
+    run: flutter build windows --release
+    description: Build Windows desktop app
+    packageFilters:
+      scope: "*admin_desktop*"
+
+  build:macos:
+    run: flutter build macos --release
+    description: Build macOS desktop app
+    packageFilters:
+      scope: "*admin_desktop*"
+
+  build:linux:
+    run: flutter build linux --release
+    description: Build Linux desktop app
+    packageFilters:
+      scope: "*admin_desktop*"
+
+  # Backend Serverpod
+  backend:start:
+    run: dart main.dart --apply-migrations
+    description: Start Serverpod backend
+    packageFilters:
+      scope: "*sim_madin_server*"
+
+  backend:gen:
+    run: serverpod generate
+    description: Generate Serverpod client code
+    packageFilters:
+      scope: "*sim_madin_server*"
+
+  backend:migrate:
+    run: dart main.dart --apply-migrations --role maintenance
+    description: Apply database migrations
+    packageFilters:
+      scope: "*sim_madin_server*"
+
+  backend:create:migration:
+    run: serverpod create-migration
+    description: Create new database migration
+    packageFilters:
+      scope: "*sim_madin_server*"
+
+ide:
+  intellij:
+    enabled: false

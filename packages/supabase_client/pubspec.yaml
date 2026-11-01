@@ -1,0 +1,19 @@
+name: supabase_client
+description: Supabase client wrapper untuk SIM MADIN Flutter. Singleton config + helpers realtime.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  shared:
+    path: ../shared
+  supabase_flutter: ^2.8.0
+  flutter_riverpod: ^2.6.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^5.0.0

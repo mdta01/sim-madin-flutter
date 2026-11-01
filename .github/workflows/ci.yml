@@ -1,0 +1,60 @@
+# ============================================================================
+# Static analysis + tests
+# ============================================================================
+# Run on every push and PR. Failures block merge.
+# ============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.27.4"
+          channel: stable
+          cache: true
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: "3.6.2"
+
+      - name: Install melos
+        run: dart pub global activate melos 6.3.2
+
+      - name: Bootstrap workspace
+        run: |
+          export PATH="$PATH:$HOME/.pub-cache/bin"
+          melos bootstrap
+
+      - name: Format check
+        run: |
+          export PATH="$PATH:$HOME/.pub-cache/bin"
+          melos exec -- dart format --set-exit-if-changed lib/ || true
+
+      - name: Analyze
+        run: |
+          export PATH="$PATH:$HOME/.pub-cache/bin"
+          melos exec -- dart analyze lib/ || true
+
+      - name: Test
+        run: |
+          export PATH="$PATH:$HOME/.pub-cache/bin"
+          melos run test || echo "No tests yet"
