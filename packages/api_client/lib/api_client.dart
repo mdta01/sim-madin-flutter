@@ -11,27 +11,24 @@
 // (lebih type-safe — auto-generated dari server-side endpoint definitions).
 // ============================================================================
 
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:shared/shared.dart';
 
-part 'api_client.freezed.dart';
-part 'api_client.g.dart';
-
 /// Konfigurasi dasar untuk Dio HTTP client.
-@freezed
-class ApiClientConfig with _$ApiClientConfig {
-  const factory ApiClientConfig({
-    @Default('http://localhost:8080') String baseUrl,
-    @Default(Duration(seconds: 30)) Duration connectTimeout,
-    @Default(Duration(seconds: 30)) Duration receiveTimeout,
-  }) = _ApiClientConfig;
-
-  factory ApiClientConfig.fromJson(Map<String, dynamic> json) =>
-      _$ApiClientConfigFromJson(json);
+class ApiClientConfig {
+  const ApiClientConfig({
+    this.baseUrl = 'http://localhost:8080',
+    this.connectTimeout = const Duration(seconds: 30),
+    this.receiveTimeout = const Duration(seconds: 30),
+  });
+  final String baseUrl;
+  final Duration connectTimeout;
+  final Duration receiveTimeout;
 }
 
 /// Provider konfigurasi API client.
@@ -79,7 +76,7 @@ final dioProvider = Provider<Dio>((ref) {
       responseHeader: false,
       responseBody: true,
       error: true,
-      logPrint: (obj) => print('[DIO] $obj'),
+      logPrint: (obj) => debugPrint('[DIO] $obj'),
     ));
   }
 
@@ -91,6 +88,8 @@ final authStorageProvider = Provider<AuthStorage>((ref) => AuthStorage());
 
 /// Storage untuk auth state (Supabase admin token ATAU wali custom JWT).
 class AuthStorage {
+  AuthStorage();
+
   static const _tokenKey = 'auth_token';
   static const _userKey = 'auth_user_data';
   static const _waliTokenKey = 'wali_token';
@@ -110,6 +109,16 @@ class AuthStorage {
     return _storage.read(key: _tokenKey);
   }
 
+  Future<Map<String, dynamic>?> getAdminUserData() async {
+    final raw = await _storage.read(key: _userKey);
+    if (raw == null) return null;
+    try {
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> saveWaliSession({
     required String token,
     required Map<String, dynamic> wali,
@@ -127,7 +136,7 @@ class AuthStorage {
       final santri = await _storage.read(key: _waliSantriKey);
       if (token == null || wali == null || santri == null) return null;
 
-      // Decode JWT untuk verifikasi expired (Hermes-compatible atob approach).
+      // Decode JWT untuk verifikasi expired.
       // Catatan: signature verification dilakukan di server (Serverpod).
       final payload = _decodeJwtPayload(token);
       if (payload == null) return null;
@@ -152,8 +161,9 @@ class AuthStorage {
   }
 }
 
-/// Decode JWT payload tanpa WebCrypto (Hermes-compatible).
-/// Sama dengan logic yang dipakai di proyek RN lama (apps/mobile-wali/vendor/mobile-shared/src/jwt-hermes.ts).
+/// Decode JWT payload tanpa WebCrypto.
+/// Sama dengan logic yang dipakai di proyek RN lama (jwt-hermes.ts).
+/// Catatan: di Flutter Dart, base64Decode sudah native, jadi tidak perlu fallback.
 Map<String, dynamic>? _decodeJwtPayload(String token) {
   try {
     final parts = token.split('.');
@@ -165,20 +175,12 @@ Map<String, dynamic>? _decodeJwtPayload(String token) {
       payloadB64 += '=' * (4 - pad);
     }
 
-    final jsonStr = _base64Decode(payloadB64);
+    // Pakai dart:convert base64Decode (native, tidak butuh WebCrypto)
+    final jsonStr = utf8.decode(base64.decode(payloadB64));
     return jsonDecode(jsonStr) as Map<String, dynamic>;
   } catch (_) {
     return null;
   }
-}
-
-String _base64Decode(String b64) {
-  // Fallback manual base64 decode (untuk Hermes lama yang tidak punya atob).
-  // Di Flutter Dart, base64Decode sudah native, jadi ini tidak diperlukan
-  // untuk implementasi Flutter, tapi dipertahankan untuk konsistensi logic.
-  return String.fromCharCodes(
-    (b64.replaceAll(RegExp(r'[^A-Za-z0-9+/=]'), '')).codeUnits,
-  );
 }
 
 /// Provider untuk dapatkan auth token aktif (admin atau wali).
@@ -194,16 +196,15 @@ final authTokenProvider = FutureProvider<String?>((ref) async {
 });
 
 /// Data session wali (untuk mobile_wali).
-@freezed
-class WaliSession with _$WaliSession {
-  const factory WaliSession({
-    required String token,
-    required Map<String, dynamic> wali,
-    required List<Map<String, dynamic>> santriList,
-  }) = _WaliSession;
-
-  factory WaliSession.fromJson(Map<String, dynamic> json) =>
-      _$WaliSessionFromJson(json);
+class WaliSession {
+  const WaliSession({
+    required this.token,
+    required this.wali,
+    required this.santriList,
+  });
+  final String token;
+  final Map<String, dynamic> wali;
+  final List<Map<String, dynamic>> santriList;
 }
 
 /// Provider current user (admin or wali).
@@ -213,9 +214,9 @@ final currentUserProvider = FutureProvider<AuthUser?>((ref) async {
   // Cek admin (Supabase)
   final adminToken = await storage.getAdminToken();
   if (adminToken != null) {
-    final userData = await _storageRead(_userKey);
+    final userData = await storage.getAdminUserData();
     if (userData != null) {
-      return AuthUser.admin(jsonDecode(userData) as Map<String, dynamic>);
+      return AuthUser.admin(userData);
     }
   }
   // Cek wali
@@ -226,18 +227,24 @@ final currentUserProvider = FutureProvider<AuthUser?>((ref) async {
   return null;
 });
 
-Future<String?> _storageRead(String key) async {
-  return FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  ).read(key: key);
-}
-
 /// Tipe user yang login — digunakan untuk routing yang berbeda.
-@freezed
-class AuthUser with _$AuthUser {
-  const factory AuthUser.admin(Map<String, dynamic> data) = _AdminUser;
-  const factory AuthUser.wali(
+sealed class AuthUser {
+  const AuthUser();
+
+  factory AuthUser.admin(Map<String, dynamic> data) = AdminUser;
+  factory AuthUser.wali(
     Map<String, dynamic> wali,
     List<Map<String, dynamic>> santriList,
-  ) = _WaliUser;
+  ) = WaliUser;
+}
+
+class AdminUser extends AuthUser {
+  const AdminUser(this.data);
+  final Map<String, dynamic> data;
+}
+
+class WaliUser extends AuthUser {
+  const WaliUser(this.wali, this.santriList);
+  final Map<String, dynamic> wali;
+  final List<Map<String, dynamic>> santriList;
 }
