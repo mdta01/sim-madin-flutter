@@ -41,7 +41,10 @@ endif()
 # of modifying this function.
 function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_features(${TARGET} PUBLIC cxx_std_14)
-  target_compile_options(${TARGET} PRIVATE -Wall -Werror)
+  # Disable -Werror because some third-party plugin headers (e.g. nlohmann/json.hpp
+  # in flutter_secure_storage_linux) trigger deprecated literal operator warnings
+  # with newer clang. Treat warnings as warnings, not errors.
+  target_compile_options(${TARGET} PRIVATE -Wall)
   target_compile_options(${TARGET} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:-O3>")
   target_compile_definitions(${TARGET} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:NDEBUG>")
 endfunction()
