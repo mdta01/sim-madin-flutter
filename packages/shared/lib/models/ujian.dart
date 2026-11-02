@@ -7,28 +7,6 @@ class UjianType {
   static const quiz = 'QUIZ';
 }
 
-class UjianStatus {
-  static const draft = 'DRAFT';
-  static const published = 'PUBLISHED';
-  static const ongoing = 'ONGOING';
-  static const finished = 'FINISHED';
-  static const cancelled = 'CANCELLED';
-
-  static String label(String? s) {
-    switch (s) {
-      case UjianStatus.draft:
-        return 'Draft';
-      case UjianStatus.published:
-        return 'Terbit';
-      case UjianStatus.ongoing:
-        return 'Berlangsung';
-      case UjianStatus.finished:
-        return 'Selesai';
-      case UjianStatus.cancelled:
-        return 'Dibatalkan';
-      default:
-        return s ?? '-';
-    }
   }
 }
 
@@ -122,11 +100,6 @@ class UjianModel {
       );
 }
 
-class SoalType {
-  static const pg = 'PG';
-  static const isian = 'ISIAN';
-  static const essay = 'ESSAY';
-}
 
 class BankSoalModel {
   const BankSoalModel({

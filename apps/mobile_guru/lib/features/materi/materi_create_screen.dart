@@ -90,7 +90,7 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
-            FormField(
+            FormFieldLabel(
               label: 'Judul Materi',
               child: TextField(
                 controller: _titleController,
@@ -101,7 +101,7 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            FormField(
+            FormFieldLabel(
               label: 'Deskripsi (opsional)',
               child: TextField(
                 controller: _descController,
@@ -113,7 +113,7 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            FormField(
+            FormFieldLabel(
               label: 'Mata Pelajaran',
               child: kelasAsync.when(
                 loading: () => const SizedBox(height: 30),
@@ -138,7 +138,7 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            FormField(
+            FormFieldLabel(
               label: 'Kelas',
               child: kelasAsync.when(
                 loading: () => const SizedBox(height: 30),
@@ -159,7 +159,7 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            FormField(
+            FormFieldLabel(
               label: 'Tipe Materi',
               child: Wrap(
                 spacing: AppSpacing.xs,
@@ -179,7 +179,7 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            FormField(
+            FormFieldLabel(
               label: 'URL Eksternal (opsional, untuk type=LINK)',
               hint: 'https://youtube.com/...',
               child: TextField(
@@ -190,7 +190,7 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            FormField(
+            FormFieldLabel(
               label: 'Pertemuan ke- (opsional)',
               child: TextField(
                 controller: _pertemuanController,

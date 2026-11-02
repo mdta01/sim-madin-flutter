@@ -91,8 +91,10 @@ class _NilaiInputScreenState extends ConsumerState<NilaiInputScreen> {
                   data: (list) => PillSelector<String>(
                     items: list.map((k) => k.id).toList(),
                     selected: _kelasId,
-                    onSelected: (id) =>
-                        setState(() => {_kelasId = id; _nilaiData = {};}),
+                    onSelected: (id) => setState(() {
+                      _kelasId = id;
+                      _nilaiData = {};
+                    }),
                     labelOf: (id) =>
                         list.firstWhere((k) => k.id == id).name,
                   ),

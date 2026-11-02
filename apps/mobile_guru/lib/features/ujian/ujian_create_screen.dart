@@ -124,7 +124,7 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
-            FormField(
+            FormFieldLabel(
               label: 'Judul Ujian',
               child: TextField(
                 controller: _titleController,
@@ -135,7 +135,7 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            FormField(
+            FormFieldLabel(
               label: 'Tipe Ujian',
               child: Wrap(
                 spacing: AppSpacing.xs,
@@ -151,7 +151,7 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            FormField(
+            FormFieldLabel(
               label: 'Deskripsi (opsional)',
               child: TextField(
                 controller: _descController,
@@ -161,7 +161,7 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            FormField(
+            FormFieldLabel(
               label: 'Mata Pelajaran',
               child: mapelAsync.when(
                 loading: () => const SizedBox(height: 30),
@@ -182,7 +182,7 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            FormField(
+            FormFieldLabel(
               label: 'Kelas',
               child: kelasAsync.when(
                 loading: () => const SizedBox(height: 30),
@@ -206,7 +206,7 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
             Row(
               children: [
                 Expanded(
-                  child: FormField(
+                  child: FormFieldLabel(
                     label: 'Mulai (opsional)',
                     child: OutlinedButton.icon(
                       onPressed: () => _pickDate(isStart: true),
@@ -222,7 +222,7 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: FormField(
+                  child: FormFieldLabel(
                     label: 'Selesai (opsional)',
                     child: OutlinedButton.icon(
                       onPressed: () => _pickDate(isStart: false),
@@ -242,7 +242,7 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
             Row(
               children: [
                 Expanded(
-                  child: FormField(
+                  child: FormFieldLabel(
                     label: 'Durasi (mnt)',
                     child: TextField(
                       controller: _durationController,
@@ -254,7 +254,7 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: FormField(
+                  child: FormFieldLabel(
                     label: 'Ruang (opsional)',
                     child: TextField(
                       controller: _ruangController,
@@ -269,7 +269,7 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
             Row(
               children: [
                 Expanded(
-                  child: FormField(
+                  child: FormFieldLabel(
                     label: 'Max Score',
                     child: TextField(
                       controller: _maxScoreController,
@@ -281,7 +281,7 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: FormField(
+                  child: FormFieldLabel(
                     label: 'Passing Score',
                     child: TextField(
                       controller: _passingScoreController,

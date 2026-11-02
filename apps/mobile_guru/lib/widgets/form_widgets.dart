@@ -153,8 +153,11 @@ Future<T?> showFormModal<T>({
 }
 
 /// Label + child helper untuk form field.
-class FormField extends StatelessWidget {
-  const FormField({
+///
+/// Note: named `FormFieldLabel` to avoid clash with Flutter's built-in
+/// `FormField` widget from `package:flutter/widgets.dart`.
+class FormFieldLabel extends StatelessWidget {
+  const FormFieldLabel({
     super.key,
     required this.label,
     required this.child,

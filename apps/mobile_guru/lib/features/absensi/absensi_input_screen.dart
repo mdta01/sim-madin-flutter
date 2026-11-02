@@ -87,22 +87,21 @@ class _AbsensiInputScreenState extends ConsumerState<AbsensiInputScreen> {
         : ref.watch(santriByKelasProvider(_selectedKelasId!));
 
     // Initialize defaults when santri loaded
-    ref.listen<AsyncValue<List<SantriModel>>>(
-        _selectedKelasId == null
-            ? null
-            : santriByKelasProvider(_selectedKelasId!),
-        (_, next) {
-      next.whenData((list) {
-        if (!mounted) return;
-        final defaults = <String, String>{};
-        for (final s in list) {
-          defaults[s.id] = _absensiData[s.id] ?? AbsensiStatus.hadir;
-        }
-        if (defaults.length != _absensiData.length) {
-          setState(() => _absensiData = defaults);
-        }
+    if (_selectedKelasId != null) {
+      ref.listen<AsyncValue<List<SantriModel>>>(
+          santriByKelasProvider(_selectedKelasId!), (_, next) {
+        next.whenData((list) {
+          if (!mounted) return;
+          final defaults = <String, String>{};
+          for (final s in list) {
+            defaults[s.id] = _absensiData[s.id] ?? AbsensiStatus.hadir;
+          }
+          if (defaults.length != _absensiData.length) {
+            setState(() => _absensiData = defaults);
+          }
+        });
       });
-    });
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
