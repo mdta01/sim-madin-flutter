@@ -1,13 +1,12 @@
 // Ujian + BankSoal + UjianPeserta + UjianNilai + UjianSesi + UjianJawaban — port dari Prisma.
+// Catatan: UjianStatus + SoalType classes live in constants.dart (Phase 1).
+// This file only contains model classes + UjianType constants (simple enum-like).
 
 class UjianType {
   static const uts = 'UTS';
   static const uas = 'UAS';
   static const tugas = 'TUGAS';
   static const quiz = 'QUIZ';
-}
-
-  }
 }
 
 class UjianModel {

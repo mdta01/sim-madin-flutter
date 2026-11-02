@@ -183,6 +183,24 @@ class UjianStatus {
   static const String ongoing = 'ONGOING';
   static const String finished = 'FINISHED';
   static const String cancelled = 'CANCELLED';
+
+  /// Konversi kode status → label Indonesia untuk display.
+  static String label(String? s) {
+    switch (s) {
+      case draft:
+        return 'Draft';
+      case published:
+        return 'Terbit';
+      case ongoing:
+        return 'Berlangsung';
+      case finished:
+        return 'Selesai';
+      case cancelled:
+        return 'Dibatalkan';
+      default:
+        return s ?? '-';
+    }
+  }
 }
 
 /// Jenis soal ujian.

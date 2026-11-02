@@ -145,7 +145,7 @@ Future<T?> showFormModal<T>({
             ),
           ),
           const Divider(height: 1),
-          Flexible(builder: builder),
+          Flexible(child: builder(ctx)),
         ],
       ),
     ),

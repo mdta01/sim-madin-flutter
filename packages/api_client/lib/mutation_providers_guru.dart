@@ -110,7 +110,10 @@ Future<int> bulkCreateAbsensi(
       .upsert(rows, onConflict: '"santriId",date,"tahunAjaranId"')
       .select();
 
-  ref.invalidate(absensiByKelasDateProvider);
+  // Invalidate specific instance of family provider.
+  ref.invalidate(absensiByKelasDateProvider(
+    (kelasId: kelasId, date: date),
+  ));
   return (res as List).length;
 }
 
@@ -447,7 +450,7 @@ Future<void> publishUjian(WidgetRef ref, String ujianId) async {
   final client = ref.read(supabaseClientProvider);
   await client.from('Ujian').update({'isPublished': true}).eq('id', ujianId);
   ref.invalidate(ujianGuruProvider);
-  ref.invalidate(ujianByIdProvider);
+  ref.invalidate(ujianByIdProvider(ujianId));
 }
 
 Future<BankSoalModel> createBankSoal(
