@@ -22,8 +22,13 @@ import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'query_providers.dart' show supabaseClientProvider;
-import 'query_providers_guru.dart' show invalidateGuruQueries;
+// Import all from query_providers.dart so we can invalidate Phase 2 providers
+// (santriListProvider, nilaiRecentProvider, absensiRecentProvider, dll)
+// after guru mutations.
+import 'query_providers.dart';
+// Import all guru query providers (materiGuruProvider, tugasGuruProvider,
+// ujianGuruProvider, perkembanganQuranProvider, chatRoomsGuruProvider, dll).
+import 'query_providers_guru.dart';
 
 /// Helper untuk dapatkan guruId dari user yang login (via Wali.userId
 /// match). Return null kalau user bukan guru.
