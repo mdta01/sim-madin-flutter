@@ -38,6 +38,11 @@ dependencies:
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.10+1
 
+  # PDF generation (slip pembayaran, slip honor, kwitansi)
+  pdf: ^3.11.1
+  printing: ^5.13.3
+  path_provider: ^2.1.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -46,7 +51,7 @@ dev_dependencies:
   freezed: ^2.5.7
   json_serializable: ^6.8.0
   riverpod_generator: ^2.6.3
-  custom_lint: ^0.6.7
+  custom_lint: ^0.7.3
   riverpod_lint: ^2.6.3
 
 flutter:

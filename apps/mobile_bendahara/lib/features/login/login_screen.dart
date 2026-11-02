@@ -42,7 +42,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final client = ref.read(supabaseClientProvider);
       await client.auth.signInWithPassword(email: email, password: password);
       if (!mounted) return;
-      context.go('/dashboard');
+      context.go('/dashboard/home');
     } catch (e) {
       _showError('Login gagal: $e');
     } finally {

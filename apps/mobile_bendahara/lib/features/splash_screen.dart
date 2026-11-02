@@ -25,7 +25,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final user = await ref.read(currentUserProvider.future);
     if (!mounted) return;
     if (user != null) {
-      context.go('/dashboard');
+      context.go('/dashboard/home');
     } else {
       context.go('/login');
     }

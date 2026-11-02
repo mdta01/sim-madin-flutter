@@ -11,9 +11,15 @@
 // untuk query Supabase Postgres langsung (Santri, Absensi, Nilai, Tagihan,
 // Payment, HonorGuru, TransaksiKas, Kas). Saat Serverpod siap, providers ini
 // bisa diganti dengan endpoint RPC — signature tetap sama.
+//
+// Phase 3+ tambahan: lihat `mutation_providers.dart` — MUTATION providers
+// (createPembayaran, verifyPembayaran, rejectPembayaran, createTransaksiKas,
+// updateHonorGuruStatus, generateHonorGuruBulk) + laporanKeuanganProvider
+// (compute-on-read aggregate).
 // ============================================================================
 
 export 'query_providers.dart';
+export 'mutation_providers.dart';
 
 import 'dart:convert';
 
