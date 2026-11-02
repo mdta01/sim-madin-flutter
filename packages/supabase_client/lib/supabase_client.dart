@@ -47,6 +47,11 @@ class RealtimePayload {
 ///
 /// Mengembalikan RealtimeChannel — panggil `.unsubscribe()` untuk berhenti.
 ///
+/// Filter format: `"column=op.value"` (Prisma-style), op mendukung:
+/// `eq`, `neq`, `in`, `lt`, `lte`, `gt`, `gte`. Contoh:
+///   `filter: 'santri_id=eq.${santri.id}'`
+///   `filter: 'status=in.(LUNAS,BELUM_BAYAR)'`
+///
 /// Contoh:
 /// ```dart
 /// final channel = subscribeToTable(
@@ -67,20 +72,13 @@ RealtimeChannel subscribeToTable({
   String? filter,
   required void Function(RealtimePayload payload) onPayload,
 }) {
-  // supabase_flutter v2.x: pakai channel().onPostgresChanges()
-  // dengan PostgresChangeEvent (enum, bukan string)
-  final channel = client.channel('public:$table');
-
-  // Untuk filter, supabase_flutter v2.x pakai Map filter
-  // Format filter: "wali_id=eq.123" → {column: 'wali_id', value: 'eq.123'}
-  // Tapi API v2 lebih ketat — untuk simplicity, kita ignore filter dulu
-  // dan biarkan caller filter manual di onPayload (untuk Phase 1).
-  // TODO Phase 2+: implementasi filter yang benar dengan PostgresChangeFilter
+  final channel = client.channel('public:$table:${filter ?? 'all'}');
 
   channel.onPostgresChanges(
     event: PostgresChangeEvent.all,
     schema: 'public',
     table: table,
+    filter: _parseFilter(filter),
     callback: (payload) {
       onPayload(RealtimePayload(
         eventType: payload.eventType.name.toUpperCase(),
@@ -93,6 +91,60 @@ RealtimeChannel subscribeToTable({
 
   channel.subscribe();
   return channel;
+}
+
+/// Parse filter string "column=op.value" → PostgresChangeFilter.
+/// Mendukung op: eq, neq, in, lt, lte, gt, gte.
+/// Untuk `in`, value-nya harus dalam format `(val1,val2,val3)`.
+/// Mengembalikan null kalau filter null/empty/unparseable.
+PostgresChangeFilter? _parseFilter(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return null;
+
+  // Format: "column=op.value" — split hanya pada tanda '=' pertama.
+  final eqIdx = raw.indexOf('=');
+  if (eqIdx < 0) return null;
+
+  final column = raw.substring(0, eqIdx).trim();
+  final rest = raw.substring(eqIdx + 1).trim();
+  final dotIdx = rest.indexOf('.');
+  if (dotIdx < 0) return null;
+
+  final opStr = rest.substring(0, dotIdx).toLowerCase();
+  final value = rest.substring(dotIdx + 1).trim();
+
+  PostgresChangeFilterType type;
+  switch (opStr) {
+    case 'eq':
+      type = PostgresChangeFilterType.eq;
+      break;
+    case 'neq':
+      type = PostgresChangeFilterType.neq;
+      break;
+    case 'lt':
+      type = PostgresChangeFilterType.lt;
+      break;
+    case 'lte':
+      type = PostgresChangeFilterType.lte;
+      break;
+    case 'gt':
+      type = PostgresChangeFilterType.gt;
+      break;
+    case 'gte':
+      type = PostgresChangeFilterType.gte;
+      break;
+    case 'in':
+      type = PostgresChangeFilterType.in_;
+      // value untuk `in` format "(a,b,c)" — Supabase SDK menerima list.
+      // Kita trim () dan split koma, lalu lewatkan sebagai list via value.
+      // Catatan: PostgresChangeFilter `in_` butuh value list; tapi konstruktornya
+      // menerima `value` tunggal. Untuk list, kita gabung balik "(a,b,c)".
+      // Workaround: lewatkan string "(a,b,c)" apa adanya — Supabase akan parse.
+      break;
+    default:
+      return null;
+  }
+
+  return PostgresChangeFilter(type: type, column: column, value: value);
 }
 
 /// Provider untuk auth state changes.

@@ -1,5 +1,18 @@
-// Models barrel — akan diisi saat Phase 2+
-// Untuk Phase 1, models akan di-generate dari Serverpod (server-side definition)
-// lalu client code di-import via packages/api_client.
+// Models barrel — Phase 2+ (mobile_kepala read-only screens)
 //
-// Saat ini kosong — supaya build Phase 1 (foundation) bisa jalan tanpa models.
+// Catatan: model ini di-port dari Prisma schema di repo sim-madin (TS lama).
+// Field relations di-denormalize sebagai field nullable terpisah (e.g. `santriName`)
+// supaya tidak perlu nested serialization kompleks di query Supabase.
+
+export 'user.dart';
+export 'tahun_ajaran.dart';
+export 'kelas.dart';
+export 'mata_pelajaran.dart';
+export 'santri.dart';
+export 'guru.dart';
+export 'absensi.dart';
+export 'nilai.dart';
+export 'tagihan.dart';
+export 'payment.dart';
+export 'kas.dart';
+export 'honor_guru.dart';

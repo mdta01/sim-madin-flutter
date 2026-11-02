@@ -7,9 +7,13 @@
 //   - Wali session storage (SecureStore)
 //   - Riverpod providers (auth state, current user)
 //
-// Saat Phase 2+, file ini akan di-replace oleh Serverpod-generated client
-// (lebih type-safe — auto-generated dari server-side endpoint definitions).
+// Phase 2+ tambahan: lihat `query_providers.dart` — Riverpod FutureProviders
+// untuk query Supabase Postgres langsung (Santri, Absensi, Nilai, Tagihan,
+// Payment, HonorGuru, TransaksiKas, Kas). Saat Serverpod siap, providers ini
+// bisa diganti dengan endpoint RPC — signature tetap sama.
 // ============================================================================
+
+export 'query_providers.dart';
 
 import 'dart:convert';
 
