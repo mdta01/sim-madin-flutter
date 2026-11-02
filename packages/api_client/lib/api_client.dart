@@ -16,10 +16,18 @@
 // (createPembayaran, verifyPembayaran, rejectPembayaran, createTransaksiKas,
 // updateHonorGuruStatus, generateHonorGuruBulk) + laporanKeuanganProvider
 // (compute-on-read aggregate).
+//
+// Phase 4+ tambahan: lihat `query_providers_guru.dart` + `mutation_providers_guru.dart`
+// — Riverpod providers untuk mobile_guru (Jadwal, Materi, Tugas, Pertemuan,
+// Ujian, BankSoal, Perkembangan, Chat) + mutations (bulkCreateAbsensi,
+// bulkCreateNilai, createMateri/Tugas/Pertemuan/Ujian, gradePengumpulan,
+// createPerkembanganQuran/Kitab/Akhlak/Pembinaan, sendChatMessage).
 // ============================================================================
 
 export 'query_providers.dart';
 export 'mutation_providers.dart';
+export 'query_providers_guru.dart';
+export 'mutation_providers_guru.dart';
 
 import 'dart:convert';
 

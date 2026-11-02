@@ -16,3 +16,12 @@ export 'tagihan.dart';
 export 'payment.dart';
 export 'kas.dart';
 export 'honor_guru.dart';
+
+// Phase 4 — mobile_guru models
+export 'jadwal.dart';
+export 'materi.dart';
+export 'tugas.dart';
+export 'pertemuan.dart';
+export 'ujian.dart';
+export 'perkembangan.dart';
+export 'komunikasi.dart';
