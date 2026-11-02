@@ -111,8 +111,8 @@ final kelasListProvider = FutureProvider<List<KelasModel>>((ref) async {
   final res = await client
       .from('Kelas')
       .select()
-      .order('sortOrder')
-      .filter('deletedAt', 'is', null);
+      .filter('deletedAt', 'is', null)
+      .order('sortOrder');
   return (res as List).map((r) => KelasModel.fromJson(r as Map<String, dynamic>)).toList();
 });
 
@@ -121,8 +121,8 @@ final mapelListProvider = FutureProvider<List<MataPelajaranModel>>((ref) async {
   final res = await client
       .from('MataPelajaran')
       .select()
-      .order('sortOrder')
-      .filter('deletedAt', 'is', null);
+      .filter('deletedAt', 'is', null)
+      .order('sortOrder');
   return (res as List)
       .map((r) => MataPelajaranModel.fromJson(r as Map<String, dynamic>))
       .toList();
@@ -188,11 +188,7 @@ final absensiRecentProvider =
     FutureProvider.family<List<AbsensiModel>, DateTime?>((ref, date) async {
   ref.watch(_realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
-  var q = client
-      .from('Absensi')
-      .select('*, Santri(*), Kelas(*)')
-      .order('date', ascending: false)
-      .limit(100);
+  var q = client.from('Absensi').select('*, Santri(*), Kelas(*)');
   if (date != null) {
     final dayStart = DateTime(date.year, date.month, date.day);
     final dayEnd = dayStart.add(const Duration(days: 1));
@@ -200,7 +196,7 @@ final absensiRecentProvider =
         .gte('date', dayStart.toIso8601String())
         .lt('date', dayEnd.toIso8601String());
   }
-  final res = await q;
+  final res = await q.order('date', ascending: false).limit(100);
   return (res as List)
       .map((r) => _absensiFromRow(r as Map<String, dynamic>))
       .toList();
@@ -214,15 +210,11 @@ final nilaiRecentProvider =
     FutureProvider.family<List<NilaiModel>, String?>((ref, mapelId) async {
   ref.watch(_realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
-  var q = client
-      .from('Nilai')
-      .select('*, Santri(*), Kelas(*), MataPelajaran(*)')
-      .order('assessmentDate', ascending: false)
-      .limit(100);
+  var q = client.from('Nilai').select('*, Santri(*), Kelas(*), MataPelajaran(*)');
   if (mapelId != null) {
     q = q.eq('mapelId', mapelId);
   }
-  final res = await q;
+  final res = await q.order('assessmentDate', ascending: false).limit(100);
   return (res as List)
       .map((r) => _nilaiFromRow(r as Map<String, dynamic>))
       .toList();
@@ -238,13 +230,11 @@ final tagihanListProvider =
   final client = ref.watch(supabaseClientProvider);
   var q = client
       .from('Tagihan')
-      .select('*, Santri(*), Kelas(*), JenisTagihan(*)')
-      .order('createdAt', ascending: false)
-      .limit(100);
+      .select('*, Santri(*), Kelas(*), JenisTagihan(*)');
   if (statusFilter != null && statusFilter != 'ALL') {
     q = q.eq('status', statusFilter);
   }
-  final res = await q;
+  final res = await q.order('createdAt', ascending: false).limit(100);
   return (res as List)
       .map((r) => _tagihanFromRow(r as Map<String, dynamic>))
       .toList();
@@ -275,15 +265,11 @@ final honorGuruListProvider =
     FutureProvider.family<List<HonorGuruModel>, String?>((ref, statusFilter) async {
   ref.watch(_realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
-  var q = client
-      .from('HonorGuru')
-      .select('*, Guru(*)')
-      .order('createdAt', ascending: false)
-      .limit(100);
+  var q = client.from('HonorGuru').select('*, Guru(*)');
   if (statusFilter != null && statusFilter != 'ALL') {
     q = q.eq('status', statusFilter);
   }
-  final res = await q;
+  final res = await q.order('createdAt', ascending: false).limit(100);
   return (res as List)
       .map((r) => _honorGuruFromRow(r as Map<String, dynamic>))
       .toList();

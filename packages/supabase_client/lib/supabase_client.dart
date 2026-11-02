@@ -133,10 +133,10 @@ PostgresChangeFilter? _parseFilter(String? raw) {
       type = PostgresChangeFilterType.gte;
       break;
     case 'in':
-      type = PostgresChangeFilterType.in_;
+      type = PostgresChangeFilterType.inFilter;
       // value untuk `in` format "(a,b,c)" — Supabase SDK menerima list.
       // Kita trim () dan split koma, lalu lewatkan sebagai list via value.
-      // Catatan: PostgresChangeFilter `in_` butuh value list; tapi konstruktornya
+      // Catatan: PostgresChangeFilter `inFilter` butuh value list; tapi konstruktornya
       // menerima `value` tunggal. Untuk list, kita gabung balik "(a,b,c)".
       // Workaround: lewatkan string "(a,b,c)" apa adanya — Supabase akan parse.
       break;

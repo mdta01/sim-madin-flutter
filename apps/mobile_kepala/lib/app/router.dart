@@ -39,6 +39,7 @@ import '../features/pembayaran/pembayaran_monitor_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/santri/santri_list_screen.dart';
 import '../features/splash_screen.dart';
+import '../features/tagihan/tagihan_monitor_screen.dart';
 
 /// Wrapper agar DashboardScreen bisa pakai StatefulNavigationShell child.
 /// DashboardScreen adalah ShellRoute — body-nya ganti per tab.
