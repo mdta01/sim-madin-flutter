@@ -246,9 +246,89 @@
 
 ---
 
-## Phase 4 — mobile_guru (TODO, 3-4 minggu)
+## Phase 4 — mobile_guru ✅ (DONE)
 
-13 screens akademik CRUD + ujian management. Lihat ROADMAP.md.
+### Architecture decisions
+- Reuse Phase 1-3 patterns (Supabase Auth, query/mutation providers pattern,
+  feedback_widgets, StatefulShellRoute).
+- Realtime auto-refresh via realtimeRefreshTick for Jadwal/Materi/Tugas/
+  Pertemuan/Ujian/Perkembangan/Chat tables.
+- Bottom nav: 5 tabs (Beranda/Santri/Akademik/Ujian/Profil) + nested
+  routes for all akademik + ujian screens.
+- Akademik + Ujian hubs: grid menus to keep main bottom nav simple.
+- Bulk input pattern (Absensi + Nilai): upsert with onConflict constraint
+  so re-submit on same date/kelas updates instead of duplicating.
+- Chat: simple realtime-ish refresh via realtimeRefreshTick (proper
+  Supabase Realtime subscription can be added later if needed).
+- Ujian: create + list + detail with 3 tabs (Info/Soal/Peserta) +
+  publish button. Bank soal management + peserta assignment deferred to
+  Phase 6 admin desktop (helper functions addUjianSoal +
+  addUjianPesertaBulk exist in mutation_providers_guru.dart).
+
+### Foundation
+- 7 new model files (jadwal, materi, tugas, pertemuan, ujian,
+  perkembangan, komunikasi) with denormalized relation fields.
+- query_providers_guru.dart — 16 FutureProvider + family for guru data:
+  jadwalGuruProvider, jadwalHariIniProvider, santriByKelasProvider,
+  absensiByKelasDateProvider, materiGuruProvider, tugasGuruProvider,
+  pengumpulanByTugasProvider, pertemuanGuruProvider, ujianGuruProvider,
+  ujianByIdProvider, ujianSoalByUjianProvider, ujianPesertaByUjianProvider,
+  ujianNilaiByUjianProvider, bankSoalGuruProvider, perkembanganQuranProvider,
+  hafalanKitabProvider, akhlakPenilaianProvider, pembinaanProvider,
+  pengumumanListProvider, chatRoomsGuruProvider, chatMessagesProvider,
+  guruStatsProvider + invalidateGuruQueries() helper.
+- mutation_providers_guru.dart — 14 mutation functions:
+  bulkCreateAbsensi, bulkCreateNilai, createMateri, deleteMateri,
+  createTugas, deleteTugas, gradePengumpulanTugas, createPertemuan,
+  completePertemuan, createUjian, publishUjian, createBankSoal,
+  addUjianSoal, addUjianPesertaBulk, createPerkembanganQuran,
+  createHafalanKitab, createAkhlakPenilaian, createPembinaan,
+  createChatRoom, sendChatMessage.
+
+### Screens (13 total)
+1. ✅ Login (Phase 1, redirect to /dashboard/home)
+2. ✅ Dashboard Home Tab — 4 KPI (Jadwal/Pertemuan/Materi/Tugas) + 10
+   quick menu + jadwal hari ini list
+3. ✅ Santri list (Tab 2) — filter by kelas + search
+4. ✅ Absensi input — bulk per kelas + tanggal, popup menu status
+5. ✅ Nilai input — bulk per kelas + mapel + type, ScoreInput with
+   passing/failing color
+6. ✅ Materi list + create (title, desc, mapel, kelas, type, URL,
+   pertemuan, publish toggle)
+7. ✅ Tugas list + detail (list pengumpulan + grade per santri)
+8. ✅ Pertemuan list + create from jadwal (auto-increment pertemuanKe)
+9. ✅ Ujian list + create + detail (3 tabs: Info/Soal/Peserta) + publish
+10. ✅ Perkembangan santri — 4 tabs (Quran/Kitab/Akhlak/Pembinaan)
+11. ✅ Chat list + chat detail (message bubbles, send)
+12. ✅ Jadwal list grouped by day
+13. ✅ Pengumuman list (read-only) with priority badges
++ Profile (Tab 5) — user info, refresh, about, logout with confirm,
+  realtime status info
+
+### Bug fixes applied during Phase 4
+- bbde45f: 5 compile fixes (UjianStatus/SoalType duplicate, ref.listen
+  nullable, StatCard import, FormField clash with Flutter built-in,
+  nilai_input_screen syntax error).
+- a77786d: 4 more fixes (ujian.dart orphan braces, UjianStatus.label
+  missing, Flexible builder param wrong, family providers invalidated
+  without arg).
+- b0e26d4: import fix — removed `show` clauses in mutation_providers_guru
+  that hid all guru query providers from ref.invalidate calls.
+
+### Verification
+- [x] CI analyze success
+- [x] Build Mobile APK — mobile_guru success (commit b0e26d4)
+- [x] Build Mobile APK — all 4 mobile apps success
+- [ ] Manual test login + all 13 screens
+- [ ] Test bulk input absensi/nilai (with kelas/mapel selectors)
+- [ ] Test materi create + ujian create + chat send
+
+### Out of scope Phase 4 (Phase 6+ admin desktop)
+- [ ] Bank Soal management UI (function exists, no UI)
+- [ ] UjianPeserta bulk assign UI (function exists, no UI)
+- [ ] File upload for materi/tugas (file_picker dep declared but UI
+  not implemented; current implementation uses URL eksternal)
+- [ ] Ujian online take screen for santri (Phase 5 mobile_wali territory)
 
 ---
 
