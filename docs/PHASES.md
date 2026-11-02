@@ -152,22 +152,97 @@
 
 ---
 
-## Phase 3 — mobile_bendahara (TODO, 3-4 minggu)
+## Phase 3 — mobile_bendahara ✅ (DONE)
 
-### Screens (8)
-- [ ] Login (reuse dari Phase 1)
-- [ ] Dashboard (statistik keuangan hari ini)
-- [ ] Pembayaran list + detail + create + verify
-- [ ] Tagihan list + generate tunggakan
-- [ ] Kas list + transaksi CRUD
-- [ ] Honor guru list + generate + slip PDF
-- [ ] Laporan keuangan (chart + filter periode)
-- [ ] Profile (reuse)
+### Architecture decisions
+- **Auth**: Supabase Auth (Phase 1 still works).
+- **Queries**: reuses Phase 2 `query_providers.dart` (payment, tagihan, kas,
+  honorGuru, transaksiKas providers).
+- **Mutations**: new `mutation_providers.dart` — pure functions wrapping
+  Supabase insert/update + invalidate dependent read providers.
+- **PDF generation**: LOCAL on-device via `pdf` + `printing` packages
+  (offline-capable, more reliable than TS app's network URL approach).
+- **Kas balance update**: client-side read-modify-write with race-condition
+  note. Phase 6+ should use Postgres function with SELECT FOR UPDATE.
+- **Bottom nav**: 5 tabs (Beranda/Pembayaran/Tagihan/Kas/Profil) +
+  nested routes for create/detail/transaksi/laporan/honor-guru.
+- **Tagihan generate**: out of scope (admin desktop Phase 6 generates).
+- **Honor Guru generate**: bulk function provided for future use, but
+  mobile_bendahara only views/approves/pays existing honor records.
 
-### Komponen kritis
-- [ ] PDF generation (slip pembayaran, kwitansi)
-- [ ] Bulk transaction dengan rollback
-- [ ] Compute-on-read untuk auto-tagihan
+### Foundation (packages/api_client/lib/mutation_providers.dart)
+- `tagihanBySantriProvider.family<String>` — for pembayaran form
+- `createPembayaran()` — insert + invalidate 3 read providers
+- `verifyPembayaran(id, kasId?)` — PENDING→VERIFIED
+- `rejectPembayaran(id)` — PENDING→REJECTED
+- `createTransaksiKas()` — insert + update kas balance (delta ±amount)
+- `updateHonorGuruStatus(id, newStatus, {kasId})` — change status; if
+  DIBAYARKAN, deduct from kas balance
+- `laporanKeuanganProvider.family<({int month, int year})>` —
+  compute-on-read aggregate (pemasukan/pengeluaran/per-kategori/list)
+- `generateHonorGuruBulk()` — bulk insert (for future admin use)
+- `paymentByIdProvider.family<String>` — single fetch with joins
+- `_realtimeRefreshTick` renamed to public `realtimeRefreshTick` so
+  mutation_providers.dart can access it.
+
+### PDF Service (apps/mobile_bendahara/lib/services/pdf_service.dart)
+- `shareKwitansiPembayaran(payment)` — A5 portrait, Islamic green header,
+  amount box, status chip, signature footer.
+- `shareSlipHonorGuru(honor)` — A4 portrait, header info box, honor
+  breakdown table, total box, optional catatan.
+- `shareLaporanKeuangan(laporan)` — A4 multi-page, 3 summary boxes,
+  per-kategori tables, detail transaksi table.
+- Uses `PdfColor.fromInt(0xFF0D7A4F)` Islamic green theme.
+- `pw.StatelessWidget` pattern for reusable header/info/table helpers.
+
+### Shared widgets (apps/mobile_bendahara/lib/widgets/)
+- `feedback_widgets.dart` — EmptyState, ErrorView, LoadingSkeleton,
+  StatCard, StatusChip + status helper functions.
+- `amount_input.dart` — AmountInput with Rp prefix, auto-separator
+  ribuan, digits-only input.
+- `confirm_dialog.dart` — showConfirmDialog() with destructive option.
+
+### Screens (apps/mobile_bendahara/lib/features/)
+1. ✅ Login (Phase 1, redirect to /dashboard/home)
+2. ✅ Dashboard Home Tab — 4 KPI (Pemasukan Hari Ini, Tunggakan, Perlu
+   Verifikasi, Saldo Kas) + quick menu grid + recent payments list
+3. ✅ Pembayaran list (Tab 2) — filter by status, status chip, + button
+4. ✅ Pembayaran create — 5-step form (santri → tagihan optional →
+   nominal → metode → catatan) + offer cetak kwitansi PDF after submit
+5. ✅ Pembayaran detail — full info + actions (Verify with kas picker,
+   Reject with confirm, Cetak Kwitansi PDF)
+6. ✅ Tagihan list (Tab 3) — filter pills (Semua/Belum/Cicil/Lunas),
+   summary card, 4-cell breakdown per card
+7. ✅ Kas list (Tab 4) — total saldo + per-kas card
+8. ✅ Transaksi Kas — stats row + saldo periode + list + bottom sheet
+   form (type toggle, kas picker, AmountInput, description)
+9. ✅ Honor Guru — filter status, 4-komponen breakdown + total,
+   actions (Setujui/Bayar with kas picker/Cetak Slip PDF)
+10. ✅ Laporan Keuangan — month filter, saldo summary, bar comparison,
+    per-kategori breakdown, detail transaksi list, export PDF
+11. ✅ Profile (Tab 5) — user info, refresh, about, logout with confirm,
+    realtime status
+
+### Verification
+- [x] CI analyze success
+- [x] Build Mobile APK — mobile_bendahara success (commit caf739f)
+- [x] Build Mobile APK — all 4 mobile apps success
+- [ ] Manual test login → dashboard → all 10 screens
+- [ ] Test PDF generation (kwitansi, slip honor, laporan)
+
+### Bug fixes applied during Phase 3
+- caf739f: 4 compile fixes:
+  1. `_realtimeRefreshTick` private → `realtimeRefreshTick` public
+     (mutation_providers.dart couldn't access it).
+  2. dashboard_screen.dart: missing import for widgets/feedback_widgets.dart.
+  3. Icons.cash (deprecated) → Icons.payments.
+  4. `pw.FontWeight.w500` (not supported in pdf package) →
+     `pw.FontWeight.normal`.
+
+### Out of scope Phase 3 (Phase 6+ admin desktop)
+- [ ] Generate tagihan bulk (compute-on-read auto-tagihan)
+- [ ] Generate honor guru bulk (function exists, no UI yet)
+- [ ] CRUD Kas (create/edit/delete kas) — currently read-only
 
 ---
 
