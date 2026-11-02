@@ -1,45 +1,33 @@
 -- ============================================================================
--- SIM MADIN — RLS Policies (Phase 4+ — mobile_guru + mobile_wali)
+-- SIM MADIN — RLS Policies (Phase 4+ — mobile_guru + mobile_wali) v2
 -- ============================================================================
--- Tabel akademik lanjutan: Materi, Tugas, PengumpulanTugas, Pertemuan,
--- Kompetensi, Ujian, BankSoal, UjianSoal, UjianPeserta, UjianNilai, UjianSesi,
--- UjianJawaban, Rapor, RaporMapel, RaporCatatan, PerkembanganQuran,
--- HafalanKitab, AkhlakPenilaian, Pembinaan, CatatanWaliKelas, Notifikasi,
--- ChatRoom, ChatMessage, Surat, QRScan, Alumni.
---
--- Pattern:
---   - Reference data (Kompetensi, BankSoal, Materi master): read staff, write admin
---   - Akademik per kelas (Pertemuan, Tugas, PengumpulanTugas, UjianPeserta):
---     guru bisa input untuk kelas yang diajar; wali lihat anaknya
---   - Realtime (Notifikasi, ChatRoom, ChatMessage): wali/guru lihat miliknya
---   - Perkembangan santri: wali kelas + admin + wali santri
---   - Ujian online: peserta (santri) bisa akses via wali auth
+-- Corrected column names based on actual DB schema inspection.
+-- Key facts:
+--   - UjianNilai, UjianSesi: direct ujianId + santriId (no pesertaId)
+--   - UjianJawaban: sesiId + santriId + ujianSoalId
+--   - ChatMessage: chatRoomId (not roomId), senderWaliId/senderGuruId
+--   - Pertemuan, BankSoal, Kompetensi: no deletedAt column
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
--- Materi, Pertemuan, Tugas (master content guru)
--- ---------------------------------------------------------------------------
--- Guru bisa CRUD materi/tugas miliknya sendiri (guruId). Wali read anaknya.
+-- Materi (deletedAt exists)
 -- ---------------------------------------------------------------------------
 
 ALTER TABLE "Materi" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "materi_staff_read" ON "Materi"
-  FOR SELECT TO authenticated USING ("deletedAt" IS NULL AND public.is_staff());
+  FOR SELECT TO authenticated
+  USING ("deletedAt" IS NULL AND public.is_staff());
 CREATE POLICY "materi_wali_read" ON "Materi"
   FOR SELECT TO authenticated
   USING (
     "deletedAt" IS NULL
     AND public.has_role('WALI')
     AND EXISTS (
-      SELECT 1 FROM "Jadwal" j
-      WHERE j."mapelId" = "Materi"."mapelId"
-      AND EXISTS (
-        SELECT 1 FROM "Santri" s
-        JOIN "SantriWali" sw ON sw."santriId" = s.id
-        WHERE s."kelasId" = j."kelasId"
-          AND sw."waliId" = public.current_wali_id()
-          AND sw."canAccess" = true
-      )
+      SELECT 1 FROM "Santri" s
+      JOIN "SantriWali" sw ON sw."santriId" = s.id
+      WHERE s."kelasId" = "Materi"."kelasId"
+        AND sw."waliId" = public.current_wali_id()
+        AND sw."canAccess" = true
     )
   );
 CREATE POLICY "materi_guru_write" ON "Materi"
@@ -53,9 +41,25 @@ CREATE POLICY "materi_guru_write" ON "Materi"
     OR (public.has_role('GURU') AND "guruId" = public.current_guru_id())
   );
 
+-- ---------------------------------------------------------------------------
+-- Pertemuan (no deletedAt)
+-- ---------------------------------------------------------------------------
+
 ALTER TABLE "Pertemuan" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "pertemuan_staff_read" ON "Pertemuan"
-  FOR SELECT TO authenticated USING ("deletedAt" IS NULL AND public.is_staff());
+  FOR SELECT TO authenticated USING (public.is_staff());
+CREATE POLICY "pertemuan_wali_read" ON "Pertemuan"
+  FOR SELECT TO authenticated
+  USING (
+    public.has_role('WALI')
+    AND EXISTS (
+      SELECT 1 FROM "Santri" s
+      JOIN "SantriWali" sw ON sw."santriId" = s.id
+      WHERE s."kelasId" = "Pertemuan"."kelasId"
+        AND sw."waliId" = public.current_wali_id()
+        AND sw."canAccess" = true
+    )
+  );
 CREATE POLICY "pertemuan_guru_write" ON "Pertemuan"
   FOR ALL TO authenticated
   USING (
@@ -73,9 +77,27 @@ CREATE POLICY "pertemuan_guru_write" ON "Pertemuan"
     )
   );
 
+-- ---------------------------------------------------------------------------
+-- Tugas (deletedAt exists)
+-- ---------------------------------------------------------------------------
+
 ALTER TABLE "Tugas" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "tugas_staff_read" ON "Tugas"
-  FOR SELECT TO authenticated USING ("deletedAt" IS NULL AND public.is_staff());
+  FOR SELECT TO authenticated
+  USING ("deletedAt" IS NULL AND public.is_staff());
+CREATE POLICY "tugas_wali_read" ON "Tugas"
+  FOR SELECT TO authenticated
+  USING (
+    "deletedAt" IS NULL
+    AND public.has_role('WALI')
+    AND EXISTS (
+      SELECT 1 FROM "Santri" s
+      JOIN "SantriWali" sw ON sw."santriId" = s.id
+      WHERE s."kelasId" = "Tugas"."kelasId"
+        AND sw."waliId" = public.current_wali_id()
+        AND sw."canAccess" = true
+    )
+  );
 CREATE POLICY "tugas_guru_write" ON "Tugas"
   FOR ALL TO authenticated
   USING (
@@ -87,36 +109,40 @@ CREATE POLICY "tugas_guru_write" ON "Tugas"
     OR (public.has_role('GURU') AND "guruId" = public.current_guru_id())
   );
 
+-- ---------------------------------------------------------------------------
+-- PengumpulanTugas (no deletedAt)
+-- ---------------------------------------------------------------------------
+
 ALTER TABLE "PengumpulanTugas" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "pengumpulan_staff_read" ON "PengumpulanTugas"
   FOR SELECT TO authenticated USING (public.is_staff());
+CREATE POLICY "pengumpulan_wali_read" ON "PengumpulanTugas"
+  FOR SELECT TO authenticated
+  USING (
+    public.has_role('WALI')
+    AND public.is_wali_of_santri("santriId")
+  );
 CREATE POLICY "pengumpulan_guru_write" ON "PengumpulanTugas"
   FOR ALL TO authenticated
   USING (
     public.is_admin_level()
-    OR (
-      public.has_role('GURU')
-      AND EXISTS (
-        SELECT 1 FROM "Tugas" t
-        WHERE t.id = "PengumpulanTugas"."tugasId"
-          AND t."guruId" = public.current_guru_id()
-      )
+    OR EXISTS (
+      SELECT 1 FROM "Tugas" t
+      WHERE t.id = "PengumpulanTugas"."tugasId"
+        AND t."guruId" = public.current_guru_id()
     )
   )
   WITH CHECK (
     public.is_admin_level()
-    OR (
-      public.has_role('GURU')
-      AND EXISTS (
-        SELECT 1 FROM "Tugas" t
-        WHERE t.id = "PengumpulanTugas"."tugasId"
-          AND t."guruId" = public.current_guru_id()
-      )
+    OR EXISTS (
+      SELECT 1 FROM "Tugas" t
+      WHERE t.id = "PengumpulanTugas"."tugasId"
+        AND t."guruId" = public.current_guru_id()
     )
   );
 
 -- ---------------------------------------------------------------------------
--- Kompetensi, BankSoal (master data, admin CRUD)
+-- Kompetensi, BankSoal (no deletedAt)
 -- ---------------------------------------------------------------------------
 
 ALTER TABLE "Kompetensi" ENABLE ROW LEVEL SECURITY;
@@ -129,7 +155,7 @@ CREATE POLICY "kompetensi_admin_write" ON "Kompetensi"
 
 ALTER TABLE "BankSoal" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "bank_soal_read" ON "BankSoal"
-  FOR SELECT TO authenticated USING ("deletedAt" IS NULL AND public.is_staff());
+  FOR SELECT TO authenticated USING (public.is_staff());
 CREATE POLICY "bank_soal_guru_write" ON "BankSoal"
   FOR ALL TO authenticated
   USING (
@@ -142,15 +168,24 @@ CREATE POLICY "bank_soal_guru_write" ON "BankSoal"
   );
 
 -- ---------------------------------------------------------------------------
--- Ujian, UjianSoal, UjianPeserta, UjianNilai, UjianSesi, UjianJawaban
--- ---------------------------------------------------------------------------
--- Ujian online complex: guru create ujian + soal + assign peserta.
--- Santri (via wali auth) bisa take ujian kalau jadi peserta.
+-- Ujian (deletedAt exists)
 -- ---------------------------------------------------------------------------
 
 ALTER TABLE "Ujian" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "ujian_staff_read" ON "Ujian"
-  FOR SELECT TO authenticated USING (public.is_staff());
+  FOR SELECT TO authenticated
+  USING ("deletedAt" IS NULL AND public.is_staff());
+CREATE POLICY "ujian_wali_read" ON "Ujian"
+  FOR SELECT TO authenticated
+  USING (
+    "deletedAt" IS NULL
+    AND public.has_role('WALI')
+    AND EXISTS (
+      SELECT 1 FROM "UjianPeserta" up
+      WHERE up."ujianId" = "Ujian".id
+        AND public.is_wali_of_santri(up."santriId")
+    )
+  );
 CREATE POLICY "ujian_guru_write" ON "Ujian"
   FOR ALL TO authenticated
   USING (
@@ -162,9 +197,24 @@ CREATE POLICY "ujian_guru_write" ON "Ujian"
     OR (public.has_role('GURU') AND "guruId" = public.current_guru_id())
   );
 
+-- ---------------------------------------------------------------------------
+-- UjianSoal (no deletedAt)
+-- ---------------------------------------------------------------------------
+
 ALTER TABLE "UjianSoal" ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "ujian_soal_read" ON "UjianSoal"
+CREATE POLICY "ujian_soal_staff_read" ON "UjianSoal"
   FOR SELECT TO authenticated USING (public.is_staff());
+CREATE POLICY "ujian_soal_wali_read" ON "UjianSoal"
+  FOR SELECT TO authenticated
+  USING (
+    public.has_role('WALI')
+    AND EXISTS (
+      SELECT 1 FROM "Ujian" u
+      JOIN "UjianPeserta" up ON up."ujianId" = u.id
+      WHERE u.id = "UjianSoal"."ujianId"
+        AND public.is_wali_of_santri(up."santriId")
+    )
+  );
 CREATE POLICY "ujian_soal_guru_write" ON "UjianSoal"
   FOR ALL TO authenticated
   USING (
@@ -183,6 +233,10 @@ CREATE POLICY "ujian_soal_guru_write" ON "UjianSoal"
         AND u."guruId" = public.current_guru_id()
     )
   );
+
+-- ---------------------------------------------------------------------------
+-- UjianPeserta (no deletedAt)
+-- ---------------------------------------------------------------------------
 
 ALTER TABLE "UjianPeserta" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "ujian_peserta_staff_read" ON "UjianPeserta"
@@ -212,6 +266,10 @@ CREATE POLICY "ujian_peserta_guru_write" ON "UjianPeserta"
     )
   );
 
+-- ---------------------------------------------------------------------------
+-- UjianNilai (no deletedAt, has ujianId + santriId directly)
+-- ---------------------------------------------------------------------------
+
 ALTER TABLE "UjianNilai" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "ujian_nilai_staff_read" ON "UjianNilai"
   FOR SELECT TO authenticated USING (public.is_staff());
@@ -227,8 +285,7 @@ CREATE POLICY "ujian_nilai_guru_write" ON "UjianNilai"
     public.is_admin_level()
     OR EXISTS (
       SELECT 1 FROM "Ujian" u
-      JOIN "UjianPeserta" up ON up."ujianId" = u.id
-      WHERE up.id = "UjianNilai"."pesertaId"
+      WHERE u.id = "UjianNilai"."ujianId"
         AND u."guruId" = public.current_guru_id()
     )
   )
@@ -236,21 +293,24 @@ CREATE POLICY "ujian_nilai_guru_write" ON "UjianNilai"
     public.is_admin_level()
     OR EXISTS (
       SELECT 1 FROM "Ujian" u
-      JOIN "UjianPeserta" up ON up."ujianId" = u.id
-      WHERE up.id = "UjianNilai"."pesertaId"
+      WHERE u.id = "UjianNilai"."ujianId"
         AND u."guruId" = public.current_guru_id()
     )
   );
 
+-- ---------------------------------------------------------------------------
+-- UjianSesi (no deletedAt, has ujianId + santriId directly)
+-- ---------------------------------------------------------------------------
+
 ALTER TABLE "UjianSesi" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "ujian_sesi_staff_read" ON "UjianSesi"
+  FOR SELECT TO authenticated USING (public.is_staff());
 CREATE POLICY "ujian_sesi_wali_read" ON "UjianSesi"
   FOR SELECT TO authenticated
   USING (
     public.has_role('WALI')
     AND public.is_wali_of_santri("santriId")
   );
-CREATE POLICY "ujian_sesi_staff_read" ON "UjianSesi"
-  FOR SELECT TO authenticated USING (public.is_staff());
 CREATE POLICY "ujian_sesi_wali_insert" ON "UjianSesi"
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -274,6 +334,10 @@ CREATE POLICY "ujian_sesi_wali_update" ON "UjianSesi"
     )
   );
 
+-- ---------------------------------------------------------------------------
+-- UjianJawaban (has sesiId + santriId + ujianSoalId)
+-- ---------------------------------------------------------------------------
+
 ALTER TABLE "UjianJawaban" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "ujian_jawaban_staff_read" ON "UjianJawaban"
   FOR SELECT TO authenticated USING (public.is_staff());
@@ -281,21 +345,13 @@ CREATE POLICY "ujian_jawaban_wali_read" ON "UjianJawaban"
   FOR SELECT TO authenticated
   USING (
     public.has_role('WALI')
-    AND EXISTS (
-      SELECT 1 FROM "UjianSesi" us
-      WHERE us.id = "UjianJawaban"."sesiId"
-        AND public.is_wali_of_santri(us."santriId")
-    )
+    AND public.is_wali_of_santri("santriId")
   );
 CREATE POLICY "ujian_jawaban_wali_insert" ON "UjianJawaban"
   FOR INSERT TO authenticated
   WITH CHECK (
     public.has_role('WALI')
-    AND EXISTS (
-      SELECT 1 FROM "UjianSesi" us
-      WHERE us.id = "UjianJawaban"."sesiId"
-        AND public.is_wali_of_santri(us."santriId")
-    )
+    AND public.is_wali_of_santri("santriId")
   );
 CREATE POLICY "ujian_jawaban_guru_update" ON "UjianJawaban"
   FOR UPDATE TO authenticated
@@ -303,8 +359,7 @@ CREATE POLICY "ujian_jawaban_guru_update" ON "UjianJawaban"
     public.is_admin_level()
     OR EXISTS (
       SELECT 1 FROM "UjianSesi" us
-      JOIN "UjianPeserta" up ON up.id = us."pesertaId"
-      JOIN "Ujian" u ON u.id = up."ujianId"
+      JOIN "Ujian" u ON u.id = us."ujianId"
       WHERE us.id = "UjianJawaban"."sesiId"
         AND u."guruId" = public.current_guru_id()
     )
@@ -313,17 +368,14 @@ CREATE POLICY "ujian_jawaban_guru_update" ON "UjianJawaban"
     public.is_admin_level()
     OR EXISTS (
       SELECT 1 FROM "UjianSesi" us
-      JOIN "UjianPeserta" up ON up.id = us."pesertaId"
-      JOIN "Ujian" u ON u.id = up."ujianId"
+      JOIN "Ujian" u ON u.id = us."ujianId"
       WHERE us.id = "UjianJawaban"."sesiId"
         AND u."guruId" = public.current_guru_id()
     )
   );
 
 -- ---------------------------------------------------------------------------
--- Rapor, RaporMapel, RaporCatatan
--- ---------------------------------------------------------------------------
--- Read: staff + wali santri. Write: admin only (rapor generated by system).
+-- Rapor, RaporMapel, RaporCatatan (no deletedAt)
 -- ---------------------------------------------------------------------------
 
 ALTER TABLE "Rapor" ENABLE ROW LEVEL SECURITY;
@@ -375,9 +427,7 @@ CREATE POLICY "rapor_catatan_admin_write" ON "RaporCatatan"
 
 -- ---------------------------------------------------------------------------
 -- Perkembangan Santri: PerkembanganQuran, HafalanKitab, AkhlakPenilaian,
--- Pembinaan, CatatanWaliKelas
--- ---------------------------------------------------------------------------
--- Read: staff + wali santri. Write: admin + guru (terbatas per kelas diajar).
+-- Pembinaan, CatatanWaliKelas (no deletedAt)
 -- ---------------------------------------------------------------------------
 
 ALTER TABLE "PerkembanganQuran" ENABLE ROW LEVEL SECURITY;
@@ -480,9 +530,7 @@ CREATE POLICY "catatan_wali_kelas_wali_kelas_write" ON "CatatanWaliKelas"
   );
 
 -- ---------------------------------------------------------------------------
--- Notifikasi, ChatRoom, ChatMessage
--- ---------------------------------------------------------------------------
--- Realtime komunikasi. Wali/guru bisa read miliknya sendiri, insert ke pihak lawan.
+-- Notifikasi (no deletedAt, waliId)
 -- ---------------------------------------------------------------------------
 
 ALTER TABLE "Notifikasi" ENABLE ROW LEVEL SECURITY;
@@ -493,11 +541,16 @@ CREATE POLICY "notifikasi_wali_read" ON "Notifikasi"
     AND "waliId" = public.current_wali_id()
   );
 CREATE POLICY "notifikasi_staff_read" ON "Notifikasi"
-  FOR SELECT TO authenticated
-  USING (public.is_staff());
+  FOR SELECT TO authenticated USING (public.is_staff());
 CREATE POLICY "notifikasi_admin_insert" ON "Notifikasi"
   FOR INSERT TO authenticated
   WITH CHECK (public.is_admin_level());
+
+-- ---------------------------------------------------------------------------
+-- ChatRoom, ChatMessage (no deletedAt)
+-- ChatRoom has waliId, guruId, santriId directly.
+-- ChatMessage uses chatRoomId (not roomId), senderWaliId/senderGuruId.
+-- ---------------------------------------------------------------------------
 
 ALTER TABLE "ChatRoom" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "chat_room_staff_read" ON "ChatRoom"
@@ -528,7 +581,7 @@ CREATE POLICY "chat_message_wali_read" ON "ChatMessage"
     public.has_role('WALI')
     AND EXISTS (
       SELECT 1 FROM "ChatRoom" cr
-      WHERE cr.id = "ChatMessage"."roomId"
+      WHERE cr.id = "ChatMessage"."chatRoomId"
         AND cr."waliId" = public.current_wali_id()
     )
   );
@@ -538,7 +591,7 @@ CREATE POLICY "chat_message_guru_read" ON "ChatMessage"
     public.has_role('GURU')
     AND EXISTS (
       SELECT 1 FROM "ChatRoom" cr
-      WHERE cr.id = "ChatMessage"."roomId"
+      WHERE cr.id = "ChatMessage"."chatRoomId"
         AND cr."guruId" = public.current_guru_id()
     )
   );
@@ -548,7 +601,7 @@ CREATE POLICY "chat_message_wali_insert" ON "ChatMessage"
     public.has_role('WALI')
     AND EXISTS (
       SELECT 1 FROM "ChatRoom" cr
-      WHERE cr.id = "ChatMessage"."roomId"
+      WHERE cr.id = "ChatMessage"."chatRoomId"
         AND cr."waliId" = public.current_wali_id()
     )
   );
@@ -558,17 +611,13 @@ CREATE POLICY "chat_message_guru_insert" ON "ChatMessage"
     public.has_role('GURU')
     AND EXISTS (
       SELECT 1 FROM "ChatRoom" cr
-      WHERE cr.id = "ChatMessage"."roomId"
+      WHERE cr.id = "ChatMessage"."chatRoomId"
         AND cr."guruId" = public.current_guru_id()
     )
   );
 
 -- ---------------------------------------------------------------------------
--- Surat, QRScan, Alumni
--- ---------------------------------------------------------------------------
--- Surat: admin CRUD, wali lihat surat anaknya.
--- QRScan: admin write only, staff read.
--- Alumni: admin CRUD, read all staff.
+-- Surat, QRScan, Alumni (no deletedAt)
 -- ---------------------------------------------------------------------------
 
 ALTER TABLE "Surat" ENABLE ROW LEVEL SECURITY;

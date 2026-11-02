@@ -29,7 +29,7 @@
 
 ALTER TABLE "User" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "user_self_read" ON "User"
-  FOR SELECT TO authenticated USING (id = auth.uid());
+  FOR SELECT TO authenticated USING (id = public.current_user_id());
 CREATE POLICY "user_admin_read" ON "User"
   FOR SELECT TO authenticated USING (public.is_admin());
 CREATE POLICY "user_admin_write" ON "User"
@@ -47,7 +47,7 @@ CREATE POLICY "role_admin_write" ON "Role"
 
 ALTER TABLE "UserRole" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "user_role_self_read" ON "UserRole"
-  FOR SELECT TO authenticated USING ("userId" = auth.uid());
+  FOR SELECT TO authenticated USING ("userId" = public.current_user_id());
 CREATE POLICY "user_role_admin_read" ON "UserRole"
   FOR SELECT TO authenticated USING (public.is_admin());
 CREATE POLICY "user_role_admin_write" ON "UserRole"

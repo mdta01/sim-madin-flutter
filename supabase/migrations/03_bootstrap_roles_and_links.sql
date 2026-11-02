@@ -24,13 +24,14 @@ BEGIN;
 -- ---------------------------------------------------------------------------
 -- 1. Insert 6 role codes (idempotent)
 -- ---------------------------------------------------------------------------
-INSERT INTO "Role" (id, code, name, description, "sortOrder", "createdAt")
+INSERT INTO "Role" (id, code, name, description, "sortOrder", "createdAt", "updatedAt")
 SELECT
   gen_random_uuid(),
   r.code,
   r.name,
-  r.desc,
+  r.desc_text,
   r.sort_order,
+  now(),
   now()
 FROM (VALUES
   ('SUPER_ADMIN', 'Super Admin',         'Akses penuh mengelola seluruh sistem', 1),
@@ -39,18 +40,19 @@ FROM (VALUES
   ('BENDAHARA',   'Bendahara',           'Pengelolaan keuangan madrasah',       4),
   ('GURU',        'Guru',                'Input absensi, nilai, dan catatan',   5),
   ('WALI',        'Wali Santri',         'Memantau perkembangan & administrasi anak', 6)
-) AS r(code, name, desc, sort_order)
+) AS r(code, name, desc_text, sort_order)
 ON CONFLICT (code) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- 2. Sync User.firebaseUid = auth.users.id (kalau ada mismatch)
+-- Catatan: User.firebaseUid is text, auth.users.id is uuid — cast uuid::text
 -- ---------------------------------------------------------------------------
 UPDATE "User" u
-SET "firebaseUid" = au.id,
+SET "firebaseUid" = au.id::text,
     "updatedAt" = now()
 FROM auth.users au
 WHERE u.email = au.email
-  AND (u."firebaseUid" IS DISTINCT FROM au.id);
+  AND (u."firebaseUid" IS DISTINCT FROM au.id::text);
 
 -- ---------------------------------------------------------------------------
 -- 3. Auto-create User record untuk akun Supabase Auth yang belum ada di
@@ -98,7 +100,7 @@ JOIN "Role" r ON (
   OR (u.email = 'wali@madrasah.test'     AND r.code = 'WALI')
 )
 ON CONFLICT ("userId", "roleId") DO UPDATE
-SET "isActive" = true, "updatedAt" = now();
+SET "isActive" = true;
 
 -- ---------------------------------------------------------------------------
 -- 5. Cleanup: nonaktifkan UserRole yang tidak match mapping baru
