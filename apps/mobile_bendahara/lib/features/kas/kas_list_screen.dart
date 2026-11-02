@@ -133,7 +133,7 @@ class _KasCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Icon(
-                isBank ? Icons.business : Icons.cash,
+                isBank ? Icons.business : Icons.payments,
                 color: iconColor,
                 size: 24,
               ),

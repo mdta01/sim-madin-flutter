@@ -10,6 +10,7 @@ import 'package:supabase_client/supabase_client.dart';
 import 'package:api_client/api_client.dart';
 
 import '../../app/router.dart';
+import '../../widgets/feedback_widgets.dart';
 import '../profile/profile_screen.dart' show logoutAndNavigate;
 
 class DashboardScreen extends ConsumerStatefulWidget {

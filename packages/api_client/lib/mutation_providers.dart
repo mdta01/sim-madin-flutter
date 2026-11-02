@@ -30,7 +30,7 @@ import 'query_providers.dart';
 /// pembayaran supaya user bisa pilih tagihan yang akan dibayar.
 final tagihanBySantriProvider =
     FutureProvider.family<List<TagihanModel>, String>((ref, santriId) async {
-  ref.watch(_realtimeRefreshTick);
+  ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   final res = await client
       .from('Tagihan')
@@ -269,7 +269,7 @@ class LaporanKeuangan {
 final laporanKeuanganProvider =
     FutureProvider.family<LaporanKeuangan, ({int month, int year})>(
         (ref, range) async {
-  ref.watch(_realtimeRefreshTick);
+  ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
 
   // Range: awal bulan → akhir bulan

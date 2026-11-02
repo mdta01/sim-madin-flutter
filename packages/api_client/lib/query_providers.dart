@@ -167,7 +167,7 @@ final jenisTagihanListProvider =
 
 final santriListProvider =
     FutureProvider<List<SantriModel>>((ref) async {
-  ref.watch(_realtimeRefreshTick); // re-fetch on realtime event
+  ref.watch(realtimeRefreshTick); // re-fetch on realtime event
   final client = ref.watch(supabaseClientProvider);
   final res = await client
       .from('Santri')
@@ -186,7 +186,7 @@ final santriListProvider =
 
 final absensiRecentProvider =
     FutureProvider.family<List<AbsensiModel>, DateTime?>((ref, date) async {
-  ref.watch(_realtimeRefreshTick);
+  ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Absensi').select('*, Santri(*), Kelas(*)');
   if (date != null) {
@@ -208,7 +208,7 @@ final absensiRecentProvider =
 
 final nilaiRecentProvider =
     FutureProvider.family<List<NilaiModel>, String?>((ref, mapelId) async {
-  ref.watch(_realtimeRefreshTick);
+  ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Nilai').select('*, Santri(*), Kelas(*), MataPelajaran(*)');
   if (mapelId != null) {
@@ -226,7 +226,7 @@ final nilaiRecentProvider =
 
 final tagihanListProvider =
     FutureProvider.family<List<TagihanModel>, String?>((ref, statusFilter) async {
-  ref.watch(_realtimeRefreshTick);
+  ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client
       .from('Tagihan')
@@ -245,7 +245,7 @@ final tagihanListProvider =
 // ---------------------------------------------------------------------------
 
 final paymentRecentProvider = FutureProvider<List<PaymentModel>>((ref) async {
-  ref.watch(_realtimeRefreshTick);
+  ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   final res = await client
       .from('Payment')
@@ -263,7 +263,7 @@ final paymentRecentProvider = FutureProvider<List<PaymentModel>>((ref) async {
 
 final honorGuruListProvider =
     FutureProvider.family<List<HonorGuruModel>, String?>((ref, statusFilter) async {
-  ref.watch(_realtimeRefreshTick);
+  ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('HonorGuru').select('*, Guru(*)');
   if (statusFilter != null && statusFilter != 'ALL') {
@@ -282,7 +282,7 @@ final honorGuruListProvider =
 final transaksiKasByPeriodProvider =
     FutureProvider.family<List<TransaksiKasModel>, ({DateTime start, DateTime end})>(
         (ref, range) async {
-  ref.watch(_realtimeRefreshTick);
+  ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   final res = await client
       .from('TransaksiKas')
@@ -296,7 +296,7 @@ final transaksiKasByPeriodProvider =
 });
 
 final kasListProvider = FutureProvider<List<KasModel>>((ref) async {
-  ref.watch(_realtimeRefreshTick);
+  ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   final res = await client
       .from('Kas')
@@ -310,17 +310,17 @@ final kasListProvider = FutureProvider<List<KasModel>>((ref) async {
 
 // ---------------------------------------------------------------------------
 // Realtime refresh — global tick counter that bumps when any monitored
-// table changes. Screens listen via `ref.watch(_realtimeRefreshTick)`
+// table changes. Screens listen via `ref.watch(realtimeRefreshTick)`
 // to trigger refetch automatically.
 // ---------------------------------------------------------------------------
 
-final _realtimeRefreshTick = StateProvider<int>((_) => 0);
+final realtimeRefreshTick = StateProvider<int>((_) => 0);
 
 /// Setup realtime subscriptions untuk mobile_kepala. Panggil sekali saat
 /// login berhasil (di splash screen atau dashboard init).
 ///
 /// Subscribe ke 4 tabel: Santri, Payment, Tagihan, HonorGuru.
-/// Setiap perubahan akan bump `_realtimeRefreshTick` yang otomatis
+/// Setiap perubahan akan bump `realtimeRefreshTick` yang otomatis
 /// me-refresh semua FutureProvider di atas.
 void setupKepalaRealtime(WidgetRef ref) {
   final client = ref.read(supabaseClientProvider);
@@ -332,7 +332,7 @@ void setupKepalaRealtime(WidgetRef ref) {
         table: t,
         onPayload: (_) {
           // Bump tick — akan invalidate semua provider yang watch tick ini.
-          ref.read(_realtimeRefreshTick.notifier).state++;
+          ref.read(realtimeRefreshTick.notifier).state++;
         },
       );
     } catch (_) {

@@ -439,7 +439,7 @@ class _TransaksiFormState extends ConsumerState<_TransaksiForm> {
                         leading: Icon(
                           k.type == KasType.bank
                               ? Icons.business
-                              : Icons.cash,
+                              : Icons.payments,
                           color: AppColors.primary,
                         ),
                         title: Text(k.name),

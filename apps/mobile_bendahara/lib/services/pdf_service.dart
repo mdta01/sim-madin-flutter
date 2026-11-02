@@ -494,7 +494,7 @@ class _InfoLine extends pw.StatelessWidget {
           pw.Expanded(
             child: pw.Text(value,
                 style: pw.TextStyle(
-                    fontSize: 11, fontWeight: pw.FontWeight.w500)),
+                    fontSize: 11, fontWeight: pw.FontWeight.normal)),
           ),
         ],
       ),
@@ -539,7 +539,7 @@ class _HonorTable extends pw.StatelessWidget {
                 child: pw.Text(row[1],
                     style: pw.TextStyle(
                         fontSize: 11,
-                        fontWeight: pw.FontWeight.w500)),
+                        fontWeight: pw.FontWeight.normal)),
               ),
             ],
           ),
@@ -630,7 +630,7 @@ class _KategoriTable extends pw.StatelessWidget {
                 padding: const pw.EdgeInsets.all(8),
                 child: pw.Text(formatRupiah(entry.value),
                     style: pw.TextStyle(
-                        fontSize: 11, fontWeight: pw.FontWeight.w500)),
+                        fontSize: 11, fontWeight: pw.FontWeight.normal)),
               ),
             ],
           ),
