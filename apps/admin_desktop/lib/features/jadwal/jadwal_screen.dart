@@ -49,7 +49,7 @@ class _JadwalScreenState extends ConsumerState<JadwalScreen> {
           DataCell(Text(j.mapelName ?? '-', style: const TextStyle(fontSize: 12))),
           DataCell(Text(j.kelasName ?? '-', style: const TextStyle(fontSize: 12))),
           DataCell(Text(j.guruName ?? '-', style: const TextStyle(fontSize: 12))),
-          DataCell(IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Jadwal', message: 'Yakin hapus jadwal ${j.mapelName} - ${j.kelasName}?', destructive: true)) { try { await adminDeleteJadwal(ref, j.id); _toast('✅ Jadwal dihapus'); } catch (e) { _toast('Gagal: $e', true); } } })),
+          DataCell(IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Jadwal', message: 'Yakin hapus jadwal ${j.mapelName} - ${j.kelasName}?', destructive: true)) { try { await adminDeleteJadwal(ref, j.id); _toast('✅ Jadwal dihapus'); } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } } })),
         ])).toList(),
         headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
       )),
@@ -89,7 +89,7 @@ class _JadwalScreenState extends ConsumerState<JadwalScreen> {
         if (kelasId == null || mapelId == null || guruId == null || taId == null) { _toast('Semua field wajib diisi', true); return; }
         setInner(() => saving = true);
         try { await adminCreateJadwal(ref, tahunAjaranId: taId!, semesterId: (await ref.read(semesterListProvider(taId).future)).first.id, kelasId: kelasId!, mapelId: mapelId!, guruId: guruId!, dayOfWeek: dayOfWeek, startTime: startCtrl.text.trim(), endTime: endCtrl.text.trim()); if (!context.mounted) return; Navigator.of(ctx).pop(); _toast('✅ Jadwal created'); }
-        catch (e) { _toast('Gagal: $e', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+        catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
       }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Create'))],
     )));
   }

@@ -110,7 +110,7 @@ class _PertemuanListScreenState extends ConsumerState<PertemuanListScreen> {
       if (!mounted) return;
       _toast('✅ Pertemuan dibuat');
     } catch (e) {
-      if (mounted) _toast('Gagal: $e', isError: true);
+      if (mounted) _toast('Gagal: ${friendlyError(e)}', isError: true);
     } finally {
       if (mounted) setState(() => _creating = false);
     }
@@ -122,7 +122,7 @@ class _PertemuanListScreenState extends ConsumerState<PertemuanListScreen> {
       if (!mounted) return;
       _toast('✅ Pertemuan selesai');
     } catch (e) {
-      if (mounted) _toast('Gagal: $e', isError: true);
+      if (mounted) _toast('Gagal: ${friendlyError(e)}', isError: true);
     }
   }
 

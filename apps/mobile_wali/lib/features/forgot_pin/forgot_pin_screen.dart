@@ -49,7 +49,7 @@ class _ForgotPinScreenState extends ConsumerState<ForgotPinScreen> {
       });
       _toast('✅ OTP dikirim (dev mode: $otp)');
     } catch (e) {
-      if (mounted) _toast('Gagal: $e', isError: true);
+      if (mounted) _toast('Gagal: ${friendlyError(e)}', isError: true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -72,7 +72,7 @@ class _ForgotPinScreenState extends ConsumerState<ForgotPinScreen> {
       });
       _toast('✅ OTP terverifikasi. Set PIN baru.');
     } catch (e) {
-      if (mounted) _toast('Gagal: $e', isError: true);
+      if (mounted) _toast('Gagal: ${friendlyError(e)}', isError: true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -101,7 +101,7 @@ class _ForgotPinScreenState extends ConsumerState<ForgotPinScreen> {
       _toast('✅ PIN berhasil diubah. Silakan login.');
       context.go('/login');
     } catch (e) {
-      if (mounted) _toast('Gagal: $e', isError: true);
+      if (mounted) _toast('Gagal: ${friendlyError(e)}', isError: true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }

@@ -14,6 +14,7 @@ export 'constants.dart';
 
 // Utils
 export 'utils.dart';
+export 'utils/error_helpers.dart';
 
 // Models (akan diisi bertahap di phase 2+)
 export 'models/index.dart';

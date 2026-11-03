@@ -36,7 +36,7 @@ class MapelScreen extends ConsumerWidget {
                 DataCell(Text(m.kkm.toStringAsFixed(0), style: const TextStyle(fontSize: 12))),
                 DataCell(Text('${m.durationMnt} mnt', style: const TextStyle(fontSize: 12))),
                 DataCell(Icon(m.isActive ? Icons.check_circle : Icons.cancel, size: 16, color: m.isActive ? AppColors.success : AppColors.danger)),
-                DataCell(Row(children: [IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, ref, mapel: m)), IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Mapel', message: 'Yakin hapus "${m.name}"?', destructive: true)) { try { await adminSoftDeleteMapel(ref, m.id); _toast(context, '✅ Mapel dihapus'); } catch (e) { _toast(context, 'Gagal: $e', true); } } })])),
+                DataCell(Row(children: [IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, ref, mapel: m)), IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Mapel', message: 'Yakin hapus "${m.name}"?', destructive: true)) { try { await adminSoftDeleteMapel(ref, m.id); _toast(context, '✅ Mapel dihapus'); } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } } })])),
               ])).toList(),
               headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
             )),
@@ -77,7 +77,7 @@ class MapelScreen extends ConsumerWidget {
           if (isEdit) { await adminUpdateMapel(ref, mapelId: mapel.id, code: codeCtrl.text.trim(), name: nameCtrl.text.trim(), category: category, description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(), kkm: double.tryParse(kkmCtrl.text) ?? 70, durationMnt: int.tryParse(durCtrl.text) ?? 90, sortOrder: int.tryParse(sortCtrl.text) ?? 0, isActive: isActive); }
           else { await adminCreateMapel(ref, code: codeCtrl.text.trim(), name: nameCtrl.text.trim(), category: category, description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(), kkm: double.tryParse(kkmCtrl.text) ?? 70, durationMnt: int.tryParse(durCtrl.text) ?? 90, sortOrder: int.tryParse(sortCtrl.text) ?? 0); }
           if (!context.mounted) return; Navigator.of(ctx).pop(); _toast(context, isEdit ? '✅ Mapel updated' : '✅ Mapel created');
-        } catch (e) { _toast(context, 'Gagal: $e', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+        } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
       }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Text(isEdit ? 'Update' : 'Create'))],
     )));
   }

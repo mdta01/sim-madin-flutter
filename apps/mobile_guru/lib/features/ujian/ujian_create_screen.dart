@@ -97,7 +97,7 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
       _toast('✅ Ujian dibuat');
       context.go('/dashboard/ujian/list');
     } catch (e) {
-      if (mounted) _toast('Gagal: $e', isError: true);
+      if (mounted) _toast('Gagal: ${friendlyError(e)}', isError: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -165,7 +165,7 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
               label: 'Mata Pelajaran',
               child: mapelAsync.when(
                 loading: () => const SizedBox(height: 30),
-                error: (e, _) => Text('Error: $e'),
+                error: (e, _) => Text(friendlyError(e)),
                 data: (list) => DropdownButtonFormField<String>(
                   decoration: const InputDecoration(
                       border: OutlineInputBorder()),
@@ -186,7 +186,7 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
               label: 'Kelas',
               child: kelasAsync.when(
                 loading: () => const SizedBox(height: 30),
-                error: (e, _) => Text('Error: $e'),
+                error: (e, _) => Text(friendlyError(e)),
                 data: (list) => DropdownButtonFormField<String>(
                   decoration: const InputDecoration(
                       border: OutlineInputBorder()),

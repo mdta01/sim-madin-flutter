@@ -105,7 +105,7 @@ class DashboardHomeTab extends ConsumerWidget {
                     child: CircularProgressIndicator(strokeWidth: 2)),
               ),
             ),
-            error: (e, _) => Text('Stats error: $e',
+            error: (e, _) => Text(friendlyError(e),
                 style: const TextStyle(color: AppColors.danger, fontSize: 12)),
             data: (stats) => GridView.count(
               crossAxisCount: 2,
@@ -206,7 +206,7 @@ class DashboardHomeTab extends ConsumerWidget {
                     child: CircularProgressIndicator(strokeWidth: 2)),
               ),
             ),
-            error: (e, _) => Text('Error: $e',
+            error: (e, _) => Text(friendlyError(e),
                 style: const TextStyle(color: AppColors.danger, fontSize: 12)),
             data: (list) {
               if (list.isEmpty) {

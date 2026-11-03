@@ -44,7 +44,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
       context.go('/dashboard/home');
     } catch (e) {
-      _showError('Login gagal: $e');
+      _showError(friendlyError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

@@ -42,7 +42,7 @@ class UjianDetailScreen extends ConsumerWidget {
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                                content: Text('Gagal: $e'),
+                                content: Text('Gagal: ${friendlyError(e)}'),
                                 backgroundColor: AppColors.danger),
                           );
                         }

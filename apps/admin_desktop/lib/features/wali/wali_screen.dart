@@ -46,7 +46,7 @@ class _WaliScreenState extends ConsumerState<WaliScreen> {
                 DataCell(Row(children: [
                   IconButton(icon: const Icon(Icons.link, size: 18), color: AppColors.info, tooltip: 'Link Santri', onPressed: () => _showLinkSantriDialog(context, w)),
                   IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, wali: w)),
-                  IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Wali', message: 'Yakin hapus "${w.name}"?', destructive: true)) { try { await adminSoftDeleteWali(ref, w.id); _toast('✅ Wali dihapus'); } catch (e) { _toast('Gagal: $e', true); } } }),
+                  IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Wali', message: 'Yakin hapus "${w.name}"?', destructive: true)) { try { await adminSoftDeleteWali(ref, w.id); _toast('✅ Wali dihapus'); } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } } }),
                 ])),
               ])).toList(),
               headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
@@ -104,7 +104,7 @@ class _WaliScreenState extends ConsumerState<WaliScreen> {
             if (isEdit) { await adminUpdateWali(ref, waliId: wali.id, name: nameCtrl.text.trim(), phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(), email: emailCtrl.text.trim().isEmpty ? null : emailCtrl.text.trim(), nik: nikCtrl.text.trim().isEmpty ? null : nikCtrl.text.trim(), occupation: occCtrl.text.trim().isEmpty ? null : occCtrl.text.trim(), address: addrCtrl.text.trim().isEmpty ? null : addrCtrl.text.trim(), relationship: rel, activationStatus: status); }
             else { await adminCreateWali(ref, name: nameCtrl.text.trim(), phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(), email: emailCtrl.text.trim().isEmpty ? null : emailCtrl.text.trim(), nik: nikCtrl.text.trim().isEmpty ? null : nikCtrl.text.trim(), occupation: occCtrl.text.trim().isEmpty ? null : occCtrl.text.trim(), address: addrCtrl.text.trim().isEmpty ? null : addrCtrl.text.trim(), relationship: rel, activationStatus: status, pinHash: pinCtrl.text.length == 6 ? pinCtrl.text : null); }
             if (!context.mounted) return; Navigator.of(ctx).pop(); _toast(isEdit ? '✅ Wali updated' : '✅ Wali created');
-          } catch (e) { _toast('Gagal: $e', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+          } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
         }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Text(isEdit ? 'Update' : 'Create')),
       ],
     )));
@@ -121,7 +121,7 @@ class _WaliScreenState extends ConsumerState<WaliScreen> {
       content: SizedBox(width: 450, child: Column(mainAxisSize: MainAxisSize.min, children: [
         if (existingLinks.isNotEmpty) ...[
           const Text('Santri Terhubung:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-          ...existingLinks.map((l) => ListTile(dense: true, title: Text(l.santriName ?? '-'), subtitle: Text(l.relationship), trailing: IconButton(icon: const Icon(Icons.link_off, size: 18), color: AppColors.danger, onPressed: () async { try { await adminUnlinkWaliSantri(ref, santriWaliId: l.id, waliId: wali.id); setInner(() {}); _toast('✅ Santri di-unlink'); } catch (e) { _toast('Gagal: $e', true); } }))),
+          ...existingLinks.map((l) => ListTile(dense: true, title: Text(l.santriName ?? '-'), subtitle: Text(l.relationship), trailing: IconButton(icon: const Icon(Icons.link_off, size: 18), color: AppColors.danger, onPressed: () async { try { await adminUnlinkWaliSantri(ref, santriWaliId: l.id, waliId: wali.id); setInner(() {}); _toast('✅ Santri di-unlink'); } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } }))),
           const Divider(),
         ],
         const Text('Tambah Link Baru:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -137,7 +137,7 @@ class _WaliScreenState extends ConsumerState<WaliScreen> {
       actions: [
         TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Tutup')),
         ElevatedButton(onPressed: selectedSantriId == null ? null : () async {
-          try { await adminLinkWaliSantri(ref, waliId: wali.id, santriId: selectedSantriId!, relationship: relationship, isPrimary: isPrimary); _toast('✅ Santri di-link'); setInner(() {}); } catch (e) { _toast('Gagal: $e', true); }
+          try { await adminLinkWaliSantri(ref, waliId: wali.id, santriId: selectedSantriId!, relationship: relationship, isPrimary: isPrimary); _toast('✅ Santri di-link'); setInner(() {}); } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); }
         }, child: const Text('Link')),
       ],
     )));

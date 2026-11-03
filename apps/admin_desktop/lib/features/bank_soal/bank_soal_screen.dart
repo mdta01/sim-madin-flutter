@@ -82,7 +82,7 @@ class _BankSoalScreenState extends ConsumerState<BankSoalScreen> {
         if (codeCtrl.text.trim().isEmpty || qCtrl.text.trim().isEmpty || mapelId == null || guruId == null || taId == null) { _toast('Semua field wajib diisi', true); return; }
         setInner(() => saving = true);
         try { await adminCreateBankSoal(ref, mapelId: mapelId!, tahunAjaranId: taId!, guruId: guruId!, code: codeCtrl.text.trim(), type: type, question: qCtrl.text.trim(), options: optCtrl.text.trim().isEmpty ? null : optCtrl.text.trim(), correctAnswer: ansCtrl.text.trim().isEmpty ? null : ansCtrl.text.trim().toUpperCase()); if (!context.mounted) return; Navigator.of(ctx).pop(); _toast('✅ Soal created'); }
-        catch (e) { _toast('Gagal: $e', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+        catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
       }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Create'))],
     )));
   }

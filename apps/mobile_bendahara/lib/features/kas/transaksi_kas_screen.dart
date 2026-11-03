@@ -327,7 +327,7 @@ class _TransaksiFormState extends ConsumerState<_TransaksiForm> {
       _toast('Transaksi ${formatRupiah(_amount.toDouble())} tercatat');
       Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) _toast('Gagal: $e', isError: true);
+      if (mounted) _toast('Gagal: ${friendlyError(e)}', isError: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }

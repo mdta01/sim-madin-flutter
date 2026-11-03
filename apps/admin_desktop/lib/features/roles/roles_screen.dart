@@ -258,7 +258,7 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                                content: Text('Gagal: $e'),
+                                content: Text('Gagal: ${friendlyError(e)}'),
                                 backgroundColor: AppColors.danger),
                           );
                         }
@@ -375,7 +375,7 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                        content: Text('Gagal: $e'),
+                        content: Text('Gagal: ${friendlyError(e)}'),
                         backgroundColor: AppColors.danger),
                   );
                 }
@@ -412,7 +412,7 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text('Gagal: $e'),
+            content: Text('Gagal: ${friendlyError(e)}'),
             backgroundColor: AppColors.danger),
       );
     }

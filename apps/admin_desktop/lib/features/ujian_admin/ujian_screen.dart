@@ -92,7 +92,7 @@ class _UjianScreenState extends ConsumerState<UjianScreen> {
           final semList = await ref.read(semesterListProvider(taId).future);
           await adminCreateUjian(ref, tahunAjaranId: taId!, semesterId: semList.first.id, mapelId: mapelId!, kelasId: kelasId!, guruId: guruId!, title: titleCtrl.text.trim(), type: type, durationMnt: int.tryParse(durCtrl.text) ?? 90);
           if (!context.mounted) return; Navigator.of(ctx).pop(); _toast('✅ Ujian created');
-        } catch (e) { _toast('Gagal: $e', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+        } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
       }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Create'))],
     )));
   }

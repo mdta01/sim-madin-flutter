@@ -74,7 +74,7 @@ class _KompetensiScreenState extends ConsumerState<KompetensiScreen> {
         if (codeCtrl.text.trim().isEmpty || nameCtrl.text.trim().isEmpty || mapelId == null || taId == null) { _toast('Semua field wajib diisi', true); return; }
         setInner(() => saving = true);
         try { await adminCreateKompetensi(ref, mapelId: mapelId!, tahunAjaranId: taId!, code: codeCtrl.text.trim(), name: nameCtrl.text.trim(), description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(), category: category); if (!context.mounted) return; Navigator.of(ctx).pop(); _toast('✅ Kompetensi created'); }
-        catch (e) { _toast('Gagal: $e', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+        catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
       }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Create'))],
     )));
   }

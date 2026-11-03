@@ -204,7 +204,7 @@ class PermissionsScreen extends ConsumerWidget {
                                                       .showSnackBar(
                                                     SnackBar(
                                                         content: Text(
-                                                            'Gagal: $e'),
+                                                            'Gagal: ${friendlyError(e)}'),
                                                         backgroundColor:
                                                             AppColors.danger),
                                                   );

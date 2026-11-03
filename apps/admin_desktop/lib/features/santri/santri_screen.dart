@@ -182,7 +182,7 @@ class _SantriScreenState extends ConsumerState<SantriScreen> {
               if (!context.mounted) return;
               Navigator.of(ctx).pop();
               _toast(isEdit ? '✅ Santri updated' : '✅ Santri created');
-            } catch (e) { _toast('Gagal: $e', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+            } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
           }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Text(isEdit ? 'Update' : 'Create')),
         ],
       )),
@@ -192,7 +192,7 @@ class _SantriScreenState extends ConsumerState<SantriScreen> {
   Future<void> _confirmDelete(BuildContext context, SantriModel santri) async {
     final confirmed = await showConfirmDialog(context, title: 'Hapus Santri', message: 'Yakin ingin menghapus "${santri.name}" (${santri.nis})?\nSantri akan di-soft delete (status=KELUAR).', destructive: true);
     if (!confirmed) return;
-    try { await adminSoftDeleteSantri(ref, santri.id); _toast('✅ Santri dihapus'); } catch (e) { _toast('Gagal: $e', true); }
+    try { await adminSoftDeleteSantri(ref, santri.id); _toast('✅ Santri dihapus'); } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); }
   }
 
   void _toast(String msg, [bool isError = false]) {

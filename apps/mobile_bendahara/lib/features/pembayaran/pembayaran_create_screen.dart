@@ -89,7 +89,7 @@ class _PembayaranCreateScreenState
       }
       if (mounted) context.go('/dashboard/pembayaran');
     } catch (e) {
-      if (mounted) _toast('Gagal: $e', isError: true);
+      if (mounted) _toast('Gagal: ${friendlyError(e)}', isError: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -220,7 +220,7 @@ class _PembayaranCreateScreenState
                     ),
                   ),
                 ),
-                error: (e, _) => Text('Error: $e'),
+                error: (e, _) => Text(friendlyError(e)),
                 data: (list) {
                   final filtered = _query.isEmpty
                       ? list
@@ -293,7 +293,7 @@ class _PembayaranCreateScreenState
                     ),
                   ),
                 ),
-                error: (e, _) => Text('Error: $e'),
+                error: (e, _) => Text(friendlyError(e)),
                 data: (list) {
                   if (list.isEmpty) {
                     return Container(

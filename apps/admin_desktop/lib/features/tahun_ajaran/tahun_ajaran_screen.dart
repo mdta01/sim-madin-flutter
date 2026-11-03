@@ -36,7 +36,7 @@ class TahunAjaranScreen extends ConsumerWidget {
                 DataCell(Text(formatDate(ta.endDate), style: const TextStyle(fontSize: 12))),
                 DataCell(ta.isActive ? const StatusChip(label: 'AKTIF', color: AppColors.success, bg: AppColors.successLight, compact: true) : const StatusChip(label: 'Nonaktif', color: AppColors.textMuted, bg: Color(0xFFF1F5F9), compact: true)),
                 DataCell(Row(children: [
-                  if (!ta.isActive) IconButton(icon: const Icon(Icons.check_circle, size: 18), color: AppColors.success, tooltip: 'Aktifkan', onPressed: () async { try { await adminActivateTahunAjaran(ref, ta.id); _toast(context, '✅ Tahun ajaran diaktifkan'); } catch (e) { _toast(context, 'Gagal: $e', true); } }),
+                  if (!ta.isActive) IconButton(icon: const Icon(Icons.check_circle, size: 18), color: AppColors.success, tooltip: 'Aktifkan', onPressed: () async { try { await adminActivateTahunAjaran(ref, ta.id); _toast(context, '✅ Tahun ajaran diaktifkan'); } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } }),
                   IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, ref, ta: ta)),
                 ])),
               ])).toList(),
@@ -75,7 +75,7 @@ class TahunAjaranScreen extends ConsumerWidget {
           if (isEdit) { await adminUpdateTahunAjaran(ref, taId: ta.id, code: codeCtrl.text.trim(), name: nameCtrl.text.trim(), startDate: startDate, endDate: endDate); }
           else { await adminCreateTahunAjaran(ref, code: codeCtrl.text.trim(), name: nameCtrl.text.trim(), startDate: startDate!, endDate: endDate!); }
           if (!context.mounted) return; Navigator.of(ctx).pop(); _toast(context, isEdit ? '✅ TA updated' : '✅ TA created');
-        } catch (e) { _toast(context, 'Gagal: $e', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+        } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
       }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Text(isEdit ? 'Update' : 'Create'))],
     )));
   }

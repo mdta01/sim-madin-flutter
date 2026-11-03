@@ -117,7 +117,7 @@ class _PembayaranDetailScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal: $e'),
+          SnackBar(content: Text('Gagal: ${friendlyError(e)}'),
               backgroundColor: AppColors.danger),
         );
       }
@@ -151,7 +151,7 @@ class _PembayaranDetailScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal: $e'),
+          SnackBar(content: Text('Gagal: ${friendlyError(e)}'),
               backgroundColor: AppColors.danger),
         );
       }
@@ -166,7 +166,7 @@ class _PembayaranDetailScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal cetak: $e'),
+          SnackBar(content: Text('Gagal cetak: ${friendlyError(e)}'),
               backgroundColor: AppColors.danger),
         );
       }

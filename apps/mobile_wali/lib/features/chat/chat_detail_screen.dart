@@ -35,7 +35,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Gagal: $e'),
+              content: Text('Gagal: ${friendlyError(e)}'),
               backgroundColor: AppColors.danger),
         );
       }

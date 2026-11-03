@@ -44,7 +44,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _toast('✅ Login berhasil. Selamat datang, ${session.wali.name}!');
       context.go('/dashboard/home');
     } catch (e) {
-      if (mounted) _toast('Login gagal: $e', isError: true);
+      if (mounted) _toast(friendlyError(e), isError: true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }

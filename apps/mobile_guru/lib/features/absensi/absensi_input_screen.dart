@@ -64,7 +64,7 @@ class _AbsensiInputScreenState extends ConsumerState<AbsensiInputScreen> {
       _toast('✅ $count absensi tersimpan');
       context.pop();
     } catch (e) {
-      if (mounted) _toast('Gagal: $e', isError: true);
+      if (mounted) _toast('Gagal: ${friendlyError(e)}', isError: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }

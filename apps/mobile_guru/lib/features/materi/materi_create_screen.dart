@@ -63,7 +63,7 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
       _toast('✅ Materi dibuat');
       context.go('/dashboard/akademik/materi');
     } catch (e) {
-      if (mounted) _toast('Gagal: $e', isError: true);
+      if (mounted) _toast('Gagal: ${friendlyError(e)}', isError: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -117,10 +117,10 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
               label: 'Mata Pelajaran',
               child: kelasAsync.when(
                 loading: () => const SizedBox(height: 30),
-                error: (e, _) => Text('Error: $e'),
+                error: (e, _) => Text(friendlyError(e)),
                 data: (_) => mapelAsync.when(
                   loading: () => const SizedBox(height: 30),
-                  error: (e, _) => Text('Error: $e'),
+                  error: (e, _) => Text(friendlyError(e)),
                   data: (list) => DropdownButtonFormField<String>(
                     decoration: const InputDecoration(
                         border: OutlineInputBorder()),
@@ -142,7 +142,7 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
               label: 'Kelas',
               child: kelasAsync.when(
                 loading: () => const SizedBox(height: 30),
-                error: (e, _) => Text('Error: $e'),
+                error: (e, _) => Text(friendlyError(e)),
                 data: (list) => DropdownButtonFormField<String>(
                   decoration: const InputDecoration(
                       border: OutlineInputBorder()),

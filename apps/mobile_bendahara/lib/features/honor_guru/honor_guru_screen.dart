@@ -44,7 +44,7 @@ class _HonorGuruScreenState extends ConsumerState<HonorGuruScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Gagal: $e'),
+              content: Text('Gagal: ${friendlyError(e)}'),
               backgroundColor: AppColors.danger),
         );
       }
@@ -126,7 +126,7 @@ class _HonorGuruScreenState extends ConsumerState<HonorGuruScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Gagal: $e'),
+              content: Text('Gagal: ${friendlyError(e)}'),
               backgroundColor: AppColors.danger),
         );
       }
@@ -139,7 +139,7 @@ class _HonorGuruScreenState extends ConsumerState<HonorGuruScreen> {
     try {
       await PdfService.shareSlipHonorGuru(honor);
     } catch (e) {
-      _toast('Gagal cetak: $e', isError: true);
+      _toast('Gagal cetak: ${friendlyError(e)}', isError: true);
     }
   }
 

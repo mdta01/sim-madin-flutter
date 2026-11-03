@@ -37,7 +37,7 @@ class KelasScreen extends ConsumerWidget {
                 DataCell(Text('${k.capacity}', style: const TextStyle(fontSize: 12))),
                 DataCell(Text(k.waliKelasName ?? '-', style: const TextStyle(fontSize: 12))),
                 DataCell(Icon(k.isActive ? Icons.check_circle : Icons.cancel, size: 16, color: k.isActive ? AppColors.success : AppColors.danger)),
-                DataCell(Row(children: [IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, ref, guruAsync, kelas: k)), IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Kelas', message: 'Yakin hapus "${k.name}"?', destructive: true)) { try { await adminSoftDeleteKelas(ref, k.id); _toast(context, '✅ Kelas dihapus'); } catch (e) { _toast(context, 'Gagal: $e', true); } } })])),
+                DataCell(Row(children: [IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, ref, guruAsync, kelas: k)), IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Kelas', message: 'Yakin hapus "${k.name}"?', destructive: true)) { try { await adminSoftDeleteKelas(ref, k.id); _toast(context, '✅ Kelas dihapus'); } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } } })])),
               ])).toList(),
               headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
             )),
@@ -81,7 +81,7 @@ class KelasScreen extends ConsumerWidget {
           if (isEdit) { await adminUpdateKelas(ref, kelasId: kelas.id, code: codeCtrl.text.trim(), name: nameCtrl.text.trim(), level: levelCtrl.text.trim(), description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(), capacity: int.tryParse(capCtrl.text) ?? 30, sortOrder: int.tryParse(sortCtrl.text) ?? 0, isActive: isActive, waliKelasId: waliKelasId); }
           else { await adminCreateKelas(ref, code: codeCtrl.text.trim(), name: nameCtrl.text.trim(), level: levelCtrl.text.trim(), description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(), capacity: int.tryParse(capCtrl.text) ?? 30, sortOrder: int.tryParse(sortCtrl.text) ?? 0, waliKelasId: waliKelasId); }
           if (!context.mounted) return; Navigator.of(ctx).pop(); _toast(context, isEdit ? '✅ Kelas updated' : '✅ Kelas created');
-        } catch (e) { _toast(context, 'Gagal: $e', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+        } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
       }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Text(isEdit ? 'Update' : 'Create'))],
     )));
   }

@@ -47,7 +47,7 @@ class _NilaiInputScreenState extends ConsumerState<NilaiInputScreen> {
       _toast('✅ $count nilai tersimpan');
       context.pop();
     } catch (e) {
-      if (mounted) _toast('Gagal: $e', isError: true);
+      if (mounted) _toast('Gagal: ${friendlyError(e)}', isError: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -87,7 +87,7 @@ class _NilaiInputScreenState extends ConsumerState<NilaiInputScreen> {
                         fontSize: 12, color: AppColors.textMuted)),
                 kelasAsync.when(
                   loading: () => const SizedBox(height: 30),
-                  error: (e, _) => Text('Error: $e'),
+                  error: (e, _) => Text(friendlyError(e)),
                   data: (list) => PillSelector<String>(
                     items: list.map((k) => k.id).toList(),
                     selected: _kelasId,
@@ -105,7 +105,7 @@ class _NilaiInputScreenState extends ConsumerState<NilaiInputScreen> {
                         fontSize: 12, color: AppColors.textMuted)),
                 mapelAsync.when(
                   loading: () => const SizedBox(height: 30),
-                  error: (e, _) => Text('Error: $e'),
+                  error: (e, _) => Text(friendlyError(e)),
                   data: (list) => PillSelector<String>(
                     items: list.map((m) => m.id).toList(),
                     selected: _mapelId,

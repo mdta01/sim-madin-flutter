@@ -409,7 +409,7 @@ class _RecentPaymentsSection extends StatelessWidget {
               color: AppColors.dangerLight,
               borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            child: Text('Error: $err',
+            child: Text(friendlyError(err),
                 style: const TextStyle(color: AppColors.danger, fontSize: 12)),
           ),
           data: (list) {

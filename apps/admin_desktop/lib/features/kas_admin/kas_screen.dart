@@ -70,7 +70,7 @@ class _KasScreenState extends ConsumerState<KasScreen> {
         if (codeCtrl.text.trim().isEmpty || nameCtrl.text.trim().isEmpty) { _toast('Code dan Nama wajib diisi', true); return; }
         setInner(() => saving = true);
         try { await adminCreateKas(ref, code: codeCtrl.text.trim(), name: nameCtrl.text.trim(), type: type, accountNumber: accCtrl.text.trim().isEmpty ? null : accCtrl.text.trim(), bankName: bankCtrl.text.trim().isEmpty ? null : bankCtrl.text.trim()); if (!context.mounted) return; Navigator.of(ctx).pop(); _toast('✅ Kas created'); }
-        catch (e) { _toast('Gagal: $e', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+        catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
       }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Create'))],
     )));
   }

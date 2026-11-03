@@ -67,7 +67,7 @@ class _PengumumanScreenState extends ConsumerState<PengumumanScreen> {
         if (titleCtrl.text.trim().isEmpty || contentCtrl.text.trim().isEmpty) { _toast('Judul dan Isi wajib diisi', true); return; }
         setInner(() => saving = true);
         try { await adminCreatePengumuman(ref, title: titleCtrl.text.trim(), content: contentCtrl.text.trim(), priority: priority, audience: audience); if (!context.mounted) return; Navigator.of(ctx).pop(); _toast('✅ Pengumuman created'); }
-        catch (e) { _toast('Gagal: $e', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+        catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
       }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Create'))],
     )));
   }

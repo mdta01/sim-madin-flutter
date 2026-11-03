@@ -71,7 +71,7 @@ class _LaporanKeuanganScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Gagal export: $e'),
+              content: Text('Gagal export: ${friendlyError(e)}'),
               backgroundColor: AppColors.danger),
         );
       }

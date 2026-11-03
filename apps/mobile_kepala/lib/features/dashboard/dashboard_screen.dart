@@ -452,7 +452,7 @@ class _IncomeTrendSection extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
-              error: (err, _) => Center(child: Text('Error: $err')),
+              error: (err, _) => Center(child: Text(friendlyError(err))),
               data: (payments) {
                 // Group by day for last 7 days.
                 final now = DateTime.now();

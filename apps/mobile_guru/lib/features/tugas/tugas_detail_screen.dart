@@ -46,7 +46,7 @@ class _TugasDetailScreenState extends ConsumerState<TugasDetailScreen> {
       if (!mounted) return;
       _toast('✅ Nilai tersimpan');
     } catch (e) {
-      if (mounted) _toast('Gagal: $e', isError: true);
+      if (mounted) _toast('Gagal: ${friendlyError(e)}', isError: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }

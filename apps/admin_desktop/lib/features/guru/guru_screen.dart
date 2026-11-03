@@ -43,7 +43,7 @@ class _GuruScreenState extends ConsumerState<GuruScreen> {
                 DataCell(Text(g.specialization ?? '-', style: const TextStyle(fontSize: 12))),
                 DataCell(Text(g.phone ?? '-', style: const TextStyle(fontSize: 12))),
                 DataCell(StatusChip(label: g.status, color: g.status == GuruStatus.aktif ? AppColors.success : AppColors.danger, bg: g.status == GuruStatus.aktif ? AppColors.successLight : AppColors.dangerLight, compact: true)),
-                DataCell(Row(children: [IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, guru: g)), IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Guru', message: 'Yakin hapus "${g.name}"?', destructive: true)) { try { await adminSoftDeleteGuru(ref, g.id); _toast('✅ Guru dihapus'); } catch (e) { _toast('Gagal: $e', true); } } })])),
+                DataCell(Row(children: [IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, guru: g)), IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Guru', message: 'Yakin hapus "${g.name}"?', destructive: true)) { try { await adminSoftDeleteGuru(ref, g.id); _toast('✅ Guru dihapus'); } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } } })])),
               ])).toList(),
               headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
             )),
@@ -96,7 +96,7 @@ class _GuruScreenState extends ConsumerState<GuruScreen> {
             if (isEdit) { await adminUpdateGuru(ref, guruId: guru.id, name: nameCtrl.text.trim(), gender: gender, nip: nipCtrl.text.trim().isEmpty ? null : nipCtrl.text.trim(), specialization: specCtrl.text.trim().isEmpty ? null : specCtrl.text.trim(), phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(), email: emailCtrl.text.trim().isEmpty ? null : emailCtrl.text.trim(), address: addrCtrl.text.trim().isEmpty ? null : addrCtrl.text.trim(), status: status); }
             else { await adminCreateGuru(ref, name: nameCtrl.text.trim(), gender: gender, nip: nipCtrl.text.trim().isEmpty ? null : nipCtrl.text.trim(), specialization: specCtrl.text.trim().isEmpty ? null : specCtrl.text.trim(), phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(), email: emailCtrl.text.trim().isEmpty ? null : emailCtrl.text.trim(), address: addrCtrl.text.trim().isEmpty ? null : addrCtrl.text.trim(), status: status); }
             if (!context.mounted) return; Navigator.of(ctx).pop(); _toast(isEdit ? '✅ Guru updated' : '✅ Guru created');
-          } catch (e) { _toast('Gagal: $e', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+          } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
         }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Text(isEdit ? 'Update' : 'Create')),
       ],
     )));

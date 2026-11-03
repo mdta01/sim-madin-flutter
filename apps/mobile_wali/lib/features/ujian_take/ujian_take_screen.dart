@@ -225,7 +225,7 @@ class _UjianTakeScreenState extends ConsumerState<UjianTakeScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Gagal submit: $e'),
+              content: Text('Gagal submit: ${friendlyError(e)}'),
               backgroundColor: AppColors.danger),
         );
       }
