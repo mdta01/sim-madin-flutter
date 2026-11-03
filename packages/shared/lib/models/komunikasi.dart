@@ -74,6 +74,15 @@ class WaliModel {
     this.address,
     this.relationship = 'WALI',
     this.activationStatus = WaliActivationStatus.pending,
+    // Auth & OTP
+    this.pinHash,
+    this.otpCode,
+    this.otpExpiresAt,
+    this.otpAttempts = 0,
+    this.otpRequestCount = 0,
+    this.otpRequestResetAt,
+    this.failedLoginAttempts = 0,
+    this.lockedUntil,
     this.lastLoginAt,
     required this.createdAt,
     required this.updatedAt,
@@ -90,7 +99,18 @@ class WaliModel {
   final String? address;
   final String relationship;
   final String activationStatus;
+
+  // Auth & OTP fields (Phase 5)
+  final String? pinHash; // PIN 6-digit (DEV: plain; prod: bcrypt hash)
+  final String? otpCode; // OTP aktif saat ini
+  final DateTime? otpExpiresAt; // OTP expiry (5 menit)
+  final int otpAttempts; // attempt verify OTP salah
+  final int otpRequestCount; // anti-spam: max 5/jam
+  final DateTime? otpRequestResetAt; // reset counter setelah 1 jam
+  final int failedLoginAttempts; // PIN salah counter (max 5 → lock 15 menit)
+  final DateTime? lockedUntil; // auto-lock timestamp
   final DateTime? lastLoginAt;
+
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -107,6 +127,21 @@ class WaliModel {
         relationship: (j['relationship'] as String?) ?? 'WALI',
         activationStatus:
             (j['activationStatus'] as String?) ?? WaliActivationStatus.pending,
+        pinHash: j['pinHash'] as String?,
+        otpCode: j['otpCode'] as String?,
+        otpExpiresAt: j['otpExpiresAt'] is String
+            ? DateTime.parse(j['otpExpiresAt'] as String)
+            : null,
+        otpAttempts: (j['otpAttempts'] as num?)?.toInt() ?? 0,
+        otpRequestCount: (j['otpRequestCount'] as num?)?.toInt() ?? 0,
+        otpRequestResetAt: j['otpRequestResetAt'] is String
+            ? DateTime.parse(j['otpRequestResetAt'] as String)
+            : null,
+        failedLoginAttempts:
+            (j['failedLoginAttempts'] as num?)?.toInt() ?? 0,
+        lockedUntil: j['lockedUntil'] is String
+            ? DateTime.parse(j['lockedUntil'] as String)
+            : null,
         lastLoginAt: j['lastLoginAt'] is String
             ? DateTime.parse(j['lastLoginAt'] as String)
             : null,

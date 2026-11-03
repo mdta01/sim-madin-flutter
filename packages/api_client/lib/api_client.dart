@@ -22,12 +22,21 @@
 // Ujian, BankSoal, Perkembangan, Chat) + mutations (bulkCreateAbsensi,
 // bulkCreateNilai, createMateri/Tugas/Pertemuan/Ujian, gradePengumpulan,
 // createPerkembanganQuran/Kitab/Akhlak/Pembinaan, sendChatMessage).
+//
+// Phase 5+ tambahan: lihat `query_providers_wali.dart` + `mutation_providers_wali.dart`
+// — Riverpod providers untuk mobile_wali (santriAnak, absensiAnak, nilaiAnak,
+// tagihanAnak, ujianPesertaAnak, notifikasiWali, chatRoomsWali, pengumumanWali,
+// perkembanganAnak, ujianDetailForWali) + mutations (loginWali, requestOtp,
+// verifyOtp, setNewPin, markNotifikasiRead, sendChatMessageAsWali,
+// startUjianSesi, submitUjianJawaban).
 // ============================================================================
 
 export 'query_providers.dart';
 export 'mutation_providers.dart';
 export 'query_providers_guru.dart';
 export 'mutation_providers_guru.dart';
+export 'query_providers_wali.dart';
+export 'mutation_providers_wali.dart';
 
 import 'dart:convert';
 
@@ -169,6 +178,35 @@ class AuthStorage {
         wali: jsonDecode(wali) as Map<String, dynamic>,
         santriList: (jsonDecode(santri) as List).cast<Map<String, dynamic>>(),
       );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Get raw wali token dari storage (TANPA JWT verify).
+  /// Dipakai untuk Phase 5 mobile_wali yang login pakai pseudo-token
+  /// (bukan JWT proper). Production: ganti dengan JWT yang di-verify.
+  Future<String?> getWaliToken() async {
+    return _storage.read(key: _waliTokenKey);
+  }
+
+  /// Get raw wali data (Map) dari storage.
+  Future<Map<String, dynamic>?> getWaliData() async {
+    final raw = await _storage.read(key: _waliDataKey);
+    if (raw == null) return null;
+    try {
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Get raw santri list (List of Map) dari storage.
+  Future<List<Map<String, dynamic>>?> getWaliSantriList() async {
+    final raw = await _storage.read(key: _waliSantriKey);
+    if (raw == null) return null;
+    try {
+      return (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
     } catch (_) {
       return null;
     }
