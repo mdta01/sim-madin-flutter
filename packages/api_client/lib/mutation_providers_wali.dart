@@ -27,10 +27,13 @@ import 'package:supabase_client/supabase_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Import everything from query_providers.dart (supabaseClientProvider,
-// authStorageProvider, realtimeRefreshTick, etc) and query_providers_wali.dart
-// (TypedWaliSession, waliSessionProvider, invalidateWaliQueries, etc).
+// realtimeRefreshTick, etc), query_providers_wali.dart (TypedWaliSession,
+// waliSessionProvider, invalidateWaliQueries, etc).
 import 'query_providers.dart';
 import 'query_providers_wali.dart';
+// authStorageProvider is defined in api_client.dart (the barrel file).
+// Dart handles circular imports for top-level declarations gracefully.
+import 'api_client.dart';
 
 /// Blacklist 50 PIN lemah — tidak boleh dipakai.
 /// Port dari packages/shared/lib/constants.dart kBlacklistedPins.
