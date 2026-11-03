@@ -73,21 +73,27 @@ class RoleModel {
     required this.code,
     required this.name,
     this.description,
+    this.sortOrder = 99,
     required this.createdAt,
+    this.updatedAt,
   });
 
   final String id;
   final String code; // SUPER_ADMIN, ADMIN, KEPALA, GURU, BENDAHARA, WALI
   final String name;
   final String? description;
+  final int sortOrder;
   final DateTime createdAt;
+  final DateTime? updatedAt;
 
   factory RoleModel.fromJson(Map<String, dynamic> j) => RoleModel(
         id: j['id'] as String,
         code: j['code'] as String,
         name: j['name'] as String,
         description: j['description'] as String?,
+        sortOrder: (j['sortOrder'] as num?)?.toInt() ?? 99,
         createdAt: _parseDate(j['createdAt'])!,
+        updatedAt: _parseDate(j['updatedAt']),
       );
 }
 

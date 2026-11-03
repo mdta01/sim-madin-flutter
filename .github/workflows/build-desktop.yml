@@ -1,8 +1,9 @@
 # ============================================================================
-# Build admin desktop binaries (Windows, macOS, Linux)
+# Build admin desktop binaries (Windows ONLY — Phase 6)
 # ============================================================================
-# Trigger: manual (workflow_dispatch) — pick which platform to build.
-# Note: macOS runs on macos-latest, Windows on windows-latest, Linux on ubuntu-latest.
+# Phase 6 simplification: hanya build untuk Windows.
+# macOS/Linux builds di-skip untuk menghemat CI time.
+# Kalau nanti butuh macOS/Linux, tinggal uncomment matrix entries.
 # ============================================================================
 
 name: Build Admin Desktop
@@ -11,15 +12,12 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: "Target platform"
+        description: "Target platform (default: windows)"
         required: true
         type: choice
-        default: linux
+        default: windows
         options:
           - windows
-          - macos
-          - linux
-          - all
   push:
     branches:
       - main
@@ -29,39 +27,14 @@ on:
       - ".github/workflows/build-desktop.yml"
 
 concurrency:
-  group: desktop-${{ github.ref }}-${{ inputs.platform || 'all' }}
+  group: desktop-${{ github.ref }}-${{ inputs.platform || 'windows' }}
   cancel-in-progress: true
 
 jobs:
-  resolve-platforms:
-    name: Resolve target platforms
-    runs-on: ubuntu-latest
-    outputs:
-      platforms: ${{ steps.expand.outputs.platforms }}
-    steps:
-      - id: expand
-        run: |
-          INPUT="${{ inputs.platform || 'all' }}"
-          if [ "$INPUT" = "all" ]; then
-            echo 'platforms=[{"os":"ubuntu-latest","target":"linux"},{"os":"windows-latest","target":"windows"},{"os":"macos-latest","target":"macos"}]' >> "$GITHUB_OUTPUT"
-          else
-            case "$INPUT" in
-              linux)   OS="ubuntu-latest" ;;
-              windows) OS="windows-latest" ;;
-              macos)   OS="macos-latest" ;;
-            esac
-            echo "platforms=[{\"os\":\"$OS\",\"target\":\"$INPUT\"}]" >> "$GITHUB_OUTPUT"
-          fi
-
   build:
-    name: Build Desktop — ${{ matrix.target }}
-    needs: resolve-platforms
-    runs-on: ${{ matrix.os }}
+    name: Build Desktop — Windows
+    runs-on: windows-latest
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJson(needs.resolve-platforms.outputs.platforms) }}
     defaults:
       run:
         working-directory: apps/admin_desktop
@@ -89,58 +62,23 @@ jobs:
         working-directory: .
         shell: bash
         run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            export PATH="$PATH;$USERPROFILE\.pub-cache\bin"
-          else
-            export PATH="$PATH:$HOME/.pub-cache/bin"
-          fi
+          export PATH="$PATH:$USERPROFILE/.pub-cache/bin"
           melos bootstrap
 
       - name: Generate code (freezed/json/riverpod)
         working-directory: .
         shell: bash
         run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            export PATH="$PATH;$USERPROFILE\.pub-cache\bin"
-          else
-            export PATH="$PATH:$HOME/.pub-cache/bin"
-          fi
+          export PATH="$PATH:$USERPROFILE/.pub-cache/bin"
           melos run gen || echo "No gen script configured, skipping"
 
-      - name: Enable desktop support
-        run: |
-          flutter config --enable-linux-desktop
-          flutter config --enable-macos-desktop
-          flutter config --enable-windows-desktop
+      - name: Enable Windows desktop support
+        run: flutter config --enable-windows-desktop
 
-      - name: Install Linux build deps
-        if: matrix.target == 'linux'
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y ninja-build libgtk-3-dev libstdc++-12-dev clang cmake \
-            libsecret-1-dev libjsoncpp-dev libcurl4-openssl-dev
-
-      - name: Build desktop app
-        run: flutter build ${{ matrix.target }} --release
-
-      - name: Find artifact (Linux)
-        if: matrix.target == 'linux'
-        id: find-linux
-        run: |
-          BINARY=$(find build/linux/x64/release/bundle -type f -name "admin_desktop" -executable | head -1)
-          echo "binary_path=$BINARY" >> $GITHUB_OUTPUT
-          ls -la build/linux/x64/release/bundle/
-
-      - name: Find artifact (macOS)
-        if: matrix.target == 'macos'
-        id: find-macos
-        run: |
-          APP=$(find build/macos/Build/Products/Release -name "*.app" -maxdepth 1 | head -1)
-          echo "app_path=$APP" >> $GITHUB_OUTPUT
-          ls -la build/macos/Build/Products/Release/
+      - name: Build Windows app
+        run: flutter build windows --release
 
       - name: Find artifact (Windows)
-        if: matrix.target == 'windows'
         id: find-windows
         shell: bash
         run: |
@@ -148,24 +86,7 @@ jobs:
           echo "exe_path=$EXE" >> $GITHUB_OUTPUT
           ls -la build/windows/x64/runner/Release/
 
-      - name: Upload artifact (Linux)
-        if: matrix.target == 'linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: admin_desktop-linux
-          path: apps/admin_desktop/build/linux/x64/release/bundle
-          retention-days: 30
-
-      - name: Upload artifact (macOS)
-        if: matrix.target == 'macos'
-        uses: actions/upload-artifact@v4
-        with:
-          name: admin_desktop-macos
-          path: apps/admin_desktop/build/macos/Build/Products/Release/*.app
-          retention-days: 30
-
       - name: Upload artifact (Windows)
-        if: matrix.target == 'windows'
         uses: actions/upload-artifact@v4
         with:
           name: admin_desktop-windows
@@ -175,9 +96,9 @@ jobs:
       - name: Summary
         working-directory: .
         run: |
-          echo "## 🖥️ Desktop Built — ${{ matrix.target }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "## 🖥️ Desktop Built — Windows" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Platform**: ${{ matrix.target }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Platform**: Windows (x64)" >> "$GITHUB_STEP_SUMMARY"
           echo "- **App**: admin_desktop" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Download binary dari Artifacts section di atas." >> "$GITHUB_STEP_SUMMARY"

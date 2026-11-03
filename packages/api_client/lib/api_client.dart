@@ -37,6 +37,8 @@ export 'query_providers_guru.dart';
 export 'mutation_providers_guru.dart';
 export 'query_providers_wali.dart';
 export 'mutation_providers_wali.dart';
+export 'query_providers_admin.dart';
+export 'mutation_providers_admin.dart';
 
 import 'dart:convert';
 
