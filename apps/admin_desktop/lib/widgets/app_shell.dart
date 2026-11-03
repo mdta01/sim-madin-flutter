@@ -240,13 +240,19 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-/// Phase 6a active menus (sudah diimplement). Lainnya = placeholder.
+/// Phase 6a+6b active menus (sudah diimplement). Lainnya = placeholder.
 const kPhase6aActiveMenus = <String>{
   'dashboard',
   'users',
   'roles',
   'permissions',
   'settings',
+  'santri',
+  'guru',
+  'wali',
+  'kelas',
+  'mapel',
+  'tahun-ajaran',
 };
 
 class _SidebarItem extends StatelessWidget {

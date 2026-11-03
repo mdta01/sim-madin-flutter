@@ -24,12 +24,18 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 
 import '../features/dashboard/dashboard_screen.dart';
+import '../features/guru/guru_screen.dart';
+import '../features/kelas/kelas_screen.dart';
 import '../features/login/login_screen.dart';
+import '../features/mapel/mapel_screen.dart';
 import '../features/permissions/permissions_screen.dart';
 import '../features/roles/roles_screen.dart';
+import '../features/santri/santri_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/splash_screen.dart';
+import '../features/tahun_ajaran/tahun_ajaran_screen.dart';
 import '../features/users/users_screen.dart';
+import '../features/wali/wali_screen.dart';
 import '../widgets/app_shell.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -72,8 +78,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             name: 'settings',
             builder: (c, s) => const SettingsScreen(),
           ),
-          // Phase 6b+ placeholder routes — tampilkan "Coming soon"
-          ...kPhase6bRoutes.map((path) => GoRoute(
+          // Phase 6b — master data routes
+          GoRoute(path: '/santri', name: 'santri', builder: (c, s) => const SantriScreen()),
+          GoRoute(path: '/guru', name: 'guru', builder: (c, s) => const GuruScreen()),
+          GoRoute(path: '/wali', name: 'wali', builder: (c, s) => const WaliScreen()),
+          GoRoute(path: '/kelas', name: 'kelas', builder: (c, s) => const KelasScreen()),
+          GoRoute(path: '/mapel', name: 'mapel', builder: (c, s) => const MapelScreen()),
+          GoRoute(path: '/tahun-ajaran', name: 'tahun-ajaran', builder: (c, s) => const TahunAjaranScreen()),
+          // Phase 6c+ placeholder routes
+          ...kPhase6cRoutes.map((path) => GoRoute(
                 path: path,
                 name: path.replaceAll('/', ''),
                 builder: (c, s) => const _ComingSoonScreen(),
@@ -84,18 +97,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Routes untuk Phase 6b+ (belum diimplement — tampilkan placeholder).
-const kPhase6bRoutes = <String>[
-  '/santri',
-  '/wali',
-  '/guru',
-  '/kelas',
-  '/mapel',
+/// Routes untuk Phase 6c+ (belum diimplement — tampilkan placeholder).
+const kPhase6cRoutes = <String>[
   '/jadwal',
   '/pertemuan',
   '/absensi',
   '/nilai',
-  '/tahun-ajaran',
   '/siklus',
   '/tagihan',
   '/pembayaran',
