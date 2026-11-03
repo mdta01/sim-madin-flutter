@@ -240,30 +240,15 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-/// Phase 6a+6b+6c active menus (sudah diimplement). Lainnya = placeholder.
+/// ALL 34 admin menus are active (Phase 6a-d complete).
 const kPhase6aActiveMenus = <String>{
-  'dashboard',
-  'users',
-  'roles',
-  'permissions',
-  'settings',
-  'santri',
-  'guru',
-  'wali',
-  'kelas',
-  'mapel',
-  'tahun-ajaran',
-  'jadwal',
-  'pertemuan',
-  'absensi',
-  'nilai',
-  'materi',
-  'tugas',
-  'ujian',
-  'bank-soal',
-  'kompetensi',
-  'rapor',
-  'perkembangan',
+  'dashboard', 'users', 'roles', 'permissions', 'settings',
+  'santri', 'guru', 'wali', 'kelas', 'mapel', 'tahun-ajaran',
+  'jadwal', 'pertemuan', 'absensi', 'nilai', 'materi', 'tugas',
+  'ujian', 'bank-soal', 'kompetensi', 'rapor', 'perkembangan',
+  'siklus', 'tagihan', 'pembayaran', 'kas', 'honor-guru',
+  'pengumuman', 'notifikasi', 'surat', 'alumni', 'chat', 'qr',
+  'audit-log',
 };
 
 class _SidebarItem extends StatelessWidget {

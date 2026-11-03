@@ -47,6 +47,18 @@ import '../features/splash_screen.dart';
 import '../features/tahun_ajaran/tahun_ajaran_screen.dart';
 import '../features/users/users_screen.dart';
 import '../features/wali/wali_screen.dart';
+import '../features/siklus/siklus_screen.dart';
+import '../features/tagihan/tagihan_screen.dart';
+import '../features/pembayaran/pembayaran_screen.dart';
+import '../features/kas_admin/kas_screen.dart';
+import '../features/honor_guru_admin/honor_guru_screen.dart';
+import '../features/pengumuman/pengumuman_screen.dart';
+import '../features/notifikasi/notifikasi_screen.dart';
+import '../features/surat/surat_screen.dart';
+import '../features/alumni/alumni_screen.dart';
+import '../features/chat_admin/chat_screen.dart';
+import '../features/qr/qr_screen.dart';
+import '../features/audit_log/audit_log_screen.dart';
 import '../widgets/app_shell.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -108,53 +120,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/kompetensi', name: 'kompetensi', builder: (c, s) => const KompetensiScreen()),
           GoRoute(path: '/rapor', name: 'rapor', builder: (c, s) => const RaporScreen()),
           GoRoute(path: '/perkembangan', name: 'perkembangan', builder: (c, s) => const PerkembanganScreen()),
-          // Phase 6d+ placeholder routes
-          ...kPhase6dRoutes.map((path) => GoRoute(path: path, name: path.replaceAll('/', ''), builder: (c, s) => const _ComingSoonScreen())),
+          // Phase 6d — keuangan + lainnya routes (ALL 34 modules active!)
+          GoRoute(path: '/siklus', name: 'siklus', builder: (c, s) => const SiklusScreen()),
+          GoRoute(path: '/tagihan', name: 'tagihan', builder: (c, s) => const TagihanScreen()),
+          GoRoute(path: '/pembayaran', name: 'pembayaran', builder: (c, s) => const PembayaranScreen()),
+          GoRoute(path: '/kas', name: 'kas', builder: (c, s) => const KasScreen()),
+          GoRoute(path: '/honor-guru', name: 'honor-guru', builder: (c, s) => const HonorGuruScreen()),
+          GoRoute(path: '/pengumuman', name: 'pengumuman', builder: (c, s) => const PengumumanScreen()),
+          GoRoute(path: '/notifikasi', name: 'notifikasi', builder: (c, s) => const NotifikasiScreen()),
+          GoRoute(path: '/surat', name: 'surat', builder: (c, s) => const SuratScreen()),
+          GoRoute(path: '/alumni', name: 'alumni', builder: (c, s) => const AlumniScreen()),
+          GoRoute(path: '/chat', name: 'chat', builder: (c, s) => const ChatScreen()),
+          GoRoute(path: '/qr', name: 'qr', builder: (c, s) => const QRScreen()),
+          GoRoute(path: '/audit-log', name: 'audit-log', builder: (c, s) => const AuditLogScreen()),
         ],
       ),
     ],
   );
 });
 
-/// Routes untuk Phase 6d+ (belum diimplement — tampilkan placeholder).
-const kPhase6dRoutes = <String>[
-  '/siklus',
-  '/tagihan',
-  '/pembayaran',
-  '/kas',
-  '/honor-guru',
-  '/pengumuman',
-  '/notifikasi',
-  '/surat',
-  '/alumni',
-  '/chat',
-  '/qr',
-  '/audit-log',
-];
-
-class _ComingSoonScreen extends StatelessWidget {
-  const _ComingSoonScreen();
-  @override
-  Widget build(BuildContext context) {
-    final location = GoRouterState.of(context).matchedLocation;
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.construction, size: 80, color: AppColors.warning),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Modul ${location.replaceAll('/', '')} — Phase 6b+',
-            style: const TextStyle(
-                fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          const Text(
-            'Halaman ini akan diimplementasikan di Phase 6b/c/d.',
-            style: TextStyle(color: AppColors.textMuted),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// All 34 modules are now active in Phase 6a-d. No more placeholder routes.

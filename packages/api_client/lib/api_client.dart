@@ -41,6 +41,7 @@ export 'query_providers_admin.dart';
 export 'mutation_providers_admin.dart';
 export 'providers_admin_masterdata.dart';
 export 'providers_admin_akademik.dart';
+export 'providers_admin_keuangan.dart';
 
 import 'dart:convert';
 
