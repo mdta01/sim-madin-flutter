@@ -50,6 +50,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared/shared.dart';
+import 'package:supabase_client/supabase_client.dart';
 
 /// Konfigurasi dasar untuk Dio HTTP client.
 class ApiClientConfig {
