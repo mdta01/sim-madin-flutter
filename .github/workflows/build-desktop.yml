@@ -97,8 +97,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             Write-Host "VS 2022 Build Tools install returned $LASTEXITCODE"
           }
-          # Verify installation
-          & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -format json -products * -utf8 -latest -version "[16.0,17.0)" -requires Microsoft.VisualStudio.Workload.NativeDesktop
+          # Verify installation + find path
+          $vs2022Path = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -format value -products * -utf8 -latest -version "[17.0,18.0)" -property installationPath
+          Write-Host "VS 2022 path: $vs2022Path"
+          if ($vs2022Path) {
+            # Configure Flutter to use VS 2022 instead of VS 18 (2026)
+            flutter config --visual-studio-path="$vs2022Path"
+          }
+
+      - name: Verify Flutter doctor after VS config
+        run: flutter doctor -v
 
       - name: Build Windows app
         run: flutter build windows --release --verbose
