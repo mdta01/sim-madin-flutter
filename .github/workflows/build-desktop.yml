@@ -60,17 +60,18 @@ jobs:
 
       - name: Bootstrap workspace
         working-directory: .
-        shell: bash
+        shell: pwsh
         run: |
-          export PATH="$PATH:$USERPROFILE/.pub-cache/bin"
+          $env:PATH = "$env:LOCALAPPDATA\Pub\Cache\bin;$env:USERPROFILE\.pub-cache\bin;$env:PATH"
           melos bootstrap
 
       - name: Generate code (freezed/json/riverpod)
         working-directory: .
-        shell: bash
+        shell: pwsh
         run: |
-          export PATH="$PATH:$USERPROFILE/.pub-cache/bin"
-          melos run gen || echo "No gen script configured, skipping"
+          $env:PATH = "$env:LOCALAPPDATA\Pub\Cache\bin;$env:USERPROFILE\.pub-cache\bin;$env:PATH"
+          melos run gen
+          if ($LASTEXITCODE -ne 0) { Write-Host "No gen script configured, skipping" }
 
       - name: Enable Windows desktop support
         run: flutter config --enable-windows-desktop

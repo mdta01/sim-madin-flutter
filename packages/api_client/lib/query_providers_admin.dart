@@ -24,11 +24,9 @@ final userListProvider =
     FutureProvider.family<List<UserModel>, UserListParams>((ref, params) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
-  var q = client
-      .from('User')
-      .select('*, UserRole(*, Role(*))')
-      .order('createdAt', ascending: false)
-      .range(params.offset, params.offset + params.limit - 1);
+  // Apply filter BEFORE order+range (Supabase SDK constraint — filter
+  // methods are on FilterBuilder, transform methods on TransformBuilder).
+  var q = client.from('User').select();
   if (params.search != null && params.search!.isNotEmpty) {
     q = q.or(
         'email.ilike.%${params.search}%,name.ilike.%${params.search}%,username.ilike.%${params.search}%');
@@ -36,7 +34,9 @@ final userListProvider =
   if (params.isActiveOnly) {
     q = q.eq('isActive', true);
   }
-  final res = await q;
+  final res = await q
+      .order('createdAt', ascending: false)
+      .range(params.offset, params.offset + params.limit - 1);
   return (res as List)
       .map((r) => _userFromRow(r as Map<String, dynamic>))
       .toList();
@@ -72,15 +72,18 @@ final userByIdProvider =
 });
 
 /// Count total users (untuk pagination info).
+/// Catatan: supabase_flutter v2.8 tidak expose FetchOptions/CountOption
+/// dengan cara yang sama dengan v2.x terbaru. Pakai select-all + count
+/// manual untuk simplicity. Untuk dataset besar, ganti dengan RPC count.
 final userCountProvider = FutureProvider.family<int, String?>((ref, search) async {
   final client = ref.watch(supabaseClientProvider);
-  var q = client.from('User').select('id', const FetchOptions(count: CountOption.exact));
+  var q = client.from('User').select('id');
   if (search != null && search.isNotEmpty) {
     q = q.or(
         'email.ilike.%$search%,name.ilike.%$search%,username.ilike.%$search%');
   }
   final res = await q;
-  return res.count ?? 0;
+  return (res as List).length;
 });
 
 // ---------------------------------------------------------------------------
@@ -210,24 +213,25 @@ final adminDashboardStatsProvider = FutureProvider<AdminDashboardStats>(
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
 
-  // Count queries (pakai head: true dengan count)
+  // Count queries (select all + count manual — FetchOptions tidak
+  // tersedia di supabase_flutter v2.8 dengan API yang sama).
   final santriRes = await client
       .from('Santri')
-      .select('id', const FetchOptions(count: CountOption.exact))
+      .select('id')
       .filter('deletedAt', 'is', null)
       .eq('status', SantriStatus.aktif);
   final guruRes = await client
       .from('Guru')
-      .select('id', const FetchOptions(count: CountOption.exact))
+      .select('id')
       .filter('deletedAt', 'is', null)
       .eq('status', GuruStatus.aktif);
   final kelasRes = await client
       .from('Kelas')
-      .select('id', const FetchOptions(count: CountOption.exact))
+      .select('id')
       .filter('deletedAt', 'is', null);
   final paymentRes = await client
       .from('Payment')
-      .select('amount', const FetchOptions(count: CountOption.exact))
+      .select('id')
       .eq('status', PaymentStatus.verified);
   final tagihanRes = await client
       .from('Tagihan')
@@ -255,10 +259,10 @@ final adminDashboardStatsProvider = FutureProvider<AdminDashboardStats>(
   });
 
   return AdminDashboardStats(
-    totalSantri: santriRes.count ?? 0,
-    totalGuru: guruRes.count ?? 0,
-    totalKelas: kelasRes.count ?? 0,
-    totalPayments: paymentRes.count ?? 0,
+    totalSantri: (santriRes as List).length,
+    totalGuru: (guruRes as List).length,
+    totalKelas: (kelasRes as List).length,
+    totalPayments: (paymentRes as List).length,
     totalIncomeThisMonth: totalIncomeThisMonth,
     totalOutstanding: outstanding,
   );
