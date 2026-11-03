@@ -79,7 +79,7 @@ final absensiListAdminProvider = FutureProvider.family<List<AbsensiModel>, Absen
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Absensi').select('*, Santri(*), Kelas(*)');
-  if (params.kelasId != null) q = q.eq('kelasId', params.kelasId);
+  if (params.kelasId != null) q = q.eq('kelasId', params.kelasId!);
   if (params.status != null && params.status != 'ALL') q = q.eq('status', params.status!);
   if (params.date != null) {
     final dayStart = DateTime(params.date!.year, params.date!.month, params.date!.day);
