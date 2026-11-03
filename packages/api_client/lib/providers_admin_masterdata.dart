@@ -13,8 +13,8 @@ import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'query_providers.dart' show supabaseClientProvider, realtimeRefreshTick;
-import 'query_providers_admin.dart' show invalidateAdminQueries;
+import 'query_providers.dart';
+import 'query_providers_admin.dart';
 
 // ===========================================================================
 // QUERY PROVIDERS
@@ -74,9 +74,9 @@ final semesterListProvider =
     FutureProvider.family<List<SemesterModel>, String?>((ref, taId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
-  var q = client.from('Semester').select().order('startDate', ascending: false);
+  var q = client.from('Semester').select();
   if (taId != null) q = q.eq('tahunAjaranId', taId);
-  final res = await q;
+  final res = await q.order('startDate', ascending: false);
   return (res as List)
       .map((r) => SemesterModel.fromJson(r as Map<String, dynamic>))
       .toList();
