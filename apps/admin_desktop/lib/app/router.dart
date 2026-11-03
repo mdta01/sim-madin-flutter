@@ -25,10 +25,21 @@ import 'package:shared/shared.dart';
 
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/guru/guru_screen.dart';
+import '../features/jadwal/jadwal_screen.dart';
 import '../features/kelas/kelas_screen.dart';
 import '../features/login/login_screen.dart';
 import '../features/mapel/mapel_screen.dart';
 import '../features/permissions/permissions_screen.dart';
+import '../features/pertemuan/pertemuan_screen.dart';
+import '../features/absensi/absensi_screen.dart';
+import '../features/nilai/nilai_screen.dart';
+import '../features/materi_admin/materi_screen.dart';
+import '../features/tugas_admin/tugas_screen.dart';
+import '../features/ujian_admin/ujian_screen.dart';
+import '../features/bank_soal/bank_soal_screen.dart';
+import '../features/kompetensi/kompetensi_screen.dart';
+import '../features/rapor/rapor_screen.dart';
+import '../features/perkembangan_admin/perkembangan_screen.dart';
 import '../features/roles/roles_screen.dart';
 import '../features/santri/santri_screen.dart';
 import '../features/settings/settings_screen.dart';
@@ -85,39 +96,36 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/kelas', name: 'kelas', builder: (c, s) => const KelasScreen()),
           GoRoute(path: '/mapel', name: 'mapel', builder: (c, s) => const MapelScreen()),
           GoRoute(path: '/tahun-ajaran', name: 'tahun-ajaran', builder: (c, s) => const TahunAjaranScreen()),
-          // Phase 6c+ placeholder routes
-          ...kPhase6cRoutes.map((path) => GoRoute(
-                path: path,
-                name: path.replaceAll('/', ''),
-                builder: (c, s) => const _ComingSoonScreen(),
-              )),
+          // Phase 6c — akademik routes
+          GoRoute(path: '/jadwal', name: 'jadwal', builder: (c, s) => const JadwalScreen()),
+          GoRoute(path: '/pertemuan', name: 'pertemuan', builder: (c, s) => const PertemuanScreen()),
+          GoRoute(path: '/absensi', name: 'absensi', builder: (c, s) => const AbsensiScreen()),
+          GoRoute(path: '/nilai', name: 'nilai', builder: (c, s) => const NilaiScreen()),
+          GoRoute(path: '/materi', name: 'materi', builder: (c, s) => const MateriScreen()),
+          GoRoute(path: '/tugas', name: 'tugas', builder: (c, s) => const TugasScreen()),
+          GoRoute(path: '/ujian', name: 'ujian', builder: (c, s) => const UjianScreen()),
+          GoRoute(path: '/bank-soal', name: 'bank-soal', builder: (c, s) => const BankSoalScreen()),
+          GoRoute(path: '/kompetensi', name: 'kompetensi', builder: (c, s) => const KompetensiScreen()),
+          GoRoute(path: '/rapor', name: 'rapor', builder: (c, s) => const RaporScreen()),
+          GoRoute(path: '/perkembangan', name: 'perkembangan', builder: (c, s) => const PerkembanganScreen()),
+          // Phase 6d+ placeholder routes
+          ...kPhase6dRoutes.map((path) => GoRoute(path: path, name: path.replaceAll('/', ''), builder: (c, s) => const _ComingSoonScreen())),
         ],
       ),
     ],
   );
 });
 
-/// Routes untuk Phase 6c+ (belum diimplement — tampilkan placeholder).
-const kPhase6cRoutes = <String>[
-  '/jadwal',
-  '/pertemuan',
-  '/absensi',
-  '/nilai',
+/// Routes untuk Phase 6d+ (belum diimplement — tampilkan placeholder).
+const kPhase6dRoutes = <String>[
   '/siklus',
   '/tagihan',
   '/pembayaran',
   '/kas',
   '/honor-guru',
-  '/tugas',
-  '/materi',
-  '/ujian',
-  '/bank-soal',
-  '/rapor',
-  '/kompetensi',
   '/pengumuman',
   '/notifikasi',
   '/surat',
-  '/perkembangan',
   '/alumni',
   '/chat',
   '/qr',
