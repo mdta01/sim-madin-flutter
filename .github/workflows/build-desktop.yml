@@ -46,14 +46,14 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.27.4"
+          flutter-version: "3.29.3"
           channel: stable
           cache: true
 
       - name: Setup Dart
         uses: dart-lang/setup-dart@v1
         with:
-          sdk: "3.6.2"
+          sdk: "3.7.2"
 
       - name: Install melos
         run: dart pub global activate melos 6.3.2
@@ -83,42 +83,8 @@ jobs:
       - name: Enable Windows desktop support
         run: flutter config --enable-windows-desktop
 
-      - name: Check Flutter doctor (diagnose VS detection)
-        run: flutter doctor -v
-
-      - name: Install Visual Studio 2022 Build Tools (C++ workload)
-        shell: pwsh
-        run: |
-          # GitHub Actions windows-latest has VS 2026 (v18) but Flutter 3.27.4
-          # generates CMake with "Visual Studio 16 2019" generator which VS 18
-          # doesn't support. Install VS 2022 Build Tools which has v17 + v16
-          # toolsets that DO support the "Visual Studio 16 2019" generator.
-          choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive --norestart" --no-progress --limit-output
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "VS 2022 Build Tools install returned $LASTEXITCODE"
-          }
-          # Verify installation + find path
-          $vs2022Path = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -format value -products * -utf8 -latest -version "[17.0,18.0)" -property installationPath
-          Write-Host "VS 2022 path: $vs2022Path"
-          # Save path to GITHUB_ENV for use in build step
-          if ($vs2022Path) {
-            "VS2022_PATH=$vs2022Path" | Out-File -FilePath $env:GITHUB_ENV -Append
-          }
-
       - name: Build Windows app
-        shell: pwsh
-        run: |
-          # Set BOTH CMAKE_GENERATOR + CMAKE_GENERATOR_INSTANCE env vars
-          # so CMake uses VS 2022 (not VS 18 which doesn't support
-          # "Visual Studio 16 2019" generator).
-          # Flutter passes -G "Visual Studio 16 2019" on cmake command line,
-          # but CMake still needs CMAKE_GENERATOR env var set for
-          # CMAKE_GENERATOR_INSTANCE to take effect.
-          $env:CMAKE_GENERATOR = "Visual Studio 16 2019"
-          $env:CMAKE_GENERATOR_INSTANCE = $env:VS2022_PATH
-          Write-Host "CMAKE_GENERATOR=$env:CMAKE_GENERATOR"
-          Write-Host "CMAKE_GENERATOR_INSTANCE=$env:CMAKE_GENERATOR_INSTANCE"
-          flutter build windows --release
+        run: flutter build windows --release
 
       - name: Find artifact (Windows)
         id: find-windows
