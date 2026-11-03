@@ -46,14 +46,14 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.29.3"
+          flutter-version: "3.27.4"
           channel: stable
           cache: true
 
       - name: Setup Dart
         uses: dart-lang/setup-dart@v1
         with:
-          sdk: "3.7.2"
+          sdk: "3.6.2"
 
       - name: Install melos
         run: dart pub global activate melos 6.3.2
@@ -82,6 +82,26 @@ jobs:
 
       - name: Enable Windows desktop support
         run: flutter config --enable-windows-desktop
+
+      - name: Install VS 2022 BuildTools + remove VS 18 (force Flutter to use VS 2022)
+        shell: pwsh
+        run: |
+          # Install VS 2022 Build Tools with C++ workload
+          choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive --norestart" --no-progress --limit-output
+          
+          # CRITICAL: Remove VS 18 (2026) from runner so vswhere only finds VS 2022.
+          # Flutter 3.27.4 hardcodes "Visual Studio 16 2019" CMake generator.
+          # VS 18 doesn't support that generator, but VS 2022 does.
+          $vs18Path = "C:\Program Files\Microsoft Visual Studio\18"
+          if (Test-Path $vs18Path) {
+            Write-Host "Removing VS 18 (2026) to force vswhere to pick VS 2022..."
+            Remove-Item -Recurse -Force $vs18Path -ErrorAction SilentlyContinue
+          }
+          
+          # Verify only VS 2022 is visible
+          $vsList = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -format value -products * -property installationPath
+          Write-Host "VS installations found:"
+          Write-Host $vsList
 
       - name: Build Windows app
         run: flutter build windows --release
