@@ -26,7 +26,10 @@ import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'query_providers.dart' show supabaseClientProvider;
+// Import everything from query_providers.dart (supabaseClientProvider,
+// authStorageProvider, realtimeRefreshTick, etc) and query_providers_wali.dart
+// (TypedWaliSession, waliSessionProvider, invalidateWaliQueries, etc).
+import 'query_providers.dart';
 import 'query_providers_wali.dart';
 
 /// Blacklist 50 PIN lemah — tidak boleh dipakai.
@@ -84,7 +87,7 @@ Future<TypedWaliSession> loginWali(
   _validatePin(pin);
 
   final client = ref.read(supabaseClientProvider);
-  final normalizedPhone = normalizeWhatsApp(phone);
+  final normalizedPhone = normalizeWhatsApp(phone) ?? phone;
 
   // Query wali by phone
   final waliRes = await client
@@ -204,7 +207,7 @@ Future<String> requestOtp(
 }) async {
   _validatePhone(phone);
   final client = ref.read(supabaseClientProvider);
-  final normalizedPhone = normalizeWhatsApp(phone);
+  final normalizedPhone = normalizeWhatsApp(phone) ?? phone;
 
   // Query wali by phone
   final waliRes = await client
@@ -265,7 +268,7 @@ Future<String> verifyOtp(
     throw Exception('OTP harus 6 digit');
   }
   final client = ref.read(supabaseClientProvider);
-  final normalizedPhone = normalizeWhatsApp(phone);
+  final normalizedPhone = normalizeWhatsApp(phone) ?? phone;
 
   final waliRes = await client
       .from('Wali')
@@ -547,7 +550,9 @@ Future<double> submitUjianJawaban(
   }
 
   // Convert to 0-100 scale
-  final finalScore = totalBobot > 0 ? (totalScore / totalBobot) * 100 : 0;
+  final finalScore = totalBobot > 0
+      ? ((totalScore / totalBobot) * 100).toDouble()
+      : 0.0;
 
   // Update sesi: status FINISHED + score + endTime
   await client.from('UjianSesi').update({
