@@ -100,16 +100,19 @@ jobs:
           # Verify installation + find path
           $vs2022Path = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -format value -products * -utf8 -latest -version "[17.0,18.0)" -property installationPath
           Write-Host "VS 2022 path: $vs2022Path"
+          # Save path to GITHUB_ENV for use in build step
           if ($vs2022Path) {
-            # Configure Flutter to use VS 2022 instead of VS 18 (2026)
-            flutter config --visual-studio-path="$vs2022Path"
+            "VS2022_PATH=$vs2022Path" | Out-File -FilePath $env:GITHUB_ENV -Append
           }
 
-      - name: Verify Flutter doctor after VS config
-        run: flutter doctor -v
-
       - name: Build Windows app
-        run: flutter build windows --release --verbose
+        shell: pwsh
+        run: |
+          # Override CMAKE_GENERATOR_INSTANCE to force CMake use VS 2022
+          # (not VS 18 which is default on windows-latest runner).
+          # VS 2022 BuildTools supports "Visual Studio 16 2019" generator.
+          $env:CMAKE_GENERATOR_INSTANCE = $env:VS2022_PATH
+          flutter build windows --release
 
       - name: Find artifact (Windows)
         id: find-windows
