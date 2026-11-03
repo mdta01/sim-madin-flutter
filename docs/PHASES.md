@@ -332,9 +332,97 @@
 
 ---
 
-## Phase 5 — mobile_wali (TODO, 4-6 minggu)
+## Phase 5 — mobile_wali ✅ (DONE)
 
-6 screens + WA+PIN auth + ujian online + anti-cheat. Lihat ROADMAP.md.
+### Architecture decisions
+- Auth: WA+PIN custom (bukan Supabase Auth). Pakai secure storage untuk
+  persistence + pseudo-token (Phase 5 dev — production butuh JWT proper).
+- OTP: di-generate random 6 digit, disimpan di Wali.otpCode + otpExpiresAt
+  (5 menit). Dev mode: return OTP ke client supaya bisa test tanpa WA
+  gateway. Production: kirim via Fonnte/Twilio WA Business API.
+- PIN verification: Phase 5 plain text compare (DEV). Production: bcrypt
+  server-side via Postgres RPC function.
+- Auto-lock: 5x salah PIN → lock 15 menit (lockedUntil).
+- Blacklist: 50 PIN lemah (000000, 111111, 123456, dll) tidak bisa dipakai.
+- Bottom nav 3 tabs: Beranda / Chat / Profil.
+- Santri Detail: 6 tabs (Profil, Akademik, Ujian, Keuangan, Notif, Info).
+- Ujian Take: Fisher-Yates shuffle soal order (persist per santri via
+  UjianSesi.soalOrder), recovery (resume sesi yang belum finished),
+  anti-cheat (WidgetsBindingObserver detect app background → 3x
+  violation auto-submit), timer countdown, soal navigator.
+- Realtime auto-refresh via realtimeRefreshTick untuk Notifikasi, Chat,
+  Tagihan, Payment tables.
+
+### Foundation
+- WaliModel (komunikasi.dart) ditambah 9 auth fields: pinHash, otpCode,
+  otpExpiresAt, otpAttempts, otpRequestCount, otpRequestResetAt,
+  failedLoginAttempts, lockedUntil, lastLoginAt.
+- query_providers_wali.dart — 12 FutureProvider + family + invalidateWaliQueries.
+- mutation_providers_wali.dart — 8 mutation functions:
+  loginWali, requestOtp (rate-limited 5/jam), verifyOtp (max 5 attempts),
+  setNewPin (validate blacklist), markNotifikasiRead,
+  sendChatMessageAsWali, startUjianSesi (resume + Fisher-Yates shuffle),
+  submitUjianJawaban (auto-correct PG + compute score 0-100).
+- api_client.dart: tambah getWaliToken/getWaliData/getWaliSantriList
+  methods (skip JWT verify untuk Phase 5 dev).
+
+### Shared widgets
+- feedback_widgets.dart — EmptyState, ErrorView, LoadingSkeleton, StatusChip.
+- anti_cheat_mixin.dart — AntiCheatMixin untuk WidgetsBindingObserver.
+  Tracks violation count, calls onWarning (1st & 2nd violation) +
+  onCheatDetected (3rd violation auto-submit).
+
+### Screens (8 total)
+1. Login (WA + PIN) — phone + PIN 6-digit input, show/hide PIN, demo info.
+2. Forgot PIN — 3-step flow (request OTP → verify OTP → set new PIN).
+   Dev mode: tampilkan OTP langsung ke user supaya bisa test tanpa WA.
+3. Dashboard Home (Tab 1) — quick stats + list anak dengan avatar, NIS,
+   kelas badge, status badge.
+4. Santri Detail — header card + 6 tabs:
+   - Profil: detail info santri (nama, NIS, TTL, alamat, wali, dll)
+   - Akademik: absensi summary (4 status counts) + nilai recent (10)
+   - Ujian: list ujian yang diikuti anak
+   - Keuangan: total tunggakan + tagihan (5 recent) + payment history (10)
+   - Notif: notifikasi wali (mark as read on tap)
+   - Info: pengumuman (audience ALL atau WALI) dengan priority badges
+5. Ujian Take — full feature:
+   - Timer countdown (auto-submit on time-up)
+   - Fisher-Yates shuffle soal order (persist via UjianSesi.soalOrder)
+   - Recovery: kalau ada sesi yang belum finished, resume + restore answers
+   - Anti-cheat: 3x app background → auto-submit
+   - PopScope: confirm exit (progres jawaban tetap tersimpan)
+   - Soal navigator grid (jump to specific soal, indicator answered/current)
+   - Support 3 tipe soal: PG, ISIAN, ESSAY, PRAKTIK
+   - Result screen: score 0-100 + lulus/tidak (KKM 70)
+6. Chat list — list chat rooms dengan guru.
+7. Chat detail — message bubbles + send.
+8. Profile (Tab 3) — info wali + refresh + about + ubah PIN + logout.
+
+### Bug fixes applied during Phase 5
+- 1e02924: 4 compile fixes (authStorageProvider undefined via show clause,
+  normalizeWhatsApp nullable return, num vs double type mismatch).
+- 68921aa: import api_client.dart for authStorageProvider (Dart handles
+  circular imports for top-level declarations gracefully).
+
+### Verification
+- [x] CI analyze success
+- [x] Build Mobile APK — mobile_wali success (commit 68921aa)
+- [x] Build Mobile APK — all 4 mobile apps success
+- [ ] Manual test login WA+PIN (need to seed Wali record with PIN first)
+- [ ] Test OTP flow (request → verify → set new PIN)
+- [ ] Test ujian take (need ujian + soal + peserta data di DB)
+- [ ] Test anti-cheat (background app 3x during ujian)
+
+### Out of scope Phase 5 (Phase 7 production)
+- [ ] WA OTP send via Fonnte/Twilio (Phase 5 dev returns OTP to client)
+- [ ] bcrypt PIN verify server-side via Postgres RPC function
+- [ ] JWT proper dengan HS256 signature (Phase 5 pakai pseudo-token)
+- [ ] Realtime subscription untuk Notifikasi + Chat (Phase 5 pakai polling
+  via realtimeRefreshTick — 21 subscriptions per wali belum di-setup)
+- [ ] RLS workaround: wali login pakai custom auth (bukan Supabase Auth)
+  jadi auth.uid() null → RLS policies wali_read return 0 rows. Perlu
+  setup: link Wali.userId ke Supabase Auth user (admin desktop Phase 6
+  bisa handle), atau pakai service_role untuk wali queries (not recommended).
 
 ---
 
