@@ -83,8 +83,11 @@ jobs:
       - name: Enable Windows desktop support
         run: flutter config --enable-windows-desktop
 
+      - name: Check Flutter doctor (diagnose VS detection)
+        run: flutter doctor -v
+
       - name: Build Windows app
-        run: flutter build windows --release
+        run: flutter build windows --release --verbose
 
       - name: Find artifact (Windows)
         id: find-windows
