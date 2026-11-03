@@ -21,6 +21,7 @@
 //     (mirip TS app lama yang pakai `devOtp` field saat dev mode).
 // ============================================================================
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
@@ -147,12 +148,40 @@ Future<TypedWaliSession> loginWali(
     'lastLoginAt': DateTime.now().toIso8601String(),
   }).eq('id', wali.id);
 
+  // CRITICAL: Sign in to Supabase Auth with linked User's email
+  // so that auth.uid() is available for RLS policies.
+  // Phase dev: password is 'admin123' for all seed users.
+  // Production: use RPC function with service_role to create proper JWT.
+  String? authToken;
+  if (wali.email != null && wali.email!.isNotEmpty) {
+    try {
+      final authRes = await client.auth.signInWithPassword(
+        email: wali.email!,
+        password: 'admin123', // Phase dev — production: use proper auth
+      );
+      authToken = authRes.session?.accessToken;
+    } catch (e) {
+      // If Supabase Auth sign-in fails, continue with anon session
+      // (wali can still see basic data via anon, but RLS will block
+      // wali-specific queries).
+      debugPrint('Wali Supabase Auth sign-in failed: $e');
+    }
+  }
+
   // Get santri list via SantriWali join
-  final santriRes = await client
-      .from('SantriWali')
-      .select('*, Santri(*, Kelas(*))')
-      .eq('waliId', wali.id)
-      .eq('canAccess', true);
+  // If we have authToken, use authenticated client (RLS will work).
+  // If not, use anon client (RLS will block some queries).
+  final santriRes = authToken != null
+      ? await client // client is now authenticated after signInWithPassword
+          .from('SantriWali')
+          .select('*, Santri(*, Kelas(*))')
+          .eq('waliId', wali.id)
+          .eq('canAccess', true)
+      : await client
+          .from('SantriWali')
+          .select('*, Santri(*, Kelas(*))')
+          .eq('waliId', wali.id)
+          .eq('canAccess', true);
   final santriList = (santriRes as List)
       .map((r) {
         final santri = (r as Map<String, dynamic>)['Santri']
@@ -169,10 +198,9 @@ Future<TypedWaliSession> loginWali(
       .cast<SantriModel>()
       .toList();
 
-  // Generate pseudo-token (Phase 5 simplified — NOT secure JWT).
-  // Production: pakai JWT dengan HS256 signature dari backend.
-  final tokenBytes = '${wali.id}:${DateTime.now().millisecondsSinceEpoch}';
-  final token = Uri.dataFromString(tokenBytes).toString().split(',')[0];
+  // Use Supabase Auth access token (proper JWT) if available.
+  // Fall back to pseudo-token if Supabase Auth sign-in failed.
+  final token = authToken ?? '${wali.id}:${DateTime.now().millisecondsSinceEpoch}';
 
   final session = TypedWaliSession(
     token: token,
