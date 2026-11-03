@@ -273,10 +273,10 @@ class WaliSession {
 final currentUserProvider = FutureProvider<AuthUser?>((ref) async {
   // CRITICAL: Check Supabase Auth session FIRST (most reliable).
   // After signInWithPassword, session is stored by supabase_flutter automatically.
-  final client = Supabase.instance.client;
-  final session = client.auth.currentSession;
+  final supaClient = ref.read(supabaseClientProvider);
+  final session = supaClient.auth.currentSession;
   if (session != null) {
-    final user = client.auth.currentUser;
+    final user = supaClient.auth.currentUser;
     if (user != null) {
       return AuthUser.admin({
         'id': user.id,
