@@ -271,8 +271,23 @@ class WaliSession {
 /// Provider current user (admin or wali).
 /// Di-override per app untuk return type yang berbeda.
 final currentUserProvider = FutureProvider<AuthUser?>((ref) async {
+  // CRITICAL: Check Supabase Auth session FIRST (most reliable).
+  // After signInWithPassword, session is stored by supabase_flutter automatically.
+  final client = Supabase.instance.client;
+  final session = client.auth.currentSession;
+  if (session != null) {
+    final user = client.auth.currentUser;
+    if (user != null) {
+      return AuthUser.admin({
+        'id': user.id,
+        'email': user.email ?? '',
+        'name': user.userMetadata?['name'] ?? user.email ?? 'User',
+      });
+    }
+  }
+
+  // Fallback: check secure storage for admin token
   final storage = ref.read(authStorageProvider);
-  // Cek admin (Supabase)
   final adminToken = await storage.getAdminToken();
   if (adminToken != null) {
     final userData = await storage.getAdminUserData();
@@ -280,11 +295,15 @@ final currentUserProvider = FutureProvider<AuthUser?>((ref) async {
       return AuthUser.admin(userData);
     }
   }
-  // Cek wali
-  final waliSession = await storage.loadWaliSession();
-  if (waliSession != null) {
-    return AuthUser.wali(waliSession.wali, waliSession.santriList);
+
+  // Check wali session (raw token, skip JWT verify for Phase 5 dev)
+  final waliToken = await storage.getWaliToken();
+  final waliData = await storage.getWaliData();
+  final waliSantri = await storage.getWaliSantriList();
+  if (waliToken != null && waliData != null && waliSantri != null) {
+    return AuthUser.wali(waliData, waliSantri);
   }
+
   return null;
 });
 
