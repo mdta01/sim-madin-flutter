@@ -28,7 +28,7 @@ class Mobile_kepalaApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
-      title: 'SIM MADIN - Kepala Madrasah',
+      title: 'SIM Kepala',
       debugShowCheckedModeBanner: !kReleaseMode,
       theme: appThemeLight,
       routerConfig: ref.watch(appRouterProvider),

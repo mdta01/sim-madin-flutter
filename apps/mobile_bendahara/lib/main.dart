@@ -28,7 +28,7 @@ class Mobile_bendaharaApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
-      title: 'SIM MADIN - Bendahara',
+      title: 'SIM Bendahara',
       debugShowCheckedModeBanner: !kReleaseMode,
       theme: appThemeLight,
       routerConfig: ref.watch(appRouterProvider),

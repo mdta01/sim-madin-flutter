@@ -1,3 +1,4 @@
+// Login Screen — SIM Admin (desktop, Supabase Auth).
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,7 +7,6 @@ import 'package:supabase_client/supabase_client.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
-
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
@@ -27,7 +27,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-
     if (!isValidEmail(email)) {
       _showError('Email tidak valid');
       return;
@@ -36,7 +35,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _showError('Password minimal 6 karakter');
       return;
     }
-
     setState(() => _loading = true);
     try {
       final client = ref.read(supabaseClientProvider);
@@ -44,7 +42,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
       context.go('/dashboard');
     } catch (e) {
-      _showError('Login gagal: $e');
+      _showError(friendlyError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -60,81 +58,136 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.primary,
-      body: SafeArea(
+      body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 48),
-              Container(
-                width: 120,
-                height: 120,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(60),
-                ),
-                child: const Icon(Icons.mosque, size: 64, color: AppColors.primary),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'SIM MADIN',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.white, fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Admin Desktop',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.white, fontSize: 16),
-              ),
-              const SizedBox(height: 48),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(48),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Left: logo + branding
+                Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        'Masuk ke Akun',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.text),
+                      Image.asset(
+                        'assets/logo-madrasah.png',
+                        width: 180,
+                        height: 180,
+                        fit: BoxFit.contain,
                       ),
                       const SizedBox(height: 24),
-                      TextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          hintText: 'nama@madrasah.id',
-                          prefixIcon: Icon(Icons.email),
+                      const Text(
+                        'SIM MADIN',
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: !_showPassword,
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility),
-                            onPressed: () => setState(() => _showPassword = !_showPassword),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Sistem Informasi Madrasah Diniyah',
+                        style: TextStyle(
+                          color: AppColors.white.withOpacity(0.8),
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: const Text(
+                          'Admin Desktop',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                       const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: _loading ? null : _handleLogin,
-                        child: _loading
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Text('Masuk'),
+                      Text(
+                        'Madrasah Diniyah Miftahul Ulum\nTawangsari, Pujon, Malang',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.white.withOpacity(0.5),
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 48),
+                // Right: login form
+                SizedBox(
+                  width: 360,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text('Masuk ke Akun',
+                              style: TextStyle(
+                                  fontSize: 22, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Gunakan email dan password admin',
+                            style: TextStyle(
+                                fontSize: 13, color: AppColors.textMuted),
+                          ),
+                          const SizedBox(height: 24),
+                          TextField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: const InputDecoration(
+                              labelText: 'Email',
+                              hintText: 'admin@madrasah.id',
+                              prefixIcon: Icon(Icons.email),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _passwordController,
+                            obscureText: !_showPassword,
+                            decoration: InputDecoration(
+                              labelText: 'Password',
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                icon: Icon(_showPassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility),
+                                onPressed: () => setState(
+                                    () => _showPassword = !_showPassword),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: _loading ? null : _handleLogin,
+                            child: _loading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2))
+                                : const Text('Masuk'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

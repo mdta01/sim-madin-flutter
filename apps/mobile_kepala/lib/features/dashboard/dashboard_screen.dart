@@ -47,7 +47,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (branchIndex < kBottomNavItems.length) {
       return 'SIM MADIN — ${kBottomNavItems[branchIndex].label}';
     }
-    return 'SIM MADIN';
+    return 'SIM Kepala';
   }
 
   @override

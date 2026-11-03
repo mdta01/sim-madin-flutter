@@ -1,3 +1,8 @@
+// Login Screen — shared template untuk semua mobile apps.
+// Logo madrasah + "SIM MADIN" + role badge + form login (Supabase Auth).
+//
+// Cara pakai: copy file ini ke setiap app, ubah _roleLabel.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +17,10 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  // === APP IDENTITY — ubah per app ===
+  static const _roleLabel = 'Bendahara Madrasah';
+  // ====================================
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
@@ -63,78 +72,145 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 48),
-              Container(
-                width: 120,
-                height: 120,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(60),
-                ),
-                child: const Icon(Icons.mosque, size: 64, color: AppColors.primary),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'SIM MADIN',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.white, fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Bendahara',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.white, fontSize: 16),
-              ),
-              const SizedBox(height: 48),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Text(
-                        'Masuk ke Akun',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.text),
-                      ),
-                      const SizedBox(height: 24),
-                      TextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          hintText: 'nama@madrasah.id',
-                          prefixIcon: Icon(Icons.email),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height - 48,
+            ),
+            child: IntrinsicHeight(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 40),
+                  // === Logo + Branding ===
+                  Center(
+                    child: Column(children: [
+                      // Logo madrasah
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.asset(
+                          'assets/logo-madrasah.png',
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.contain,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: !_showPassword,
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility),
-                            onPressed: () => setState(() => _showPassword = !_showPassword),
+                      // App name
+                      const Text(
+                        'SIM MADIN',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Sistem Informasi Madrasah Diniyah',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.white.withOpacity(0.8),
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Role badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          _roleLabel,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: _loading ? null : _handleLogin,
-                        child: _loading
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Text('Masuk'),
-                      ),
-                    ],
+                    ]),
                   ),
-                ),
+                  const SizedBox(height: 32),
+                  // === Login Card ===
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            'Masuk ke Akun',
+                            style: TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Gunakan email dan password yang terdaftar',
+                            style: TextStyle(
+                                fontSize: 13, color: AppColors.textMuted),
+                          ),
+                          const SizedBox(height: 24),
+                          TextField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: const InputDecoration(
+                              labelText: 'Email',
+                              hintText: 'nama@madrasah.id',
+                              prefixIcon: Icon(Icons.email),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _passwordController,
+                            obscureText: !_showPassword,
+                            decoration: InputDecoration(
+                              labelText: 'Password',
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                icon: Icon(_showPassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility),
+                                onPressed: () => setState(
+                                    () => _showPassword = !_showPassword),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: _loading ? null : _handleLogin,
+                            child: _loading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2))
+                                : const Text('Masuk'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  // === Footer ===
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      'Madrasah Diniyah Miftahul Ulum\nTawangsari, Pujon, Malang',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.white.withOpacity(0.5),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

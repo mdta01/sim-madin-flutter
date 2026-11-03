@@ -28,7 +28,7 @@ class Mobile_guruApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
-      title: 'SIM MADIN - Guru',
+      title: 'SIM Guru',
       debugShowCheckedModeBanner: !kReleaseMode,
       theme: appThemeLight,
       routerConfig: ref.watch(appRouterProvider),

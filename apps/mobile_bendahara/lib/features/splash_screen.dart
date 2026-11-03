@@ -1,8 +1,13 @@
+// Splash Screen — shared template untuk semua mobile apps.
+// Logo madrasah + "SIM MADIN" + role badge.
+// Call _checkSession() di initState untuk redirect.
+//
+// Cara pakai: copy file ini ke setiap app, ubah _roleLabel dan _appLabel.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
-
 import 'package:api_client/api_client.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -13,6 +18,11 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen> {
+  // === APP IDENTITY — ubah per app ===
+  static const _appLabel = 'SIM Kepala';
+  static const _roleLabel = 'Bendahara Madrasah';
+  // ====================================
+
   @override
   void initState() {
     super.initState();
@@ -39,27 +49,54 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(60),
-              ),
-              child: const Icon(Icons.mosque, size: 64, color: AppColors.primary),
+            // Logo madrasah
+            Image.asset(
+              'assets/logo-madrasah.png',
+              width: 140,
+              height: 140,
+              fit: BoxFit.contain,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+            // App name
             const Text(
               'SIM MADIN',
-              style: TextStyle(color: AppColors.white, fontSize: 28, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2,
+              ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Bendahara',
-              style: TextStyle(color: AppColors.white, fontSize: 16),
+            const SizedBox(height: 4),
+            Text(
+              'Sistem Informasi Madrasah Diniyah',
+              style: TextStyle(
+                color: AppColors.white.withOpacity(0.8),
+                fontSize: 13,
+              ),
             ),
-            const SizedBox(height: 48),
-            const CircularProgressIndicator(color: AppColors.white, strokeWidth: 2),
+            const SizedBox(height: 12),
+            // Role badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.gold,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                _roleLabel,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 40),
+            const CircularProgressIndicator(
+              color: AppColors.white,
+              strokeWidth: 2,
+            ),
           ],
         ),
       ),

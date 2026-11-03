@@ -1,7 +1,3 @@
-// ============================================================================
-// SplashScreen — cek session wali (WA+PIN custom auth, bukan Supabase Auth)
-// ============================================================================
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,17 +20,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   Future<void> _checkSession() async {
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
-
-    // Wali login pakai WA+PIN (custom auth), bukan Supabase Auth.
-    // Cek token dari secure storage directly (skip JWT verify — pseudo-token
-    // dari loginWali() tidak punya JWT signature yang valid).
     try {
       final storage = ref.read(authStorageProvider);
       final token = await storage.getWaliToken();
       final waliJson = await storage.getWaliData();
       final santriJson = await storage.getWaliSantriList();
       if (!mounted) return;
-
       if (token != null && waliJson != null && santriJson != null) {
         final wali = WaliModel.fromJson(waliJson);
         final santriModels = santriJson
@@ -63,28 +54,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Image.asset('assets/logo-madrasah.png', width: 140, height: 140, fit: BoxFit.contain),
+            const SizedBox(height: 20),
+            const Text('SIM MADIN', style: TextStyle(color: AppColors.white, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 2)),
+            const SizedBox(height: 4),
+            Text('Sistem Informasi Madrasah Diniyah', style: TextStyle(color: AppColors.white.withOpacity(0.8), fontSize: 13)),
+            const SizedBox(height: 12),
             Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(60),
-              ),
-              child:
-                  const Icon(Icons.mosque, size: 64, color: AppColors.primary),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(20)),
+              child: const Text('Wali Santri', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
             ),
-            const SizedBox(height: 24),
-            const Text('SIM MADIN',
-                style: TextStyle(
-                    color: AppColors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            const Text('Wali Santri',
-                style: TextStyle(color: AppColors.white, fontSize: 16)),
-            const SizedBox(height: 48),
-            const CircularProgressIndicator(
-                color: AppColors.white, strokeWidth: 2),
+            const SizedBox(height: 40),
+            const CircularProgressIndicator(color: AppColors.white, strokeWidth: 2),
           ],
         ),
       ),

@@ -36,9 +36,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String get _title {
     final i = widget.shell.currentIndex;
     if (i < kBottomNavItems.length) {
-      return 'SIM MADIN — ${kBottomNavItems[i].label}';
+      return 'SIM Bendahara — ${kBottomNavItems[i].label}';
     }
-    return 'SIM MADIN';
+    return 'SIM Bendahara';
   }
 
   @override
