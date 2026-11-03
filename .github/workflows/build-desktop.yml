@@ -108,10 +108,16 @@ jobs:
       - name: Build Windows app
         shell: pwsh
         run: |
-          # Override CMAKE_GENERATOR_INSTANCE to force CMake use VS 2022
-          # (not VS 18 which is default on windows-latest runner).
-          # VS 2022 BuildTools supports "Visual Studio 16 2019" generator.
+          # Set BOTH CMAKE_GENERATOR + CMAKE_GENERATOR_INSTANCE env vars
+          # so CMake uses VS 2022 (not VS 18 which doesn't support
+          # "Visual Studio 16 2019" generator).
+          # Flutter passes -G "Visual Studio 16 2019" on cmake command line,
+          # but CMake still needs CMAKE_GENERATOR env var set for
+          # CMAKE_GENERATOR_INSTANCE to take effect.
+          $env:CMAKE_GENERATOR = "Visual Studio 16 2019"
           $env:CMAKE_GENERATOR_INSTANCE = $env:VS2022_PATH
+          Write-Host "CMAKE_GENERATOR=$env:CMAKE_GENERATOR"
+          Write-Host "CMAKE_GENERATOR_INSTANCE=$env:CMAKE_GENERATOR_INSTANCE"
           flutter build windows --release
 
       - name: Find artifact (Windows)
