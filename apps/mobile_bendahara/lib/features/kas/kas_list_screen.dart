@@ -7,8 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 
-import '../../widgets/feedback_widgets.dart';
-
 class KasListScreen extends ConsumerWidget {
   const KasListScreen({super.key});
 
@@ -29,18 +27,19 @@ class KasListScreen extends ConsumerWidget {
         ],
       ),
       body: asyncValue.when(
-        loading: () => const LoadingSkeleton(),
-        error: (err, _) => ErrorView(
+        loading: () => const ModernLoadingSkeleton(),
+        error: (err, _) => ModernErrorView(
           message: friendlyError(err),
           onRetry: () => ref.invalidate(kasListProvider),
         ),
         data: (list) {
           if (list.isEmpty) {
-            return EmptyState(
+            return ModernEmptyState(
               title: 'Belum ada kas',
               subtitle: 'Tambah kas pertama dari admin desktop.',
               icon: Icons.account_balance_wallet_outlined,
-              onRefresh: () => ref.invalidate(kasListProvider),
+              actionLabel: 'Refresh',
+              onAction: () => ref.invalidate(kasListProvider),
             );
           }
           final totalSaldo =
@@ -54,15 +53,12 @@ class KasListScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
-                Container(
+                ModernCard(
                   padding: const EdgeInsets.all(AppSpacing.lg),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [AppColors.primary, AppColors.primaryDark],
-                    ),
-                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.primary, AppColors.primaryDark],
                   ),
                   child: Row(
                     children: [
@@ -73,15 +69,14 @@ class KasListScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Total Saldo',
-                              style: TextStyle(
-                                  fontSize: 12, color: AppColors.white),
+                              style: AppTextStyles.body3
+                                  .copyWith(color: AppColors.white),
                             ),
                             Text(
                               formatRupiah(totalSaldo),
-                              style: const TextStyle(
-                                fontSize: 22,
+                              style: AppTextStyles.h2.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.white,
                               ),
@@ -91,8 +86,8 @@ class KasListScreen extends ConsumerWidget {
                       ),
                       Text(
                         '${list.length} kas',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.white),
+                        style: AppTextStyles.body3
+                            .copyWith(color: AppColors.white),
                       ),
                     ],
                   ),
@@ -119,69 +114,61 @@ class _KasCard extends StatelessWidget {
     final iconColor = isBank ? AppColors.primary : AppColors.success;
     final iconBg = isBank ? AppColors.primaryLight : AppColors.successLight;
 
-    return Card(
+    return ModernCard(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Icon(
-                isBank ? Icons.business : Icons.payments,
-                color: iconColor,
-                size: 24,
-              ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    kas.name,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.text,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${KasType.label(kas.type)}'
-                    '${kas.accountNumber != null ? ' • ${kas.accountNumber}' : ''}'
-                    '${kas.bankName != null ? ' • ${kas.bankName}' : ''}',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textMuted),
-                  ),
-                ],
-              ),
+            child: Icon(
+              isBank ? Icons.business : Icons.payments,
+              color: iconColor,
+              size: 24,
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Saldo',
-                  style: TextStyle(
-                      fontSize: 11, color: AppColors.textMuted),
-                ),
                 Text(
-                  formatRupiah(kas.balance),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
+                  kas.name,
+                  style: AppTextStyles.h4.copyWith(color: AppColors.text),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${KasType.label(kas.type)}'
+                  '${kas.accountNumber != null ? ' • ${kas.accountNumber}' : ''}'
+                  '${kas.bankName != null ? ' • ${kas.bankName}' : ''}',
+                  style: AppTextStyles.body3
+                      .copyWith(color: AppColors.textMuted),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'Saldo',
+                style: AppTextStyles.caption
+                    .copyWith(color: AppColors.textMuted),
+              ),
+              Text(
+                formatRupiah(kas.balance),
+                style: AppTextStyles.h4.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

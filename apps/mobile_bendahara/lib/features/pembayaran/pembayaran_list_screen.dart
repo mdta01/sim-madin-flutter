@@ -60,8 +60,8 @@ class _PembayaranListScreenState extends ConsumerState<PembayaranListScreen> {
           ),
           Expanded(
             child: asyncValue.when(
-              loading: () => const LoadingSkeleton(),
-              error: (err, _) => ErrorView(
+              loading: () => const ModernLoadingSkeleton(),
+              error: (err, _) => ModernErrorView(
                 message: friendlyError(err),
                 onRetry: () => ref.invalidate(paymentRecentProvider),
               ),
@@ -70,13 +70,14 @@ class _PembayaranListScreenState extends ConsumerState<PembayaranListScreen> {
                     ? list
                     : list.where((p) => p.status == _statusFilter).toList();
                 if (filtered.isEmpty) {
-                  return EmptyState(
+                  return ModernEmptyState(
                     title: 'Belum ada pembayaran',
                     subtitle: _statusFilter == 'ALL'
                         ? 'Tap tombol + untuk input pembayaran baru.'
                         : 'Tidak ada pembayaran dengan status ini.',
                     icon: Icons.payment_outlined,
-                    onRefresh: () => ref.invalidate(paymentRecentProvider),
+                    actionLabel: 'Refresh',
+                    onAction: () => ref.invalidate(paymentRecentProvider),
                   );
                 }
                 return RefreshIndicator(
@@ -112,60 +113,49 @@ class _PembayaranCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = paymentStatusStyle(payment.status);
-    return Card(
+    return ModernCard(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: InkWell(
-        onTap: () => context.push('/dashboard/pembayaran/${payment.id}'),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
+      onTap: () => context.push('/dashboard/pembayaran/${payment.id}'),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  payment.santriName ?? 'Santri',
+                  style: AppTextStyles.h4.copyWith(color: AppColors.text),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  payment.invoiceNo,
+                  style: AppTextStyles.body3
+                      .copyWith(color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${formatDateTime(payment.paymentDate)} • ${PaymentMethod.label(payment.paymentMethod)}',
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.textMuted),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      payment.santriName ?? 'Santri',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.text,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      payment.invoiceNo,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textMuted),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${formatDateTime(payment.paymentDate)} • ${PaymentMethod.label(payment.paymentMethod)}',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textMuted),
-                    ),
-                  ],
+              Text(
+                formatRupiah(payment.amount),
+                style: AppTextStyles.h4.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.success,
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    formatRupiah(payment.amount),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.success,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  StatusChip(status: payment.status, style: style, compact: true),
-                ],
-              ),
+              const SizedBox(height: 4),
+              StatusChip(status: payment.status, style: style, compact: true),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

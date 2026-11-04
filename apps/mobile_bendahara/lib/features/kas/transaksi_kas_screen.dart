@@ -7,7 +7,6 @@ import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 
 import '../../widgets/amount_input.dart';
-import '../../widgets/feedback_widgets.dart';
 
 class TransaksiKasScreen extends ConsumerStatefulWidget {
   const TransaksiKasScreen({super.key});
@@ -46,19 +45,20 @@ class _TransaksiKasScreenState extends ConsumerState<TransaksiKasScreen> {
         ],
       ),
       body: asyncValue.when(
-        loading: () => const LoadingSkeleton(),
-        error: (err, _) => ErrorView(
+        loading: () => const ModernLoadingSkeleton(),
+        error: (err, _) => ModernErrorView(
           message: friendlyError(err),
           onRetry: () =>
               ref.invalidate(transaksiKasByPeriodProvider(_range)),
         ),
         data: (list) {
           if (list.isEmpty) {
-            return EmptyState(
+            return ModernEmptyState(
               title: 'Belum ada transaksi',
               subtitle: 'Bulan ini belum ada transaksi kas.',
               icon: Icons.receipt_outlined,
-              onRefresh: () => ref.invalidate(
+              actionLabel: 'Refresh',
+              onAction: () => ref.invalidate(
                   transaksiKasByPeriodProvider(_range)),
             );
           }
@@ -104,26 +104,23 @@ class _TransaksiKasScreenState extends ConsumerState<TransaksiKasScreen> {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                Container(
+                ModernCard(
                   padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: saldo >= 0
-                        ? AppColors.primaryLight
-                        : AppColors.warningLight,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
+                  backgroundColor: saldo >= 0
+                      ? AppColors.primaryLight
+                      : AppColors.warningLight,
+                  border: Border.all(color: Colors.transparent),
                   child: Row(
                     children: [
-                      const Text(
+                      Text(
                         'Saldo Periode',
-                        style: TextStyle(
-                            fontSize: 13, color: AppColors.white),
+                        style: AppTextStyles.body2
+                            .copyWith(color: AppColors.white),
                       ),
                       const Spacer(),
                       Text(
                         formatRupiah(saldo),
-                        style: const TextStyle(
-                          fontSize: 18,
+                        style: AppTextStyles.h3.copyWith(
                           fontWeight: FontWeight.bold,
                           color: AppColors.white,
                         ),
@@ -132,11 +129,7 @@ class _TransaksiKasScreenState extends ConsumerState<TransaksiKasScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Text(
-                  'Daftar Transaksi (${list.length})',
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w600),
-                ),
+                SectionHeader(title: 'Daftar Transaksi (${list.length})'),
                 const SizedBox(height: AppSpacing.sm),
                 ...list.map((t) => _TransaksiCard(transaksi: t)),
               ],
@@ -182,12 +175,12 @@ class _StatBox extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: TextStyle(
-                  fontSize: 11, color: color, fontWeight: FontWeight.w500)),
+              style: AppTextStyles.caption
+                  .copyWith(color: color, fontWeight: FontWeight.w500)),
           const SizedBox(height: 2),
           Text(value,
-              style: TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+              style: AppTextStyles.h4.copyWith(
+                  fontWeight: FontWeight.bold, color: color)),
         ],
       ),
     );
@@ -207,65 +200,59 @@ class _TransaksiCard extends StatelessWidget {
         ? AppColors.successLight
         : AppColors.dangerLight;
 
-    return Card(
+    return ModernCard(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
-              child: Icon(
-                isPemasukan ? Icons.arrow_downward : Icons.arrow_upward,
-                color: color,
-                size: 20,
-              ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    transaksi.description,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${TransaksiKasCategory.label(transaksi.category)} • ${transaksi.kasName ?? '-'}',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textMuted),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    formatDateTime(transaksi.transaksiDate),
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textMuted),
-                  ),
-                ],
-              ),
+            child: Icon(
+              isPemasukan ? Icons.arrow_downward : Icons.arrow_upward,
+              color: color,
+              size: 20,
             ),
-            Text(
-              '${isPemasukan ? '+' : '-'}${formatRupiah(transaksi.amount)}',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  transaksi.description,
+                  style: AppTextStyles.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${TransaksiKasCategory.label(transaksi.category)} • ${transaksi.kasName ?? '-'}',
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.textMuted),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  formatDateTime(transaksi.transaksiDate),
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.textMuted),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          Text(
+            '${isPemasukan ? '+' : '-'}${formatRupiah(transaksi.amount)}',
+            style: AppTextStyles.label.copyWith(
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -360,10 +347,10 @@ class _TransaksiFormState extends ConsumerState<_TransaksiForm> {
             // Header
             Row(
               children: [
-                const Text(
+                Text(
                   'Tambah Transaksi',
-                  style: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
+                  style: AppTextStyles.h3
+                      .copyWith(fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 IconButton(
@@ -375,10 +362,9 @@ class _TransaksiFormState extends ConsumerState<_TransaksiForm> {
             const SizedBox(height: AppSpacing.md),
 
             // Type toggle
-            const Text(
+            Text(
               'Tipe Transaksi',
-              style:
-                  TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              style: AppTextStyles.label,
             ),
             const SizedBox(height: 4),
             Row(
@@ -407,10 +393,9 @@ class _TransaksiFormState extends ConsumerState<_TransaksiForm> {
             const SizedBox(height: AppSpacing.md),
 
             // Kas picker
-            const Text(
+            Text(
               'Kas / Rekening',
-              style:
-                  TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              style: AppTextStyles.label,
             ),
             const SizedBox(height: 4),
             kasAsync.when(
@@ -419,37 +404,56 @@ class _TransaksiFormState extends ConsumerState<_TransaksiForm> {
                 child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
               ),
               error: (e, _) => Text('Error: $e',
-                  style: const TextStyle(color: AppColors.danger)),
+                  style: AppTextStyles.body2
+                      .copyWith(color: AppColors.danger)),
               data: (list) {
                 if (list.isEmpty) {
-                  return const Text(
+                  return Text(
                     'Belum ada kas terdaftar. Tambah dulu dari admin desktop.',
-                    style: TextStyle(
-                        fontSize: 12, color: AppColors.danger),
+                    style: AppTextStyles.body3
+                        .copyWith(color: AppColors.danger),
                   );
                 }
                 return Column(
                   children: list.map((k) {
                     final selected = _kasId == k.id;
-                    return Card(
+                    return ModernCard(
                       margin: const EdgeInsets.only(bottom: AppSpacing.xs),
-                      color: selected ? AppColors.primaryLight : null,
-                      child: ListTile(
-                        dense: true,
-                        leading: Icon(
-                          k.type == KasType.bank
-                              ? Icons.business
-                              : Icons.payments,
-                          color: AppColors.primary,
-                        ),
-                        title: Text(k.name),
-                        subtitle: Text(
-                            '${KasType.label(k.type)} • Saldo: ${formatRupiah(k.balance)}'),
-                        trailing: selected
-                            ? const Icon(Icons.check_circle,
-                                color: AppColors.primary)
-                            : const Icon(Icons.radio_button_unchecked),
-                        onTap: () => setState(() => _kasId = k.id),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.sm),
+                      backgroundColor:
+                          selected ? AppColors.primaryLight : null,
+                      onTap: () => setState(() => _kasId = k.id),
+                      child: Row(
+                        children: [
+                          Icon(
+                            k.type == KasType.bank
+                                ? Icons.business
+                                : Icons.payments,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(k.name, style: AppTextStyles.label),
+                                Text(
+                                  '${KasType.label(k.type)} • Saldo: ${formatRupiah(k.balance)}',
+                                  style: AppTextStyles.caption
+                                      .copyWith(color: AppColors.textMuted),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            selected
+                                ? Icons.check_circle
+                                : Icons.radio_button_unchecked,
+                            color: AppColors.primary,
+                          ),
+                        ],
                       ),
                     );
                   }).toList(),
@@ -459,10 +463,9 @@ class _TransaksiFormState extends ConsumerState<_TransaksiForm> {
             const SizedBox(height: AppSpacing.md),
 
             // Category
-            const Text(
+            Text(
               'Kategori (opsional)',
-              style:
-                  TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              style: AppTextStyles.label,
             ),
             const SizedBox(height: 4),
             TextField(
@@ -485,10 +488,9 @@ class _TransaksiFormState extends ConsumerState<_TransaksiForm> {
             const SizedBox(height: AppSpacing.md),
 
             // Description
-            const Text(
+            Text(
               'Keterangan',
-              style:
-                  TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              style: AppTextStyles.label,
             ),
             const SizedBox(height: 4),
             TextField(
