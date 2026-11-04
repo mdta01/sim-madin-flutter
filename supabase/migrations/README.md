@@ -1,7 +1,7 @@
-# SIM MADIN — Supabase RLS Migrations
+# SIM MADIN — Supabase Migrations
 
-> **Row Level Security** policies untuk semua tabel aplikasi Flutter.
-> Production-ready, role-based, dengan helper functions.
+> **Row Level Security** policies + RPC functions + database triggers untuk semua tabel aplikasi Flutter.
+> Production-ready, role-based, dengan helper functions dan atomic operations.
 
 ## File urutan eksekusi
 
@@ -10,6 +10,8 @@
 | 0 | `00_rls_helper_functions.sql` | Helper Postgres functions (`has_role`, `is_staff`, `is_admin_level`, `is_wali_of_santri`, dll) |
 | 1 | `01_rls_policies_phase23.sql` | Policies untuk tabel Phase 2 + 3 (mobile_kepala + mobile_bendahara): User, Role, Santri, Absensi, Nilai, Tagihan, Payment, Kas, TransaksiKas, HonorGuru, reference data |
 | 2 | `02_rls_policies_phase45.sql` | Policies untuk tabel Phase 4 + 5 (mobile_guru + mobile_wali): Materi, Tugas, Ujian, Rapor, Perkembangan, Chat, Notifikasi, Surat, Alumni |
+| 3 | `03_bootstrap_roles_and_links.sql` | Seed 6 role codes + auto-link Supabase Auth users ke Role + sync firebaseUid |
+| 4 | `04_rpc_functions_and_triggers.sql` | **P0 Critical**: 6 RPC functions (atomic operations) + 6 database triggers (auto-update) |
 
 ## Cara eksekusi
 

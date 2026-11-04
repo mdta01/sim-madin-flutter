@@ -126,81 +126,36 @@ PaymentModel _paymentFromRowPublic(Map<String, dynamic> row) {
   });
 }
 
-/// Verifikasi pembayaran (PENDING → VERIFIED). Update status + link ke kas.
+/// Verifikasi pembayaran (PENDING → VERIFIED). Atomic via RPC function.
 ///
-/// Setelah verify:
-///   1. Update Payment.status = VERIFIED, Payment.kasId = kasId.
-///   2. Jika kasId diset, update Kas.balance += amount (record pemasukan).
-///   3. Jika Payment.tagihanId diset, update Tagihan.paidAmount += amount,
-///      set status LUNAS / CICIL / BELUM_BAYAR berdasarkan paidAmount vs amount.
+/// Pakai RPC `verify_payment()` (Postgres SECURITY DEFINER function) untuk
+/// operasi atomic: update Payment + Kas balance + Tagihan paidAmount/status +
+/// insert TransaksiKas. Tidak ada race condition.
 ///
-/// Catatan: Tidak atomic — race condition bisa terjadi kalau 2 verify bersamaan.
-/// Phase 6+ production: pakai Postgres RPC `verify_payment(p_id)` yang atomic.
+/// Sebelumnya: client-side 3-step non-atomic (race condition bisa terjadi).
+/// Sekarang: server-side single RPC call.
 Future<void> verifyPembayaran(
   WidgetRef ref,
   String paymentId, {
   String? kasId,
 }) async {
-  final client = ref.read(supabaseClientProvider);
-
-  // 1. Fetch payment untuk dapat amount + tagihanId (sebelum update).
-  final paymentRes = await client
-      .from('Payment')
-      .select('id, amount, tagihanId, santriId, status')
-      .eq('id', paymentId)
-      .maybeSingle();
-  if (paymentRes == null) {
-    throw Exception('Pembayaran tidak ditemukan');
+  final result = await SupabaseRpc.verifyPayment(ref,
+      paymentId: paymentId, kasId: kasId);
+  if (!result.success) {
+    throw Exception(result.message);
   }
-  final amount = (paymentRes['amount'] as num).toDouble();
-  final tagihanId = paymentRes['tagihanId'] as String?;
-
-  // 2. Update Payment status + kasId.
-  await client.from('Payment').update({
-    'status': PaymentStatus.verified,
-    if (kasId != null && kasId.isNotEmpty) 'kasId': kasId,
-    'verifiedAt': DateTime.now().toUtc().toIso8601String(),
-  }).eq('id', paymentId);
-
-  // 3. Update Kas balance (pemasukan) jika kasId diset.
-  if (kasId != null && kasId.isNotEmpty) {
-    await _updateKasBalance(client, kasId, amount);
-  }
-
-  // 4. Update Tagihan paidAmount + status jika payment terkait tagihan.
-  if (tagihanId != null && tagihanId.isNotEmpty) {
-    final tagihanRes = await client
-        .from('Tagihan')
-        .select('id, amount, paidAmount, status')
-        .eq('id', tagihanId)
-        .maybeSingle();
-    if (tagihanRes != null) {
-      final tAmount = (tagihanRes['amount'] as num).toDouble();
-      final tPaid =
-          (tagihanRes['paidAmount'] as num?)?.toDouble() ?? 0.0;
-      final newPaid = tPaid + amount;
-      final newStatus = newPaid >= tAmount
-          ? TagihanStatus.lunas
-          : (newPaid > 0 ? TagihanStatus.cicil : TagihanStatus.belumBayar);
-      await client.from('Tagihan').update({
-        'paidAmount': newPaid,
-        'status': newStatus,
-      }).eq('id', tagihanId);
-    }
-  }
-
+  // Invalidate providers supaya UI auto-refresh.
   ref.invalidate(paymentRecentProvider);
   ref.invalidate(kasListProvider);
   ref.invalidate(tagihanListProvider);
 }
 
-/// Tolak pembayaran (PENDING → REJECTED).
+/// Tolak pembayaran (PENDING → REJECTED). Safe via RPC function.
 Future<void> rejectPembayaran(WidgetRef ref, String paymentId) async {
-  final client = ref.read(supabaseClientProvider);
-  await client
-      .from('Payment')
-      .update({'status': PaymentStatus.rejected}).eq('id', paymentId);
-
+  final result = await SupabaseRpc.rejectPayment(ref, paymentId: paymentId);
+  if (!result.success) {
+    throw Exception(result.message);
+  }
   ref.invalidate(paymentRecentProvider);
 }
 
@@ -208,11 +163,11 @@ Future<void> rejectPembayaran(WidgetRef ref, String paymentId) async {
 // Transaksi Kas mutations
 // ---------------------------------------------------------------------------
 
-/// Buat transaksi kas baru (PEMASUKAN atau PENGELUARAN).
+/// Buat transaksi kas baru (PEMASUKAN atau PENGELUARAN). Atomic via RPC function.
 ///
-/// Catatan: Update balance kas manual di sini (read current balance, add/sub,
-/// write back). Server-side trigger akan handle ini di Phase 6+ production,
-/// untuk sekarang optimistic di client dulu.
+/// Pakai RPC `create_transaksi_kas()` untuk operasi atomic:
+/// insert TransaksiKas + update Kas balance dalam satu transaksi.
+/// Tidak ada race condition.
 Future<TransaksiKasModel> createTransaksiKas(
   WidgetRef ref, {
   required String kasId,
@@ -225,27 +180,29 @@ Future<TransaksiKasModel> createTransaksiKas(
   final client = ref.read(supabaseClientProvider);
   final user = client.auth.currentUser;
 
-  // Insert transaksi
-  final body = <String, dynamic>{
-    'kasId': kasId,
-    'type': type,
-    'category': category,
-    'amount': amount,
-    'description': description,
-    if (reference != null && reference.isNotEmpty) 'reference': reference,
-    if (user != null) 'recordedById': user.id,
-    'transaksiDate': DateTime.now().toIso8601String(),
-  };
+  // Call RPC create_transaksi_kas (atomic: insert + update Kas balance)
+  final result = await SupabaseRpc.createTransaksiKas(
+    ref,
+    kasId: kasId,
+    type: type,
+    category: category,
+    amount: amount,
+    description: description,
+    reference: reference,
+    recordedBy: user?.id,
+  );
+
+  if (!result.success || result.transaksiId.isEmpty) {
+    throw Exception('Gagal membuat transaksi kas');
+  }
+
+  // Fetch the created record for return
   final res = await client
       .from('TransaksiKas')
-      .insert(body)
       .select('*, Kas(*)')
+      .eq('id', result.transaksiId)
       .single();
   final transaksi = _transaksiFromRowPublic(res as Map<String, dynamic>);
-
-  // Update balance kas (delta = +amount untuk pemasukan, -amount untuk pengeluaran)
-  final delta = type == TransaksiKasType.pemasukan ? amount : -amount;
-  await _updateKasBalance(client, kasId, delta);
 
   ref.invalidate(kasListProvider);
   ref.invalidate(transaksiKasByPeriodProvider);
@@ -260,27 +217,6 @@ TransaksiKasModel _transaksiFromRowPublic(Map<String, dynamic> row) {
     if (kas != null) 'kasName': kas['name'],
     if (kas != null) 'kasCode': kas['code'],
   });
-}
-
-Future<void> _updateKasBalance(
-  SupabaseClient client,
-  String kasId,
-  double delta,
-) async {
-  // Read current balance, compute new, write back.
-  // Catatan: Tidak atomic — race condition bisa terjadi kalau 2 transaksi
-  // bersamaan. Untuk Phase 3 (single bendahara per madrasah) acceptable.
-  // Phase 6+ production: pakai Postgres function `update_kas_balance()`
-  // yang pakai SELECT ... FOR UPDATE.
-  final current = await client
-      .from('Kas')
-      .select('balance')
-      .eq('id', kasId)
-      .single();
-  final currentBalance =
-      ((current['balance'] as num?)?.toDouble() ?? 0.0);
-  final newBalance = currentBalance + delta;
-  await client.from('Kas').update({'balance': newBalance}).eq('id', kasId);
 }
 
 // ---------------------------------------------------------------------------
@@ -373,36 +309,29 @@ final laporanKeuanganProvider =
 // ---------------------------------------------------------------------------
 
 /// Set status honor guru: DRAFT → DISETUJUI → DIBAYARKAN.
+/// Update honor guru status. Atomic via RPC function.
+///
+/// Pakai RPC `update_honor_guru_status()` untuk operasi atomic:
+/// update HonorGuru status + create TransaksiKas (jika DIBAYARKAN) +
+/// update Kas balance. Tidak ada race condition.
+///
+/// Sebelumnya: client-side multi-step non-atomic.
+/// Sekarang: server-side single RPC call.
 Future<void> updateHonorGuruStatus(
   WidgetRef ref,
   String honorId,
   String newStatus, {
   String? kasId,
 }) async {
-  final client = ref.read(supabaseClientProvider);
-  final body = <String, dynamic>{
-    'status': newStatus,
-    if (newStatus == HonorGuruStatus.dibayarkan)
-      'paidAt': DateTime.now().toIso8601String(),
-    if (kasId != null && kasId.isNotEmpty) 'kasId': kasId,
-  };
-  await client.from('HonorGuru').update(body).eq('id', honorId);
+  final result = await SupabaseRpc.updateHonorGuruStatus(
+    ref,
+    honorId: honorId,
+    newStatus: newStatus,
+    kasId: kasId,
+  );
 
-  // Jika dibayarkan, kurangi saldo kas.
-  if (newStatus == HonorGuruStatus.dibayarkan && kasId != null) {
-    // Baca total honor dulu
-    final honorRes = await client
-        .from('HonorGuru')
-        .select('totalHonor, honorMengajar, insentif, tunjangan, potongan')
-        .eq('id', honorId)
-        .single();
-    final h = honorRes as Map<String, dynamic>;
-    final total = (h['totalHonor'] as num?)?.toDouble() ??
-        ((h['honorMengajar'] as num?)?.toDouble() ?? 0) +
-            ((h['insentif'] as num?)?.toDouble() ?? 0) +
-            ((h['tunjangan'] as num?)?.toDouble() ?? 0) -
-            ((h['potongan'] as num?)?.toDouble() ?? 0);
-    await _updateKasBalance(client, kasId, -total);
+  if (!result.success) {
+    throw Exception(result.message);
   }
 
   ref.invalidate(honorGuruListProvider);
