@@ -33,9 +33,9 @@ class SupabaseConfig {
   /// URL proyek Supabase (Singapore region).
   static const String url = 'https://bhogtbhzeoxsowcbspjr.supabase.co';
 
-  /// Anon key (public — sudah aman di-embed di client).
+  /// Publishable key (public — format baru Supabase, aman di-embed di client).
   static const String anonKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJob2d0Ymh6ZW94c293Y2JzcGpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM3MzU2NzUsImV4cCI6MjEwOTMxMTY3NX0.nZxGekSgiIMNr2al4QDHD8C2Tcivz0f73Pf0ABApLIY';
+      'sb_publishable_blNWQApatx9Mt-ExaKMSfw_yMhj4XKF';
 
   /// URL backend Serverpod (akan diisi setelah deploy).
   /// Untuk development: http://localhost:8080
