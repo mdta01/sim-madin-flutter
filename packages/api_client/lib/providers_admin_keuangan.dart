@@ -219,7 +219,7 @@ final suratListAdminProvider = FutureProvider<List<SuratAdminModel>>((ref) async
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
     final santri = row['Santri'] as Map<String, dynamic>?;
-    return SuratAdminModel(id: row['id'].toString(), nomorSurat: row['nomorSurat'] as String? ?? '-', type: row['type'].toString()? ?? '-', title: row['title'].toString(), santriName: santri?['name'] ?? '-', status: row['status'] as String? ?? '-', tanggalSurat: row['tanggalSurat'] is String ? DateTime.parse(row['tanggalSurat'] as String) : null);
+    return SuratAdminModel(id: row['id'].toString(), nomorSurat: row['nomorSurat'] as String? ?? '-', type: row['type']?.toString() ?? '-', title: row['title'].toString(), santriName: santri?['name'] ?? '-', status: row['status'] as String? ?? '-', tanggalSurat: row['tanggalSurat'] is String ? DateTime.parse(row['tanggalSurat'] as String) : null);
   }).toList();
 });
 
@@ -307,7 +307,7 @@ final qrScanListAdminProvider = FutureProvider<List<QRScanAdminModel>>((ref) asy
   final res = await client.from('QRScan').select().order('createdAt', ascending: false).limit(100);
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
-    return QRScanAdminModel(id: row['id'].toString(), qrType: row['qrType'] as String? ?? '-', scanType: row['scanType'] as String? ?? '-', result: row['result'] as String? ?? '-', message: row['message'].toString()?, createdAt: DateTime.parse(row['createdAt'].toString()));
+    return QRScanAdminModel(id: row['id'].toString(), qrType: row['qrType'] as String? ?? '-', scanType: row['scanType'] as String? ?? '-', result: row['result'] as String? ?? '-', message: row['message']?.toString() ?? '-', createdAt: DateTime.parse(row['createdAt'].toString()));
   }).toList();
 });
 
