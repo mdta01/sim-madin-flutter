@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 
-import '../../widgets/feedback_widgets.dart';
-
 class JadwalListScreen extends ConsumerWidget {
   const JadwalListScreen({super.key});
   @override
@@ -15,15 +13,16 @@ class JadwalListScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Jadwal Mengajar')),
       body: asyncValue.when(
-        loading: () => const LoadingSkeleton(),
-        error: (e, _) => ErrorView(message: e.toString()),
+        loading: () => const ModernLoadingSkeleton(),
+        error: (e, _) => ModernErrorView(message: friendlyError(e)),
         data: (list) {
           if (list.isEmpty) {
-            return EmptyState(
+            return ModernEmptyState(
               title: 'Belum ada jadwal',
               subtitle: 'Hubungi admin untuk setup jadwal mengajar',
               icon: Icons.calendar_month_outlined,
-              onRefresh: () => ref.invalidate(jadwalGuruProvider),
+              actionLabel: 'Refresh',
+              onAction: () => ref.invalidate(jadwalGuruProvider),
             );
           }
           // Group by day
@@ -47,50 +46,54 @@ class JadwalListScreen extends ConsumerWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                    Padding(
+                      padding: const EdgeInsets.only(
+                          bottom: AppSpacing.sm, top: AppSpacing.xs),
+                      child: SectionHeader(
+                        title: dayOfWeekLabel(day),
+                        icon: Icons.calendar_today_outlined,
                       ),
-                      child: Text(dayOfWeekLabel(day),
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary)),
                     ),
-                    ...items.map((j) => Card(
-                          margin: const EdgeInsets.only(
-                              bottom: AppSpacing.sm),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(AppSpacing.md),
-                            leading: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryLight,
-                                borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ...items.map((j) => ModernCard(
+                          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.sm,
+                                    vertical: AppSpacing.xs),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryLight,
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.sm),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(j.startTime,
+                                        style: AppTextStyles.label
+                                            .copyWith(color: AppColors.primary)),
+                                    Text(j.endTime,
+                                        style: AppTextStyles.caption
+                                            .copyWith(color: AppColors.primary)),
+                                  ],
+                                ),
                               ),
-                              child: Column(
-                                children: [
-                                  Text(j.startTime,
-                                      style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.primary)),
-                                  Text(j.endTime,
-                                      style: const TextStyle(
-                                          fontSize: 10, color: AppColors.primary)),
-                                ],
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(j.mapelName ?? 'Mapel',
+                                        style: AppTextStyles.h4),
+                                    const SizedBox(height: 2),
+                                    Text(j.kelasName ?? '-',
+                                        style: AppTextStyles.body3.copyWith(
+                                            color: AppColors.textMuted)),
+                                  ],
+                                ),
                               ),
-                            ),
-                            title: Text(j.mapelName ?? 'Mapel',
-                                style: const TextStyle(
-                                    fontSize: 14, fontWeight: FontWeight.w600)),
-                            subtitle: Text(j.kelasName ?? '-',
-                                style: const TextStyle(fontSize: 12)),
+                            ],
                           ),
                         )),
                     const SizedBox(height: AppSpacing.md),

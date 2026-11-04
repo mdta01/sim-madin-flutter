@@ -5,8 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 
-import '../../widgets/feedback_widgets.dart';
-
 class UjianListScreen extends ConsumerWidget {
   const UjianListScreen({super.key});
   @override
@@ -25,15 +23,16 @@ class UjianListScreen extends ConsumerWidget {
         ],
       ),
       body: asyncValue.when(
-        loading: () => const LoadingSkeleton(),
-        error: (e, _) => ErrorView(message: e.toString()),
+        loading: () => const ModernLoadingSkeleton(),
+        error: (e, _) => ModernErrorView(message: friendlyError(e)),
         data: (list) {
           if (list.isEmpty) {
-            return EmptyState(
+            return ModernEmptyState(
               title: 'Belum ada ujian',
               subtitle: 'Tap + untuk buat ujian baru',
               icon: Icons.quiz_outlined,
-              onRefresh: () => ref.invalidate(ujianGuruProvider),
+              actionLabel: 'Refresh',
+              onAction: () => ref.invalidate(ujianGuruProvider),
             );
           }
           return RefreshIndicator(
@@ -46,49 +45,67 @@ class UjianListScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(AppSpacing.md),
               itemBuilder: (c, i) {
                 final u = list[i];
-                return Card(
+                final statusLabel = UjianStatus.label(
+                    u.isPublished ? UjianStatus.published : UjianStatus.draft);
+                return ModernCard(
+                  onTap: () => context.push('/dashboard/ujian/list/${u.id}'),
                   margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(AppSpacing.md),
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.dangerLight,
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.dangerLight,
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: const Icon(Icons.quiz, color: AppColors.danger),
                       ),
-                      child: const Icon(Icons.quiz, color: AppColors.danger),
-                    ),
-                    title: Text(u.title,
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w600)),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                            '${u.type} • ${u.mapelName ?? '-'} • ${u.kelasName ?? '-'}',
-                            style: const TextStyle(fontSize: 12)),
-                        if (u.startTime != null)
-                          Text('Mulai: ${formatDateTime(u.startTime)}',
-                              style: const TextStyle(
-                                  fontSize: 11, color: AppColors.textMuted)),
-                        if (u.durationMnt > 0)
-                          Text('Durasi: ${u.durationMnt} menit',
-                              style: const TextStyle(
-                                  fontSize: 11, color: AppColors.textMuted)),
-                      ],
-                    ),
-                    isThreeLine: true,
-                    trailing: StatusChip(
-                      label: UjianStatus.label(u.isPublished ? UjianStatus.published : UjianStatus.draft),
-                      color: u.isPublished ? AppColors.success : AppColors.textMuted,
-                      bg: u.isPublished
-                          ? AppColors.successLight
-                          : const Color(0xFFF1F5F9),
-                      compact: true,
-                    ),
-                    onTap: () =>
-                        context.push('/dashboard/ujian/list/${u.id}'),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(u.title, style: AppTextStyles.h4),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${u.type} • ${u.mapelName ?? '-'} • ${u.kelasName ?? '-'}',
+                              style: AppTextStyles.body3
+                                  .copyWith(color: AppColors.textMuted),
+                            ),
+                            if (u.startTime != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                'Mulai: ${formatDateTime(u.startTime)}',
+                                style: AppTextStyles.caption
+                                    .copyWith(color: AppColors.textMuted),
+                              ),
+                            ],
+                            if (u.durationMnt > 0) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                'Durasi: ${u.durationMnt} menit',
+                                style: AppTextStyles.caption
+                                    .copyWith(color: AppColors.textMuted),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      ModernChip(
+                        label: statusLabel,
+                        color: u.isPublished
+                            ? AppColors.success
+                            : AppColors.textMuted,
+                        bg: u.isPublished
+                            ? AppColors.successLight
+                            : const Color(0xFFF1F5F9),
+                        compact: true,
+                      ),
+                    ],
                   ),
                 );
               },

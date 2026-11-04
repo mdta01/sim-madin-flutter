@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 
-import '../../widgets/feedback_widgets.dart';
 import '../../widgets/form_widgets.dart';
 
 class PertemuanListScreen extends ConsumerStatefulWidget {
@@ -37,8 +36,7 @@ class _PertemuanListScreenState extends ConsumerState<PertemuanListScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Jadwal',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                const Text('Jadwal', style: AppTextStyles.label),
                 DropdownButton<String>(
                   value: selectedJadwalId,
                   items: jadwalAsync
@@ -51,16 +49,14 @@ class _PertemuanListScreenState extends ConsumerState<PertemuanListScreen> {
                   onChanged: (v) => setInner(() => selectedJadwalId = v),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                const Text('Topik (opsional)',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                const Text('Topik (opsional)', style: AppTextStyles.label),
                 TextField(
                   controller: topicController,
                   decoration: const InputDecoration(
                       border: OutlineInputBorder(), isDense: true),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                const Text('Deskripsi (opsional)',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                const Text('Deskripsi (opsional)', style: AppTextStyles.label),
                 TextField(
                   controller: descController,
                   decoration: const InputDecoration(
@@ -171,8 +167,8 @@ class _PertemuanListScreenState extends ConsumerState<PertemuanListScreen> {
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child:
-                        CircularProgressIndicator(strokeWidth: 2, color: AppColors.white))
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.white))
                 : const Icon(Icons.add_circle),
             tooltip: 'Buat Pertemuan',
             onPressed: _creating ? null : _createPertemuan,
@@ -180,15 +176,16 @@ class _PertemuanListScreenState extends ConsumerState<PertemuanListScreen> {
         ],
       ),
       body: asyncValue.when(
-        loading: () => const LoadingSkeleton(),
-        error: (e, _) => ErrorView(message: e.toString()),
+        loading: () => const ModernLoadingSkeleton(),
+        error: (e, _) => ModernErrorView(message: friendlyError(e)),
         data: (list) {
           if (list.isEmpty) {
-            return EmptyState(
+            return ModernEmptyState(
               title: 'Belum ada pertemuan',
               subtitle: 'Tap + untuk buat dari jadwal',
               icon: Icons.event_outlined,
-              onRefresh: () => ref.invalidate(pertemuanGuruProvider),
+              actionLabel: 'Refresh',
+              onAction: () => ref.invalidate(pertemuanGuruProvider),
             );
           }
           return RefreshIndicator(
@@ -201,58 +198,72 @@ class _PertemuanListScreenState extends ConsumerState<PertemuanListScreen> {
               padding: const EdgeInsets.all(AppSpacing.md),
               itemBuilder: (c, i) {
                 final p = list[i];
-                return Card(
+                return ModernCard(
                   margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(AppSpacing.md),
-                    leading: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(AppRadius.md),
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: Center(
+                          child: Text('#${p.pertemuanKe}',
+                              style: AppTextStyles.h4
+                                  .copyWith(color: AppColors.primary)),
+                        ),
                       ),
-                      child: Center(
-                        child: Text('#${p.pertemuanKe}',
-                            style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary)),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              p.topic ??
+                                  '${p.mapelName} - Pertemuan ${p.pertemuanKe}',
+                              style: AppTextStyles.h4,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${p.mapelName ?? '-'} • ${p.kelasName ?? '-'}',
+                              style: AppTextStyles.body3
+                                  .copyWith(color: AppColors.textMuted),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              formatDate(p.date),
+                              style: AppTextStyles.caption
+                                  .copyWith(color: AppColors.textMuted),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    title: Text(p.topic ?? '${p.mapelName} - Pertemuan ${p.pertemuanKe}',
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w600)),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                            '${p.mapelName ?? '-'} • ${p.kelasName ?? '-'}',
-                            style: const TextStyle(fontSize: 12)),
-                        Text(formatDate(p.date),
-                            style: const TextStyle(
-                                fontSize: 11, color: AppColors.textMuted)),
-                      ],
-                    ),
-                    isThreeLine: true,
-                    trailing: p.isCompleted
-                        ? const StatusChip(
-                            label: 'Selesai',
-                            color: AppColors.success,
-                            bg: AppColors.successLight,
-                            compact: true)
-                        : OutlinedButton.icon(
-                            onPressed: () => _complete(p.id),
-                            icon: const Icon(Icons.check, size: 16),
-                            label: const Text('Selesai',
-                                style: TextStyle(fontSize: 12)),
-                            style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.success,
-                                side: const BorderSide(
-                                    color: AppColors.success),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4)),
+                      const SizedBox(width: AppSpacing.sm),
+                      if (p.isCompleted)
+                        const ModernChip(
+                          label: 'Selesai',
+                          color: AppColors.success,
+                          bg: AppColors.successLight,
+                          compact: true,
+                        )
+                      else
+                        OutlinedButton.icon(
+                          onPressed: () => _complete(p.id),
+                          icon: const Icon(Icons.check, size: 16),
+                          label:
+                              const Text('Selesai', style: AppTextStyles.body3),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.success,
+                            side: const BorderSide(color: AppColors.success),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                           ),
+                        ),
+                    ],
                   ),
                 );
               },

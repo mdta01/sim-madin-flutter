@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 
-import '../../widgets/feedback_widgets.dart';
 import '../../widgets/form_widgets.dart';
 
 class SantriListScreen extends ConsumerStatefulWidget {
@@ -42,16 +41,20 @@ class _SantriListScreenState extends ConsumerState<SantriListScreen> {
               loading: () => const SizedBox(
                 height: 40,
                 child: Center(
-                    child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2))),
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
               ),
-              error: (e, _) => Text('Error: $e',
-                  style: const TextStyle(color: AppColors.danger)),
+              error: (e, _) => Text(friendlyError(e),
+                  style:
+                      AppTextStyles.body2.copyWith(color: AppColors.danger)),
               data: (list) => list.isEmpty
-                  ? const Text('Belum ada kelas. Tambah dari admin desktop.',
-                      style: TextStyle(color: AppColors.danger, fontSize: 12))
+                  ? Text('Belum ada kelas. Tambah dari admin desktop.',
+                      style: AppTextStyles.body3
+                          .copyWith(color: AppColors.danger))
                   : PillSelector<String>(
                       items: list.map((k) => k.id).toList(),
                       selected: _selectedKelasId,
@@ -78,16 +81,20 @@ class _SantriListScreenState extends ConsumerState<SantriListScreen> {
           const SizedBox(height: AppSpacing.sm),
           Expanded(
             child: santriAsync.when(
-              loading: () => const LoadingSkeleton(),
-              error: (e, _) => ErrorView(
-                  message: e.toString(),
-                  onRetry: () => ref.invalidate(
-                      santriByKelasProvider(_selectedKelasId!))),
+              loading: () => const ModernLoadingSkeleton(),
+              error: (e, _) => ModernErrorView(
+                message: friendlyError(e),
+                onRetry: () => ref.invalidate(
+                  santriByKelasProvider(_selectedKelasId!),
+                ),
+              ),
               data: (list) {
                 if (list.isEmpty) {
-                  return const EmptyState(
-                      title: 'Belum ada santri',
-                      subtitle: 'Pilih kelas untuk melihat santri');
+                  return const ModernEmptyState(
+                    title: 'Belum ada santri',
+                    subtitle: 'Pilih kelas untuk melihat santri',
+                    icon: Icons.people_outline,
+                  );
                 }
                 final filtered = _query.isEmpty
                     ? list
@@ -104,14 +111,43 @@ class _SantriListScreenState extends ConsumerState<SantriListScreen> {
                   },
                   child: ListView.builder(
                     itemCount: filtered.length,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                     itemBuilder: (c, i) {
                       final s = filtered[i];
-                      return SantriInfoCard(
-                        name: s.name,
-                        nis: s.nis,
-                        kelas: s.kelasName,
+                      final subtitle = [
+                        if (s.nis.isNotEmpty) 'NIS: ${s.nis}',
+                        if (s.kelasName != null && s.kelasName!.isNotEmpty)
+                          s.kelasName!,
+                      ].join(' • ');
+                      return ModernCard(
+                        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.sm,
+                        ),
+                        child: Row(
+                          children: [
+                            ModernAvatar(name: s.name, radius: 20),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(s.name, style: AppTextStyles.label),
+                                  if (subtitle.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      subtitle,
+                                      style: AppTextStyles.body3
+                                          .copyWith(color: AppColors.textMuted),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       );
                     },
                   ),

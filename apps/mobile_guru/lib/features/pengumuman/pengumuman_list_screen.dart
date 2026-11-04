@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 
-import '../../widgets/feedback_widgets.dart';
-
 class PengumumanListScreen extends ConsumerWidget {
   const PengumumanListScreen({super.key});
   @override
@@ -15,14 +13,16 @@ class PengumumanListScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Pengumuman')),
       body: asyncValue.when(
-        loading: () => const LoadingSkeleton(),
-        error: (e, _) => ErrorView(message: e.toString()),
+        loading: () => const ModernLoadingSkeleton(),
+        error: (e, _) => ModernErrorView(message: friendlyError(e)),
         data: (list) {
           if (list.isEmpty) {
-            return EmptyState(
-                title: 'Belum ada pengumuman',
-                icon: Icons.campaign_outlined,
-                onRefresh: () => ref.invalidate(pengumumanListProvider));
+            return ModernEmptyState(
+              title: 'Belum ada pengumuman',
+              icon: Icons.campaign_outlined,
+              actionLabel: 'Refresh',
+              onAction: () => ref.invalidate(pengumumanListProvider),
+            );
           }
           return RefreshIndicator(
             onRefresh: () async {
@@ -49,56 +49,40 @@ class PengumumanListScreen extends ConsumerWidget {
                     color = AppColors.info;
                     bg = AppColors.infoLight;
                 }
-                return Card(
+                return ModernCard(
                   margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                  color: bg,
-                                  borderRadius: BorderRadius.circular(AppRadius.sm)),
-                              child: Text(p.priority,
-                                  style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: color)),
-                            ),
-                            const SizedBox(width: AppSpacing.xs),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                  color: AppColors.infoLight,
-                                  borderRadius:
-                                      BorderRadius.circular(AppRadius.sm)),
-                              child: Text(p.audience,
-                                  style: const TextStyle(
-                                      fontSize: 10, color: AppColors.info)),
-                            ),
-                            if (p.publishedAt != null) ...[
-                              const Spacer(),
-                              Text(formatDate(p.publishedAt),
-                                  style: const TextStyle(
-                                      fontSize: 10, color: AppColors.textMuted)),
-                            ],
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          ModernChip(
+                            label: p.priority,
+                            color: color,
+                            bg: bg,
+                            compact: true,
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          ModernChip(
+                            label: p.audience,
+                            color: AppColors.info,
+                            bg: AppColors.infoLight,
+                            compact: true,
+                          ),
+                          if (p.publishedAt != null) ...[
+                            const Spacer(),
+                            Text(formatDate(p.publishedAt),
+                                style: AppTextStyles.caption
+                                    .copyWith(color: AppColors.textMuted)),
                           ],
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(p.title,
-                            style: const TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 4),
-                        Text(p.content,
-                            style: const TextStyle(fontSize: 13)),
-                      ],
-                    ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(p.title, style: AppTextStyles.h4),
+                      const SizedBox(height: 4),
+                      Text(p.content, style: AppTextStyles.body2),
+                    ],
                   ),
                 );
               },
