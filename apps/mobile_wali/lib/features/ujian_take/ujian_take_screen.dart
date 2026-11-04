@@ -32,6 +32,9 @@ class _UjianTakeScreenState extends ConsumerState<UjianTakeScreen>
   // State ujian
   int _currentSoal = 0;
   final Map<String, _AnswerState> _answers = {};
+  // Cache TextField controllers per soal ID supaya tidak di-recreate
+  // setiap rebuild (yang akan dismiss keyboard + kehilangan fokus).
+  final Map<String, TextEditingController> _essayControllers = {};
   int _remainingSeconds = 0;
   Timer? _timer;
   bool _submitting = false;
@@ -47,6 +50,10 @@ class _UjianTakeScreenState extends ConsumerState<UjianTakeScreen>
   @override
   void dispose() {
     _timer?.cancel();
+    // Dispose semua cached essay controllers supaya tidak leak.
+    for (final c in _essayControllers.values) {
+      c.dispose();
+    }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -537,8 +544,14 @@ class _UjianTakeScreenState extends ConsumerState<UjianTakeScreen>
                         border: const OutlineInputBorder(),
                       ),
                       maxLines: soal.type == SoalType.essay ? 5 : 1,
-                      controller: TextEditingController(
-                          text: _answers[soal.id]?.answer ?? ''),
+                      // CRITICAL: pakai cached controller per soal.id.
+                      // Kalau dibuat baru di setiap rebuild, keyboard akan
+                      // dismiss setelah 1 karakter (focus loss).
+                      controller: _essayControllers.putIfAbsent(
+                        soal.id,
+                        () => TextEditingController(
+                            text: _answers[soal.id]?.answer ?? ''),
+                      ),
                       onChanged: (v) => _setAnswer(soal.id, v),
                     ),
                   ] else ...[

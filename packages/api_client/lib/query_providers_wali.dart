@@ -328,6 +328,29 @@ final notifikasiWaliProvider = FutureProvider<List<NotifikasiWaliModel>>(
       .toList();
 });
 
+/// Notifikasi untuk satu santri tertentu — dipakai di tab Notif per santri
+/// di santri_detail_screen. Sebelumnya tab Notif menampilkan SEMUA notifikasi
+/// wali (campur untuk semua anak) — sekarang filter by santriId.
+final notifikasiAnakProvider =
+    FutureProvider.family<List<NotifikasiWaliModel>, String>(
+        (ref, santriId) async {
+  ref.watch(realtimeRefreshTick);
+  final session = ref.watch(waliSessionProvider);
+  if (session == null) return [];
+
+  final client = ref.watch(supabaseClientProvider);
+  final res = await client
+      .from('Notifikasi')
+      .select()
+      .eq('waliId', session.wali.id)
+      .eq('santriId', santriId)
+      .order('createdAt', ascending: false)
+      .limit(30);
+  return (res as List)
+      .map((r) => NotifikasiWaliModel.fromJson(r as Map<String, dynamic>))
+      .toList();
+});
+
 // ---------------------------------------------------------------------------
 // Chat rooms wali + messages
 // ---------------------------------------------------------------------------
@@ -352,6 +375,43 @@ final chatRoomsWaliProvider = FutureProvider<List<ChatRoomModel>>((ref) async {
             'santriName': r['Santri']?['name'],
           }))
       .toList();
+});
+
+/// Unread message count per chat room untuk wali.
+/// Query ChatMessage where chatRoomId in rooms milik wali AND senderType != 'WALI'
+/// (pesan dari guru/yang belum dibaca wali) AND isRead = false.
+/// Return Map<roomId, count> untuk dipakai di chat list badge.
+final chatUnreadCountWaliProvider =
+    FutureProvider<Map<String, int>>((ref) async {
+  ref.watch(realtimeRefreshTick);
+  final session = ref.watch(waliSessionProvider);
+  if (session == null) return {};
+
+  final client = ref.watch(supabaseClientProvider);
+  // Get list room IDs milik wali.
+  final roomsRes = await client
+      .from('ChatRoom')
+      .select('id')
+      .eq('waliId', session.wali.id)
+      .eq('isActive', true);
+  final roomIds = (roomsRes as List)
+      .map((r) => (r as Map<String, dynamic>)['id'] as String)
+      .toList();
+  if (roomIds.isEmpty) return {};
+
+  // Get unread messages (senderType != WALI, isRead = false).
+  final msgRes = await client
+      .from('ChatMessage')
+      .select('chatRoomId')
+      .inFilter('chatRoomId', roomIds)
+      .neq('senderType', ChatSenderType.wali)
+      .eq('isRead', false);
+  final counts = <String, int>{};
+  for (final r in msgRes as List) {
+    final roomId = (r as Map<String, dynamic>)['chatRoomId'] as String;
+    counts[roomId] = (counts[roomId] ?? 0) + 1;
+  }
+  return counts;
 });
 
 final chatMessagesWaliProvider =
@@ -484,7 +544,9 @@ final pembinaanAnakProvider =
 void invalidateWaliQueries(WidgetRef ref) {
   ref.invalidate(santriAnakProvider);
   ref.invalidate(notifikasiWaliProvider);
+  ref.invalidate(notifikasiAnakProvider);
   ref.invalidate(chatRoomsWaliProvider);
+  ref.invalidate(chatUnreadCountWaliProvider);
   ref.invalidate(pengumumanWaliProvider);
 }
 

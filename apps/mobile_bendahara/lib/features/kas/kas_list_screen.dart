@@ -31,7 +31,7 @@ class KasListScreen extends ConsumerWidget {
       body: asyncValue.when(
         loading: () => const LoadingSkeleton(),
         error: (err, _) => ErrorView(
-          message: err.toString(),
+          message: friendlyError(err),
           onRetry: () => ref.invalidate(kasListProvider),
         ),
         data: (list) {

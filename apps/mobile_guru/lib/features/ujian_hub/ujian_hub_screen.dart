@@ -33,6 +33,14 @@ class UjianHubScreen extends StatelessWidget {
             bg: AppColors.successLight,
             onTap: () => context.push('/dashboard/ujian/list/create'),
           ),
+          _MenuCard(
+            label: 'Bank Soal',
+            description: 'Kelola soal untuk dipakai di ujian',
+            icon: Icons.inventory_2_outlined,
+            color: AppColors.info,
+            bg: AppColors.infoLight,
+            onTap: () => context.push('/dashboard/ujian/bank-soal'),
+          ),
         ],
       ),
     );

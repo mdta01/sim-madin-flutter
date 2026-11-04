@@ -1,12 +1,12 @@
 // Nilai monitor — read-only. Filter by mapel.
-// Menampilkan: statistik rata-rata + % lulus KKM + list nilai terbaru.
+// Refactored untuk pakai MonitorScaffold (reusable boilerplate).
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 
-import '../../widgets/feedback_views.dart';
+import '../../widgets/monitor_scaffold.dart';
 
 class NilaiMonitorScreen extends ConsumerStatefulWidget {
   const NilaiMonitorScreen({super.key});
@@ -24,102 +24,84 @@ class _NilaiMonitorScreenState extends ConsumerState<NilaiMonitorScreen> {
     final mapelListAsync = ref.watch(mapelListProvider);
     final nilaiAsync = ref.watch(nilaiRecentProvider(_selectedMapelId));
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Monitor Nilai')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: mapelListAsync.when(
-              loading: () => const SizedBox(
-                height: 56,
-                child: Center(
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-              ),
-              error: (e, _) => Text('Error mapel: $e'),
-              data: (mapelList) => DropdownButtonFormField<String?>(
-                decoration: const InputDecoration(
-                  labelText: 'Mata Pelajaran',
-                  prefixIcon: Icon(Icons.book),
-                ),
-                value: _selectedMapelId,
-                items: [
-                  const DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text('Semua Mapel'),
-                  ),
-                  ...mapelList.map((m) => DropdownMenuItem(
-                        value: m.id,
-                        child: Text('${m.name} (${m.code})'),
-                      )),
-                ],
-                onChanged: (v) => setState(() => _selectedMapelId = v),
+    return MonitorScaffold<NilaiModel>(
+      title: 'Monitor Nilai',
+      asyncValue: nilaiAsync,
+      onRefresh: () async {
+        ref.invalidate(nilaiRecentProvider(_selectedMapelId));
+        await ref.read(nilaiRecentProvider(_selectedMapelId).future);
+      },
+      emptyTitle: 'Belum ada nilai',
+      emptySubtitle: _selectedMapelId == null
+          ? 'Nilai akan muncul setelah guru input.'
+          : 'Belum ada nilai untuk mapel ini.',
+      filterBar: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: mapelListAsync.when(
+          loading: () => const SizedBox(
+            height: 56,
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
           ),
-          Expanded(
-            child: nilaiAsync.when(
-              loading: () => const LoadingSkeleton(),
-              error: (err, _) => ErrorView(
-                message: err.toString(),
-                onRetry: () => ref
-                    .invalidate(nilaiRecentProvider(_selectedMapelId)),
-              ),
-              data: (list) {
-                if (list.isEmpty) {
-                  return EmptyState(
-                    title: 'Belum ada nilai',
-                    subtitle: _selectedMapelId == null
-                        ? 'Nilai akan muncul setelah guru input.'
-                        : 'Belum ada nilai untuk mapel ini.',
-                    onRefresh: () => ref
-                        .invalidate(nilaiRecentProvider(_selectedMapelId)),
-                  );
-                }
-
-                // Compute stats.
-                final avg = list.isEmpty
-                    ? 0.0
-                    : list.map((n) => n.score).reduce((a, b) => a + b) /
-                        list.length;
-                final lulusCount = list
-                    .where((n) => isLulus(n.score, n.mapelKkm))
-                    .length;
-                final lulusPercent = list.isEmpty
-                    ? 0.0
-                    : (lulusCount / list.length * 100).roundToDouble();
-
-                return RefreshIndicator(
-                  color: AppColors.primary,
-                  onRefresh: () async {
-                    ref.invalidate(nilaiRecentProvider(_selectedMapelId));
-                    await ref
-                        .read(nilaiRecentProvider(_selectedMapelId).future);
-                  },
-                  child: ListView(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    children: [
-                      _NilaiStatsRow(
-                        avg: avg,
-                        count: list.length,
-                        lulusPercent: lulusPercent,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      ...list.map((n) => _NilaiCard(nilai: n)),
-                    ],
-                  ),
-                );
-              },
+          error: (e, _) => Text('Error mapel: ${friendlyError(e)}',
+              style: const TextStyle(color: AppColors.danger)),
+          data: (mapelList) => DropdownButtonFormField<String?>(
+            decoration: const InputDecoration(
+              labelText: 'Mata Pelajaran',
+              prefixIcon: Icon(Icons.book),
             ),
+            value: _selectedMapelId,
+            items: [
+              const DropdownMenuItem<String?>(
+                value: null,
+                child: Text('Semua Mapel'),
+              ),
+              ...mapelList.map((m) => DropdownMenuItem(
+                    value: m.id,
+                    child: Text('${m.name} (${m.code})'),
+                  )),
+            ],
+            onChanged: (v) => setState(() => _selectedMapelId = v),
           ),
-        ],
+        ),
       ),
+      summary: _NilaiSummaryBuilder(asyncValue: nilaiAsync),
+      itemBuilder: (context, n) => _NilaiCard(nilai: n),
+    );
+  }
+}
+
+/// Summary card yang otomatis compute stats dari AsyncValue.
+class _NilaiSummaryBuilder extends StatelessWidget {
+  const _NilaiSummaryBuilder({required this.asyncValue});
+
+  final AsyncValue<List<NilaiModel>> asyncValue;
+
+  @override
+  Widget build(BuildContext context) {
+    final list = asyncValue.maybeWhen(
+      data: (l) => l,
+      orElse: () => <NilaiModel>[],
+    );
+    if (list.isEmpty) return const SizedBox.shrink();
+
+    final avg = list.isEmpty
+        ? 0.0
+        : list.map((n) => n.score).reduce((a, b) => a + b) / list.length;
+    final lulusCount = list.where((n) => isLulus(n.score, n.mapelKkm)).length;
+    final lulusPercent = list.isEmpty
+        ? 0.0
+        : (lulusCount / list.length * 100).roundToDouble();
+
+    return _NilaiStatsRow(
+      avg: avg,
+      count: list.length,
+      lulusPercent: lulusPercent,
     );
   }
 }
@@ -153,11 +135,7 @@ class _NilaiStatsRow extends StatelessWidget {
               color: AppColors.primary,
             ),
           ),
-          Container(
-            width: 1,
-            height: 40,
-            color: AppColors.border,
-          ),
+          Container(width: 1, height: 40, color: AppColors.border),
           Expanded(
             child: _StatItem(
               label: 'Total Nilai',
@@ -165,11 +143,7 @@ class _NilaiStatsRow extends StatelessWidget {
               color: AppColors.info,
             ),
           ),
-          Container(
-            width: 1,
-            height: 40,
-            color: AppColors.border,
-          ),
+          Container(width: 1, height: 40, color: AppColors.border),
           Expanded(
             child: _StatItem(
               label: '% Lulus KKM',
@@ -202,23 +176,13 @@ class _StatItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
+        Text(value,
+            style: TextStyle(
+                fontSize: 20, fontWeight: FontWeight.bold, color: color)),
         const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 11,
-            color: AppColors.textMuted,
-          ),
-          textAlign: TextAlign.center,
-        ),
+        Text(label,
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+            textAlign: TextAlign.center),
       ],
     );
   }
@@ -226,7 +190,6 @@ class _StatItem extends StatelessWidget {
 
 class _NilaiCard extends StatelessWidget {
   const _NilaiCard({required this.nilai});
-
   final NilaiModel nilai;
 
   @override
@@ -253,59 +216,42 @@ class _NilaiCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    nilai.santriName ?? 'Santri',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.text,
-                    ),
-                  ),
+                  Text(nilai.santriName ?? 'Santri',
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(
-                    '${nilai.mapelName ?? '-'} • ${nilai.kelasName ?? '-'}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
+                      '${nilai.mapelName ?? '-'} • ${nilai.kelasName ?? '-'}',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textMuted)),
                   const SizedBox(height: 2),
-                  Text(
-                    formatDateTime(nilai.assessmentDate),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
+                  Text(formatDateTime(nilai.assessmentDate),
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.textMuted)),
                 ],
               ),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  nilai.score.toStringAsFixed(1),
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: lulus ? AppColors.success : AppColors.danger,
-                  ),
-                ),
+                Text(nilai.score.toStringAsFixed(1),
+                    style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: lulus ? AppColors.success : AppColors.danger)),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: typeBg,
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Text(
-                    nilai.type,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: typeColor,
-                    ),
-                  ),
+                  child: Text(nilai.type,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: typeColor)),
                 ),
               ],
             ),

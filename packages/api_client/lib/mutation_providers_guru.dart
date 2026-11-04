@@ -807,5 +807,7 @@ Future<ChatMessageModel> sendChatMessage(
 
   ref.invalidate(chatMessagesProvider(chatRoomId));
   ref.invalidate(chatRoomsGuruProvider);
+  // Invalidate juga unread count — supaya badge di chat list ikut update.
+  ref.invalidate(chatUnreadCountGuruProvider);
   return ChatMessageModel.fromJson(res as Map<String, dynamic>);
 }

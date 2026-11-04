@@ -25,7 +25,8 @@ class _AbsensiInputScreenState extends ConsumerState<AbsensiInputScreen> {
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2024),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
+      // Hanya sampai hari ini — tidak boleh pilih tanggal masa depan.
+      lastDate: DateTime.now(),
     );
     if (picked != null) setState(() => _selectedDate = picked);
   }
@@ -38,6 +39,15 @@ class _AbsensiInputScreenState extends ConsumerState<AbsensiInputScreen> {
     final newMap = <String, String>{};
     _absensiData.keys.forEach((k) => newMap[k] = status);
     setState(() => _absensiData = newMap);
+  }
+
+  /// Compare two maps by content (untuk avoid unnecessary setState).
+  bool _mapsEqual(Map<String, String> a, Map<String, String> b) {
+    if (a.length != b.length) return false;
+    for (final key in a.keys) {
+      if (a[key] != b[key]) return false;
+    }
+    return true;
   }
 
   Future<void> _save() async {
@@ -86,8 +96,37 @@ class _AbsensiInputScreenState extends ConsumerState<AbsensiInputScreen> {
         ? const AsyncValue<List<SantriModel>>.data([])
         : ref.watch(santriByKelasProvider(_selectedKelasId!));
 
-    // Initialize defaults when santri loaded
+    // Pre-fill existing absensi jika sudah ada di tanggal + kelas tsb.
+    // Tanpa ini, guru yang buka ulang absensi setelah input sebelumnya akan
+    // lihat semua status reset ke "Hadir" → risiko overwrite data sebelumnya.
     if (_selectedKelasId != null) {
+      final existingAsync = ref.watch(absensiByKelasDateProvider(
+        (kelasId: _selectedKelasId!, date: _selectedDate),
+      ));
+      existingAsync.whenData((existing) {
+        if (!mounted || existing.isEmpty) return;
+        // Hanya pre-fill kalau santri belum punya status di _absensiData
+        // (artinya ini fresh load, bukan user edit).
+        final needsPrefill = _absensiData.isEmpty ||
+            _absensiData.values.every((v) => v == AbsensiStatus.hadir);
+        if (!needsPrefill) return;
+        final prefilled = <String, String>{};
+        for (final s in existing) {
+          prefilled[s.santriId] = s.status;
+        }
+        // Merge dengan yang sudah ada (kalau ada)
+        final merged = <String, String>{..._absensiData, ...prefilled};
+        if (merged.length != _absensiData.length ||
+            !_mapsEqual(merged, _absensiData)) {
+          // Schedule setState setelah build selesai (avoid build-phase mutation).
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _absensiData = merged);
+          });
+        }
+      });
+
+      // Initialize defaults when santri loaded (untuk santri baru yang belum
+      // punya absensi record).
       ref.listen<AsyncValue<List<SantriModel>>>(
           santriByKelasProvider(_selectedKelasId!), (_, next) {
         next.whenData((list) {

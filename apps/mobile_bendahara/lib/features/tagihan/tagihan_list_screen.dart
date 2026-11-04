@@ -67,7 +67,7 @@ class _TagihanListScreenState extends ConsumerState<TagihanListScreen> {
             child: asyncValue.when(
               loading: () => const LoadingSkeleton(),
               error: (err, _) => ErrorView(
-                message: err.toString(),
+                message: friendlyError(err),
                 onRetry: () =>
                     ref.invalidate(tagihanListProvider(_statusFilter)),
               ),
@@ -107,7 +107,10 @@ class _TagihanListScreenState extends ConsumerState<TagihanListScreen> {
                         count: list.length,
                       ),
                       const SizedBox(height: AppSpacing.md),
-                      ...list.map((t) => _TagihanCard(tagihan: t)),
+                      ...list.map((t) => _TagihanCard(
+                            tagihan: t,
+                            onTap: () => _showTagihanDetail(context, t),
+                          )),
                     ],
                   ),
                 );
@@ -116,6 +119,169 @@ class _TagihanListScreenState extends ConsumerState<TagihanListScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Bottom sheet detail tagihan — tampilkan info lengkap + riwayat pembayaran.
+  void _showTagihanDetail(BuildContext context, TagihanModel t) {
+    final style = tagihanStatusStyle(t.status);
+    final outstanding = tagihanOutstanding(t);
+    final progressPct = t.amount > 0
+        ? ((t.paidAmount / t.amount) * 100).clamp(0, 100).toDouble()
+        : 0.0;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    t.jenisTagihanName ?? t.jenisTagihanCode ?? 'Tagihan',
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(t.santriName ?? 'Santri',
+                style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w600)),
+            Text(
+                'NIS: ${t.santriNis ?? '-'} • ${t.kelasName ?? '-'}',
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textMuted)),
+            if (t.description != null && t.description!.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(t.description!,
+                  style: const TextStyle(fontSize: 12)),
+            ],
+            const Divider(height: AppSpacing.lg),
+            Row(
+              children: [
+                Expanded(
+                  child: _DetailCell(
+                      label: 'Total Tagihan',
+                      value: formatRupiah(t.amount)),
+                ),
+                Expanded(
+                  child: _DetailCell(
+                      label: 'Sudah Dibayar',
+                      value: formatRupiah(t.paidAmount),
+                      color: AppColors.success),
+                ),
+                Expanded(
+                  child: _DetailCell(
+                      label: 'Sisa',
+                      value: formatRupiah(outstanding),
+                      color: outstanding > 0
+                          ? AppColors.danger
+                          : AppColors.success),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            // Progress bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progressPct / 100,
+                minHeight: 8,
+                backgroundColor: AppColors.border,
+                color: progressPct >= 100
+                    ? AppColors.success
+                    : progressPct > 0
+                        ? AppColors.warning
+                        : AppColors.danger,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text('${progressPct.toStringAsFixed(1)}% terbayar',
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textMuted)),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                const Text('Status: ',
+                    style: TextStyle(
+                        fontSize: 13, color: AppColors.textMuted)),
+                StatusChip(status: t.status, style: style, compact: true),
+              ],
+            ),
+            if (t.dueDate != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  const Icon(Icons.event_outlined,
+                      size: 16, color: AppColors.textMuted),
+                  const SizedBox(width: 4),
+                  Text(
+                      'Jatuh tempo: ${formatDate(t.dueDate)}',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: t.dueDate!.isBefore(DateTime.now()) &&
+                                  t.status != TagihanStatus.lunas
+                              ? AppColors.danger
+                              : AppColors.textMuted)),
+                ],
+              ),
+            ],
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              children: [
+                const Icon(Icons.access_time,
+                    size: 16, color: AppColors.textMuted),
+                const SizedBox(width: 4),
+                Text(
+                    'Dibuat: ${formatDateTime(t.createdAt)}',
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textMuted)),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailCell extends StatelessWidget {
+  const _DetailCell({
+    required this.label,
+    required this.value,
+    this.color,
+  });
+  final String label;
+  final String value;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(
+                fontSize: 11, color: AppColors.textMuted)),
+        const SizedBox(height: 2),
+        Text(value,
+            style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: color ?? AppColors.text)),
+      ],
     );
   }
 }
@@ -228,9 +394,10 @@ class _Item extends StatelessWidget {
 }
 
 class _TagihanCard extends StatelessWidget {
-  const _TagihanCard({required this.tagihan});
+  const _TagihanCard({required this.tagihan, this.onTap});
 
   final TagihanModel tagihan;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -239,8 +406,11 @@ class _TagihanCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -308,6 +478,7 @@ class _TagihanCard extends StatelessWidget {
               ],
             ),
           ],
+        ),
         ),
       ),
     );

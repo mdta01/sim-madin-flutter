@@ -33,9 +33,26 @@ class _AmountInputState extends State<AmountInput> {
     super.initState();
     _controller = TextEditingController(
       text: widget.initialValue > 0
-          ? formatRupiah(widget.initialValue.toDouble())
+          ? formatRupiah(widget.initialValue.toDouble(), withSymbol: false)
           : '',
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant AmountInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // React to initialValue changes — mis. saat user pilih tagihan
+    // dan nominal auto-fill dari outstanding tagihan.
+    if (widget.initialValue != oldWidget.initialValue) {
+      final newText = widget.initialValue > 0
+          ? formatRupiah(widget.initialValue.toDouble(), withSymbol: false)
+          : '';
+      if (_controller.text != newText) {
+        _controller.text = newText;
+        _controller.selection =
+            TextSelection.collapsed(offset: newText.length);
+      }
+    }
   }
 
   @override
@@ -48,7 +65,8 @@ class _AmountInputState extends State<AmountInput> {
     // Strip non-digit, parse int, format, push value up.
     final digits = v.replaceAll(RegExp(r'[^\d]'), '');
     final amount = int.tryParse(digits) ?? 0;
-    final formatted = amount > 0 ? formatRupiah(amount.toDouble()) : '';
+    final formatted =
+        amount > 0 ? formatRupiah(amount.toDouble(), withSymbol: false) : '';
 
     // Update controller tanpa trigger loop
     if (formatted != v) {

@@ -62,7 +62,7 @@ class _PembayaranListScreenState extends ConsumerState<PembayaranListScreen> {
             child: asyncValue.when(
               loading: () => const LoadingSkeleton(),
               error: (err, _) => ErrorView(
-                message: err.toString(),
+                message: friendlyError(err),
                 onRetry: () => ref.invalidate(paymentRecentProvider),
               ),
               data: (list) {

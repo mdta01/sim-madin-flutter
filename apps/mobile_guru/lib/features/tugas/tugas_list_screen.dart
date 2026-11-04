@@ -15,6 +15,13 @@ class TugasListScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Tugas')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/dashboard/akademik/tugas/create'),
+        icon: const Icon(Icons.add),
+        label: const Text('Buat Tugas'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
+      ),
       body: asyncValue.when(
         loading: () => const LoadingSkeleton(),
         error: (e, _) => ErrorView(

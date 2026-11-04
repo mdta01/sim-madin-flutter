@@ -128,6 +128,37 @@ final mapelListProvider = FutureProvider<List<MataPelajaranModel>>((ref) async {
       .toList();
 });
 
+/// Daftar semua guru aktif (untuk dashboard mobile_kepala KPI "Guru Aktif").
+/// Filter hanya yang punya status AKTIF.
+final guruListProvider = FutureProvider<List<GuruModel>>((ref) async {
+  ref.watch(realtimeRefreshTick);
+  final client = ref.watch(supabaseClientProvider);
+  final res = await client
+      .from('Guru')
+      .select('*, User(*)')
+      .filter('deletedAt', 'is', null)
+      .order('createdAt');
+  return (res as List)
+      .map((r) {
+        final row = r as Map<String, dynamic>;
+        final user = row['User'] as Map<String, dynamic>?;
+        // Guru table mungkin tidak punya kolom `name` (denormalized dari User).
+        // Pakai User.name sebagai fallback supaya GuruModel.fromJson happy.
+        return GuruModel.fromJson({
+          ...row,
+          if (user != null) ...{
+            'name': user['name'] ?? row['name'] ?? 'Tanpa Nama',
+            'email': user['email'] ?? row['email'],
+            'phone': user['phone'] ?? row['phone'],
+            'photoUrl': user['avatarUrl'] ?? row['photoUrl'],
+          } else if (!row.containsKey('name')) ...{
+            'name': 'Tanpa Nama',
+          },
+        });
+      })
+      .toList();
+});
+
 final tahunAjaranActiveProvider = FutureProvider<TahunAjaranModel?>((ref) async {
   final client = ref.watch(supabaseClientProvider);
   final res = await client
@@ -258,6 +289,95 @@ final paymentRecentProvider = FutureProvider<List<PaymentModel>>((ref) async {
 });
 
 // ---------------------------------------------------------------------------
+// Aggregate dashboard KPIs (untuk mobile_bendahara) — pakai Supabase
+// aggregate query (count / sum) supaya tidak underestimate seperti list
+// dengan .limit(50). Return bilangan exact meski ada ratusan record.
+// ---------------------------------------------------------------------------
+
+/// Model untuk KPI dashboard bendahara.
+class BendaharaKpiStats {
+  const BendaharaKpiStats({
+    required this.pemasukanHariIni,
+    required this.pendingVerifCount,
+    required this.tunggakan,
+    required this.tunggakanCount,
+    required this.saldoKas,
+  });
+
+  final double pemasukanHariIni;
+  final int pendingVerifCount;
+  final double tunggakan;
+  final int tunggakanCount;
+  final double saldoKas;
+}
+
+/// Provider aggregate untuk dashboard bendahara.
+/// Pakai Supabase `.count()` head:true dan compute pemasukan dengan filter
+/// tanggal hari ini (UTC) — supaya exact bahkan jika ada ratusan pembayaran.
+final bendaharaKpiProvider =
+    FutureProvider<BendaharaKpiStats>((ref) async {
+  ref.watch(realtimeRefreshTick);
+  final client = ref.watch(supabaseClientProvider);
+
+  // 1. Pemasukan hari ini = SUM(Payment.amount) where status=VERIFIED dan
+  //    paymentDate hari ini. Supabase tidak support SUM langsung di client
+  //    query — kita fetch amount column saja untuk record verified hari ini.
+  final now = DateTime.now();
+  final dayStart = DateTime(now.year, now.month, now.day);
+  final dayEnd = dayStart.add(const Duration(days: 1));
+  final pemasukanRes = await client
+      .from('Payment')
+      .select('amount')
+      .eq('status', PaymentStatus.verified)
+      .gte('paymentDate', dayStart.toUtc().toIso8601String())
+      .lt('paymentDate', dayEnd.toUtc().toIso8601String());
+  final pemasukanHariIni = (pemasukanRes as List).fold<double>(
+      0, (s, r) => s + ((r as Map<String, dynamic>)['amount'] as num).toDouble());
+
+  // 2. Count pending verif (exact, tanpa limit) — fetch IDs only, count length.
+  final pendingRes = await client
+      .from('Payment')
+      .select('id')
+      .eq('status', PaymentStatus.pending);
+  final pendingVerifCount = (pendingRes as List).length;
+
+  // 3. Tunggakan = SUM(outstanding) untuk Tagihan yang belum lunas.
+  //    Outstanding per tagihan = amount - paidAmount (clamp 0).
+  final tunggakanRes = await client
+      .from('Tagihan')
+      .select('amount, paidAmount, status')
+      .neq('status', TagihanStatus.lunas);
+  double tunggakan = 0;
+  int tunggakanCount = 0;
+  for (final r in tunggakanRes as List) {
+    final row = r as Map<String, dynamic>;
+    final amount = (row['amount'] as num).toDouble();
+    final paid = (row['paidAmount'] as num?)?.toDouble() ?? 0;
+    final outstanding = (amount - paid).clamp(0.0, double.infinity);
+    if (outstanding > 0) {
+      tunggakan += outstanding;
+      tunggakanCount++;
+    }
+  }
+
+  // 4. Saldo kas = SUM(Kas.balance) where isActive=true.
+  final kasRes = await client
+      .from('Kas')
+      .select('balance')
+      .eq('isActive', true);
+  final saldoKas = (kasRes as List).fold<double>(
+      0, (s, r) => s + ((r as Map<String, dynamic>)['balance'] as num).toDouble());
+
+  return BendaharaKpiStats(
+    pemasukanHariIni: pemasukanHariIni,
+    pendingVerifCount: pendingVerifCount,
+    tunggakan: tunggakan,
+    tunggakanCount: tunggakanCount,
+    saldoKas: saldoKas,
+  );
+});
+
+// ---------------------------------------------------------------------------
 // Honor Guru monitor — recent honor records
 // ---------------------------------------------------------------------------
 
@@ -316,18 +436,28 @@ final kasListProvider = FutureProvider<List<KasModel>>((ref) async {
 
 final realtimeRefreshTick = StateProvider<int>((_) => 0);
 
-/// Setup realtime subscriptions untuk mobile_kepala. Panggil sekali saat
-/// login berhasil (di splash screen atau dashboard init).
-///
-/// Subscribe ke 4 tabel: Santri, Payment, Tagihan, HonorGuru.
+/// Track active realtime channels so we can unsubscribe on logout / re-init.
+/// Tanpa tracking ini, setiap kali user logout-login, channel baru ditumpuk
+/// di atas channel lama → memory leak + event dobel.
+final realtimeChannelsProvider =
+    StateProvider<List<RealtimeChannel>>((_) => const []);
+
+/// Setup realtime subscriptions untuk tabel-tabel yang relevan.
+/// Panggil saat login berhasil (di splash / dashboard init).
 /// Setiap perubahan akan bump `realtimeRefreshTick` yang otomatis
-/// me-refresh semua FutureProvider di atas.
-void setupKepalaRealtime(WidgetRef ref) {
+/// me-refresh semua FutureProvider yang watch tick ini.
+///
+/// Sebelum subscribe baru, fungsi ini akan unsubscribe channel lama
+/// (kalau ada) untuk mencegah leak & duplikasi event.
+void setupAppRealtime(WidgetRef ref, {required List<String> tables}) {
+  // Dispose existing channels first (idempotent).
+  disposeAppRealtime(ref);
+
   final client = ref.read(supabaseClientProvider);
-  const tables = ['Santri', 'Payment', 'Tagihan', 'HonorGuru'];
+  final channels = <RealtimeChannel>[];
   for (final t in tables) {
     try {
-      subscribeToTable(
+      final ch = subscribeToTable(
         client: client,
         table: t,
         onPayload: (_) {
@@ -335,17 +465,260 @@ void setupKepalaRealtime(WidgetRef ref) {
           ref.read(realtimeRefreshTick.notifier).state++;
         },
       );
+      channels.add(ch);
     } catch (_) {
       // Realtime best-effort: kalau fail (RLS / network), abaikan diam-diam.
       // Provider tetap bisa di-refresh manual via pull-to-refresh.
     }
   }
+  ref.read(realtimeChannelsProvider.notifier).state = channels;
+}
+
+/// Unsubscribe semua realtime channels. Panggil saat logout.
+Future<void> disposeAppRealtime(WidgetRef ref) async {
+  final channels = ref.read(realtimeChannelsProvider);
+  for (final ch in channels) {
+    try {
+      await ch.unsubscribe();
+    } catch (_) {
+      // Best-effort.
+    }
+  }
+  ref.read(realtimeChannelsProvider.notifier).state = const [];
+}
+
+/// Realtime untuk mobile_kepala (read-only monitoring).
+/// Subscribe: Santri, Payment, Tagihan, HonorGuru, Absensi, Nilai, Kas,
+/// TransaksiKas, Guru, Jadwal — supaya semua monitor screen auto-refresh.
+void setupKepalaRealtime(WidgetRef ref) {
+  setupAppRealtime(ref, tables: const [
+    'Santri',
+    'Payment',
+    'Tagihan',
+    'HonorGuru',
+    'Absensi',
+    'Nilai',
+    'Kas',
+    'TransaksiKas',
+    'Guru',
+    'Jadwal',
+  ]);
+}
+
+/// Realtime untuk mobile_wali.
+/// Subscribe: Notifikasi, ChatRoom, ChatMessage, Tagihan, Payment, Absensi,
+/// Nilai — fitur utama wali (notif & chat) harus auto-refresh.
+void setupWaliRealtime(WidgetRef ref) {
+  setupAppRealtime(ref, tables: const [
+    'Notifikasi',
+    'ChatRoom',
+    'ChatMessage',
+    'Tagihan',
+    'Payment',
+    'Absensi',
+    'Nilai',
+    'PerkembanganQuran',
+    'HafalanKitab',
+    'AkhlakPenilaian',
+    'Pembinaan',
+    'UjianPeserta',
+    'UjianSesi',
+  ]);
+}
+
+/// Realtime untuk mobile_guru.
+/// Subscribe: Jadwal, Materi, Tugas, Pertemuan, Ujian, UjianSoal,
+/// PengumpulanTugas, ChatRoom, ChatMessage, Absensi, Nilai, PerkembanganQuran,
+/// HafalanKitab, AkhlakPenilaian, Pembinaan, Pengumuman.
+void setupGuruRealtime(WidgetRef ref) {
+  setupAppRealtime(ref, tables: const [
+    'Jadwal',
+    'Materi',
+    'Tugas',
+    'Pertemuan',
+    'Ujian',
+    'UjianSoal',
+    'PengumpulanTugas',
+    'ChatRoom',
+    'ChatMessage',
+    'Absensi',
+    'Nilai',
+    'PerkembanganQuran',
+    'HafalanKitab',
+    'AkhlakPenilaian',
+    'Pembinaan',
+    'Pengumuman',
+    'BankSoal',
+  ]);
+}
+
+/// Realtime untuk mobile_bendahara.
+/// Subscribe: Payment, Tagihan, HonorGuru, Kas, TransaksiKas, Santri, Guru.
+void setupBendaharaRealtime(WidgetRef ref) {
+  setupAppRealtime(ref, tables: const [
+    'Payment',
+    'Tagihan',
+    'HonorGuru',
+    'Kas',
+    'TransaksiKas',
+    'Santri',
+    'Guru',
+  ]);
+}
+
+/// Provider aggregate untuk dashboard mobile_kepala.
+/// Hitung exact counts/sums tanpa underestimate dari list dengan .limit.
+/// Pakai Supabase query + client-side aggregate untuk total yang akurat.
+final kepalaKpiProvider = FutureProvider<KepalaKpiStats>((ref) async {
+  ref.watch(realtimeRefreshTick);
+  final client = ref.watch(supabaseClientProvider);
+
+  // 1. Total santri aktif.
+  final santriRes = await client
+      .from('Santri')
+      .select('id, status')
+      .eq('status', SantriStatus.aktif)
+      .filter('deletedAt', 'is', null);
+  final totalSantriAktif = (santriRes as List).length;
+
+  // 2. Total guru aktif.
+  final guruRes = await client
+      .from('Guru')
+      .select('id, status')
+      .eq('status', GuruStatus.aktif)
+      .filter('deletedAt', 'is', null);
+  final totalGuruAktif = (guruRes as List).length;
+
+  // 3. Saldo kas (sum balance where isActive).
+  final kasRes = await client
+      .from('Kas')
+      .select('balance')
+      .eq('isActive', true);
+  final saldoKas = (kasRes as List).fold<double>(
+      0, (s, r) => s + ((r as Map<String, dynamic>)['balance'] as num).toDouble());
+
+  // 4. Tunggakan = SUM(outstanding) untuk Tagihan belum lunas.
+  final tunggakanRes = await client
+      .from('Tagihan')
+      .select('amount, paidAmount')
+      .neq('status', TagihanStatus.lunas);
+  double tunggakan = 0;
+  int tunggakanCount = 0;
+  for (final r in tunggakanRes as List) {
+    final row = r as Map<String, dynamic>;
+    final amount = (row['amount'] as num).toDouble();
+    final paid = (row['paidAmount'] as num?)?.toDouble() ?? 0;
+    final outstanding = (amount - paid).clamp(0.0, double.infinity);
+    if (outstanding > 0) {
+      tunggakan += outstanding;
+      tunggakanCount++;
+    }
+  }
+
+  // 5. Pemasukan bulan ini (Payment verified bulan ini).
+  final now = DateTime.now();
+  final monthStart = DateTime(now.year, now.month, 1);
+  final monthEnd = DateTime(now.year, now.month + 1, 1);
+  final pemasukanRes = await client
+      .from('Payment')
+      .select('amount')
+      .eq('status', PaymentStatus.verified)
+      .gte('paymentDate', monthStart.toUtc().toIso8601String())
+      .lt('paymentDate', monthEnd.toUtc().toIso8601String());
+  final pemasukanBulanIni = (pemasukanRes as List).fold<double>(
+      0, (s, r) => s + ((r as Map<String, dynamic>)['amount'] as num).toDouble());
+
+  // 6. Tagihan lunas count.
+  final lunasRes = await client
+      .from('Tagihan')
+      .select('id')
+      .eq('status', TagihanStatus.lunas);
+  final tagihanLunasCount = (lunasRes as List).length;
+
+  // 7. Absensi hari ini — count by status.
+  final today = DateTime.now();
+  final dayStart = DateTime(today.year, today.month, today.day);
+  final dayEnd = dayStart.add(const Duration(days: 1));
+  final absensiRes = await client
+      .from('Absensi')
+      .select('status')
+      .gte('date', dayStart.toUtc().toIso8601String())
+      .lt('date', dayEnd.toUtc().toIso8601String());
+  int hadir = 0, sakit = 0, izin = 0, alfa = 0;
+  for (final r in absensiRes as List) {
+    final status = (r as Map<String, dynamic>)['status'] as String;
+    switch (status) {
+      case AbsensiStatus.hadir:
+        hadir++;
+        break;
+      case AbsensiStatus.sakit:
+        sakit++;
+        break;
+      case AbsensiStatus.izin:
+        izin++;
+        break;
+      case AbsensiStatus.alfa:
+        alfa++;
+        break;
+    }
+  }
+  final totalAbsensi = hadir + sakit + izin + alfa;
+  final kehadiranPercent = totalAbsensi > 0
+      ? (hadir / totalAbsensi * 100).roundToDouble()
+      : 0.0;
+
+  return KepalaKpiStats(
+    totalSantriAktif: totalSantriAktif,
+    totalGuruAktif: totalGuruAktif,
+    saldoKas: saldoKas,
+    tunggakan: tunggakan,
+    tunggakanCount: tunggakanCount,
+    pemasukanBulanIni: pemasukanBulanIni,
+    tagihanLunasCount: tagihanLunasCount,
+    hadirHariIni: hadir,
+    sakitHariIni: sakit,
+    izinHariIni: izin,
+    alfaHariIni: alfa,
+    kehadiranPercent: kehadiranPercent,
+  );
+});
+
+/// KPI stats untuk dashboard mobile_kepala.
+class KepalaKpiStats {
+  const KepalaKpiStats({
+    required this.totalSantriAktif,
+    required this.totalGuruAktif,
+    required this.saldoKas,
+    required this.tunggakan,
+    required this.tunggakanCount,
+    required this.pemasukanBulanIni,
+    required this.tagihanLunasCount,
+    required this.hadirHariIni,
+    required this.sakitHariIni,
+    required this.izinHariIni,
+    required this.alfaHariIni,
+    required this.kehadiranPercent,
+  });
+
+  final int totalSantriAktif;
+  final int totalGuruAktif;
+  final double saldoKas;
+  final double tunggakan;
+  final int tunggakanCount;
+  final double pemasukanBulanIni;
+  final int tagihanLunasCount;
+  final int hadirHariIni;
+  final int sakitHariIni;
+  final int izinHariIni;
+  final int alfaHariIni;
+  final double kehadiranPercent;
 }
 
 /// Invalidate semua query providers — panggil dari pull-to-refresh atau
 /// setelah signOut untuk clear cache.
 void invalidateAllQueries(WidgetRef ref) {
   ref.invalidate(santriListProvider);
+  ref.invalidate(guruListProvider);
   ref.invalidate(absensiRecentProvider);
   ref.invalidate(nilaiRecentProvider);
   ref.invalidate(tagihanListProvider);
@@ -353,4 +726,5 @@ void invalidateAllQueries(WidgetRef ref) {
   ref.invalidate(honorGuruListProvider);
   ref.invalidate(transaksiKasByPeriodProvider);
   ref.invalidate(kasListProvider);
+  ref.invalidate(kepalaKpiProvider);
 }

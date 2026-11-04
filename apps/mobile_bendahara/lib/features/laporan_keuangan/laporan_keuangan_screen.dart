@@ -54,14 +54,22 @@ class _LaporanKeuanganScreenState
     final now = DateTime.now();
     final nextMonth = _month == 12 ? 1 : _month + 1;
     final nextYear = _month == 12 ? _year + 1 : _year;
+    // Strict: tidak boleh lewat bulan ini (sebelumnya allow next month+1).
     if (nextYear > now.year ||
-        (nextYear == now.year && nextMonth > now.month + 1)) {
-      return; // Don't go too far ahead
+        (nextYear == now.year && nextMonth > now.month)) {
+      return;
     }
     setState(() {
       _month = nextMonth;
       _year = nextYear;
     });
+  }
+
+  /// Cek apakah tombol next month boleh dipakai (disabled state).
+  bool _canGoNext() {
+    final now = DateTime.now();
+    return _year < now.year ||
+        (_year == now.year && _month < now.month);
   }
 
   Future<void> _exportPdf(LaporanKeuangan laporan) async {
@@ -100,14 +108,15 @@ class _LaporanKeuanganScreenState
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right),
-            onPressed: _nextMonth,
+            // Disable tombol jika sudah di bulan ini (tidak boleh ke masa depan).
+            onPressed: _canGoNext() ? _nextMonth : null,
           ),
         ],
       ),
       body: asyncValue.when(
         loading: () => const LoadingSkeleton(),
         error: (err, _) => ErrorView(
-          message: err.toString(),
+          message: friendlyError(err),
           onRetry: () =>
               ref.invalidate(laporanKeuanganProvider(_range)),
         ),

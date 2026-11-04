@@ -48,7 +48,7 @@ class _TransaksiKasScreenState extends ConsumerState<TransaksiKasScreen> {
       body: asyncValue.when(
         loading: () => const LoadingSkeleton(),
         error: (err, _) => ErrorView(
-          message: err.toString(),
+          message: friendlyError(err),
           onRetry: () =>
               ref.invalidate(transaksiKasByPeriodProvider(_range)),
         ),

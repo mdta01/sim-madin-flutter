@@ -41,6 +41,15 @@ class _LaporanKeuanganMonitorScreenState
     return '${months[_selectedMonth.month]} ${_selectedMonth.year}';
   }
 
+  /// Cek apakah next month button boleh dipakai (tidak boleh lewat bulan ini).
+  /// Sebelumnya pakai `next.isBefore(DateTime(now.year, now.month + 2, 1))`
+  /// yang allow bulan depan (kosong). Sekarang strict: hanya sampai bulan ini.
+  bool _canGoNext() {
+    final now = DateTime.now();
+    final currentMonth = DateTime(now.year, now.month, 1);
+    return _selectedMonth.isBefore(currentMonth);
+  }
+
   @override
   Widget build(BuildContext context) {
     final asyncValue = ref.watch(transaksiKasByPeriodProvider(_range));
@@ -68,14 +77,15 @@ class _LaporanKeuanganMonitorScreenState
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right),
-            onPressed: () {
-              final now = DateTime.now();
-              final next = DateTime(
-                  _selectedMonth.year, _selectedMonth.month + 1, 1);
-              if (next.isBefore(DateTime(now.year, now.month + 2, 1))) {
-                setState(() => _selectedMonth = next);
-              }
-            },
+            // Disable jika sudah di bulan ini (tidak boleh ke masa depan).
+            onPressed: _canGoNext()
+                ? () {
+                    setState(() {
+                      _selectedMonth = DateTime(_selectedMonth.year,
+                          _selectedMonth.month + 1, 1);
+                    });
+                  }
+                : null,
           ),
         ],
       ),
@@ -196,6 +206,9 @@ class _PemasukanPengeluaranSection extends StatelessWidget {
         .where((t) => t.type == TransaksiKasType.pengeluaran)
         .fold<double>(0, (s, t) => s + t.amount);
     final net = pemasukan - pengeluaran;
+    // Hitung max val untuk skala bar — supaya bar pemasukan/pengeluaran
+    // proporsional. Min 1 supaya tidak divide by zero.
+    final maxVal = [pemasukan, pengeluaran, 1.0].reduce((a, b) => a > b ? a : b);
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -219,12 +232,14 @@ class _PemasukanPengeluaranSection extends StatelessWidget {
           _BarComparison(
             label: 'Pemasukan',
             value: pemasukan,
+            maxVal: maxVal,
             color: AppColors.success,
           ),
           const SizedBox(height: AppSpacing.xs),
           _BarComparison(
             label: 'Pengeluaran',
             value: pengeluaran,
+            maxVal: maxVal,
             color: AppColors.danger,
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -261,15 +276,19 @@ class _BarComparison extends StatelessWidget {
   const _BarComparison({
     required this.label,
     required this.value,
+    required this.maxVal,
     required this.color,
   });
 
   final String label;
   final double value;
+  final double maxVal;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
+    // Rasio bar width = value / maxVal (clamp 0..1 supaya tidak overflow).
+    final ratio = maxVal > 0 ? (value / maxVal).clamp(0.0, 1.0) : 0.0;
     return Row(
       children: [
         SizedBox(
@@ -289,13 +308,15 @@ class _BarComparison extends StatelessWidget {
               color: AppColors.border,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Bar width berdasarkan proporsi nilai vs max(pemasukan, pengeluaran).
-                // Untuk simplicity, kita pakai value dibagi 1jt sebagai max bar.
-                // Caller bisa pakai rasio sendiri jika perlu.
-                return const SizedBox.shrink();
-              },
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: ratio,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
             ),
           ),
         ),

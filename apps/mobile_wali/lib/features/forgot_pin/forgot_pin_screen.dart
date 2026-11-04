@@ -1,4 +1,5 @@
 // Forgot PIN — 3-step OTP flow (request → verify → set new PIN).
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -43,11 +44,19 @@ class _ForgotPinScreenState extends ConsumerState<ForgotPinScreen> {
       if (!mounted) return;
       // Phase 5 DEV: tampilkan OTP langsung supaya bisa test tanpa WA.
       // Production: jangan tampilkan OTP, kirim via WA gateway.
-      setState(() {
-        _devOtp = otp;
-        _step = 1;
-      });
-      _toast('✅ OTP dikirim (dev mode: $otp)');
+      if (kDebugMode) {
+        setState(() {
+          _devOtp = otp;
+          _step = 1;
+        });
+        _toast('✅ OTP dikirim (dev mode: $otp)');
+      } else {
+        setState(() {
+          _devOtp = null;
+          _step = 1;
+        });
+        _toast('✅ OTP dikirim via WhatsApp');
+      }
     } catch (e) {
       if (mounted) _toast('Gagal: ${friendlyError(e)}', isError: true);
     } finally {
@@ -201,7 +210,7 @@ class _ForgotPinScreenState extends ConsumerState<ForgotPinScreen> {
             const SizedBox(height: 4),
             const Text('Masukkan 6 digit kode yang dikirim',
                 style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
-            if (_devOtp != null) ...[
+            if (kDebugMode && _devOtp != null) ...[
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(8),

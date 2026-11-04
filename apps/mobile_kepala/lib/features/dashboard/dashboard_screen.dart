@@ -11,11 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
-import 'package:supabase_client/supabase_client.dart';
 import 'package:api_client/api_client.dart';
 
 import '../../app/router.dart';
-import '../../widgets/stat_card.dart';
 import '../profile/profile_screen.dart' show logoutAndNavigate;
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -38,31 +36,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     });
   }
 
-  Future<void> _handleLogout() async {
-    await logoutAndNavigate(context, ref);
-  }
-
-  String get _title {
-    final branchIndex = widget.shell.currentIndex;
-    if (branchIndex < kBottomNavItems.length) {
-      return 'SIM MADIN — ${kBottomNavItems[branchIndex].label}';
-    }
-    return 'SIM Kepala';
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Outer shell hanya punya body + bottomNav.
+    // AppBar & logout ada di masing-masing tab supaya tidak nested AppBar.
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Keluar',
-            onPressed: _handleLogout,
-          ),
-        ],
-      ),
       body: widget.shell,
       bottomNavigationBar: NavigationBar(
         selectedIndex: widget.shell.currentIndex,
@@ -108,180 +86,214 @@ class DashboardHomeTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final santriAsync = ref.watch(santriListProvider);
-    final paymentsAsync = ref.watch(paymentRecentProvider);
+    // KPI aggregate provider — exact counts/sums tanpa underestimate
+    // dari list dengan .limit(100). Pakai ini untuk KPI cards + absensi summary.
+    final kpiAsync = ref.watch(kepalaKpiProvider);
+    // Provider list (untuk chart & detail view, bukan KPI aggregate).
     final tagihanAsync = ref.watch(tagihanListProvider(null));
-    final kasAsync = ref.watch(kasListProvider);
-    final absensiAsync = ref.watch(absensiRecentProvider(DateTime.now()));
+    final paymentsAsync = ref.watch(paymentRecentProvider);
 
-    return RefreshIndicator(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Beranda'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Keluar',
+            onPressed: () => logoutAndNavigate(context, ref),
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
       color: AppColors.primary,
       onRefresh: () async {
-        ref.invalidate(santriListProvider);
-        ref.invalidate(paymentRecentProvider);
+        ref.invalidate(kepalaKpiProvider);
         ref.invalidate(tagihanListProvider);
-        ref.invalidate(kasListProvider);
-        ref.invalidate(absensiRecentProvider);
-        // Tunggu sampai minimal satu provider selesai supaya indicator dismiss.
-        await ref.read(santriListProvider.future);
+        ref.invalidate(paymentRecentProvider);
+        // Tunggu sampai KPI provider selesai supaya indicator dismiss.
+        await ref.read(kepalaKpiProvider.future);
       },
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
-          // === KPI Section ===
-          _KpiSection(
-            santriAsync: santriAsync,
-            paymentsAsync: paymentsAsync,
-            tagihanAsync: tagihanAsync,
-            kasAsync: kasAsync,
-          ),
+          // === KPI Section (pakai aggregate provider) ===
+          _KpiSection(kpiAsync: kpiAsync),
           const SizedBox(height: AppSpacing.lg),
 
-          // === Tagihan distribution chart ===
+          // === Tagihan distribution chart (pakai list provider) ===
           _TagihanDistributionSection(tagihanAsync: tagihanAsync),
           const SizedBox(height: AppSpacing.lg),
 
-          // === Income trend chart (7 hari terakhir) ===
+          // === Income trend chart (7 hari terakhir, pakai list provider) ===
           _IncomeTrendSection(paymentsAsync: paymentsAsync),
           const SizedBox(height: AppSpacing.lg),
 
-          // === Absensi hari ini ===
-          _AbsensiTodaySection(absensiAsync: absensiAsync),
+          // === Absensi hari ini (pakai KPI provider untuk counts, exact) ===
+          _AbsensiTodaySection(kpiAsync: kpiAsync),
           const SizedBox(height: AppSpacing.lg),
 
           // === Quick menu monitor screens ===
-          _QuickMenuSection(context: context),
+          const _QuickMenuSection(),
           const SizedBox(height: AppSpacing.xxl),
         ],
+      ),
       ),
     );
   }
 }
 
 class _KpiSection extends StatelessWidget {
-  const _KpiSection({
-    required this.santriAsync,
-    required this.paymentsAsync,
-    required this.tagihanAsync,
-    required this.kasAsync,
-  });
+  const _KpiSection({required this.kpiAsync});
 
-  final AsyncValue<List<SantriModel>> santriAsync;
-  final AsyncValue<List<PaymentModel>> paymentsAsync;
-  final AsyncValue<List<TagihanModel>> tagihanAsync;
-  final AsyncValue<List<KasModel>> kasAsync;
+  final AsyncValue<KepalaKpiStats> kpiAsync;
 
   @override
   Widget build(BuildContext context) {
-    // Aggregate dari masing-masing async value.
-    final totalSantri = santriAsync.maybeWhen(
-      data: (list) => list.where((s) => s.status == SantriStatus.aktif).length,
-      orElse: () => 0,
+    // Aggregate dari KPI provider (exact counts via Supabase query,
+    // bukan dari list dengan .limit yang bisa underestimate).
+    // Pakai .when() dengan explicit error handling supaya error tidak
+    // tertutupi oleh empty/zero state.
+    return kpiAsync.when(
+      loading: () => _buildLoading(context),
+      error: (e, _) => _buildError(context, e),
+      data: (stats) => _buildContent(context, stats),
     );
-    final totalGuruAktif = 0; // Phase 2: tidak ada guru list provider (read-only mobile_kepala tidak butuh)
-    final saldoKas = kasAsync.maybeWhen(
-      data: (list) => list.fold<double>(0, (s, k) => s + k.balance),
-      orElse: () => 0,
-    );
-    final tunggakan = tagihanAsync.maybeWhen(
-      data: (list) => list
-          .where((t) => t.status != TagihanStatus.lunas)
-          .fold<double>(0, (s, t) => s + tagihanOutstanding(t)),
-      orElse: () => 0,
-    );
-    final pemasukanBulanIni = paymentsAsync.maybeWhen(
-      data: (list) {
-        final now = DateTime.now();
-        return list
-            .where((p) =>
-                p.status == PaymentStatus.verified &&
-                p.paymentDate.year == now.year &&
-                p.paymentDate.month == now.month)
-            .fold<double>(0, (s, p) => s + p.amount);
-      },
-      orElse: () => 0,
-    );
-    final tagihanLunas = tagihanAsync.maybeWhen(
-      data: (list) => list.where((t) => t.status == TagihanStatus.lunas).length,
-      orElse: () => 0,
-    );
+  }
 
-    final isLoading = santriAsync.isLoading ||
-        paymentsAsync.isLoading ||
-        tagihanAsync.isLoading ||
-        kasAsync.isLoading;
+  Widget _buildLoading(BuildContext context) {
+    return Row(
+      children: [
+        const Text(
+          'Ringkasan',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.text,
+          ),
+        ),
+        const SizedBox(width: 8),
+        const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ],
+    );
+  }
 
+  Widget _buildError(BuildContext context, Object e) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.dangerLight,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline,
+              color: AppColors.danger, size: 18),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Gagal memuat ringkasan: ${friendlyError(e)}',
+              style: const TextStyle(fontSize: 12, color: AppColors.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, KepalaKpiStats stats) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Text(
-              'Ringkasan',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.text,
-              ),
-            ),
-            if (isLoading) ...[
-              const SizedBox(width: 8),
-              const SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ],
-          ],
+        SectionHeader(
+          title: 'Ringkasan',
+          icon: Icons.dashboard_outlined,
         ),
         const SizedBox(height: AppSpacing.sm),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: AppSpacing.sm,
-          mainAxisSpacing: AppSpacing.sm,
-          childAspectRatio: 1.4,
+        // Badge "Live" indicator di kanan header
+        Row(
           children: [
-            StatCard(
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.successLight,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: AppColors.success,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Live',
+                    style: AppTextStyles.overline
+                        .copyWith(color: AppColors.success),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        ResponsiveGrid(
+          phoneColumns: 2,
+          tabletColumns: 3,
+          desktopColumns: 3,
+          childAspectRatio: 1.1,
+          children: [
+            ModernStatCard(
               label: 'Total Santri Aktif',
-              value: '$totalSantri',
+              value: '${stats.totalSantriAktif}',
               icon: Icons.people,
               color: AppColors.success,
               bgColor: AppColors.successLight,
             ),
-            StatCard(
+            ModernStatCard(
               label: 'Guru Aktif',
-              value: '$totalGuruAktif',
-              subtitle: 'Data belum tersedia',
+              value: '${stats.totalGuruAktif}',
               icon: Icons.school,
               color: AppColors.primary,
               bgColor: AppColors.primaryLight,
             ),
-            StatCard(
+            ModernStatCard(
               label: 'Saldo Kas',
-              value: formatRupiah(saldoKas),
+              value: formatRupiah(stats.saldoKas),
               icon: Icons.account_balance,
               color: AppColors.success,
               bgColor: AppColors.successLight,
             ),
-            StatCard(
+            ModernStatCard(
               label: 'Tunggakan',
-              value: formatRupiah(tunggakan),
+              value: formatRupiah(stats.tunggakan),
+              subtitle: stats.tunggakanCount > 0
+                  ? '${stats.tunggakanCount} tagihan'
+                  : null,
               icon: Icons.warning,
               color: AppColors.danger,
               bgColor: AppColors.dangerLight,
             ),
-            StatCard(
+            ModernStatCard(
               label: 'Pemasukan Bulan Ini',
-              value: formatRupiah(pemasukanBulanIni),
+              value: formatRupiah(stats.pemasukanBulanIni),
               icon: Icons.trending_up,
               color: AppColors.success,
               bgColor: AppColors.successLight,
             ),
-            StatCard(
+            ModernStatCard(
               label: 'Tagihan Lunas',
-              value: '$tagihanLunas',
+              value: '${stats.tagihanLunasCount}',
               icon: Icons.check_circle,
               color: AppColors.success,
               bgColor: AppColors.successLight,
@@ -609,22 +621,12 @@ class _LineChartPainter extends CustomPainter {
 }
 
 class _AbsensiTodaySection extends StatelessWidget {
-  const _AbsensiTodaySection({required this.absensiAsync});
+  const _AbsensiTodaySection({required this.kpiAsync});
 
-  final AsyncValue<List<AbsensiModel>> absensiAsync;
+  final AsyncValue<KepalaKpiStats> kpiAsync;
 
   @override
   Widget build(BuildContext context) {
-    final counts = absensiAsync.maybeWhen(
-      data: (list) => {
-        AbsensiStatus.hadir: list.where((a) => a.status == AbsensiStatus.hadir).length,
-        AbsensiStatus.sakit: list.where((a) => a.status == AbsensiStatus.sakit).length,
-        AbsensiStatus.izin: list.where((a) => a.status == AbsensiStatus.izin).length,
-        AbsensiStatus.alfa: list.where((a) => a.status == AbsensiStatus.alfa).length,
-      },
-      orElse: () => <String, int>{},
-    );
-
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -653,44 +655,142 @@ class _AbsensiTodaySection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: _AbsensiMiniCard(
-                  label: 'Hadir',
-                  value: counts[AbsensiStatus.hadir] ?? 0,
-                  color: AppColors.success,
-                  bg: AppColors.successLight,
+          kpiAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: _AbsensiMiniCard(
-                  label: 'Sakit',
-                  value: counts[AbsensiStatus.sakit] ?? 0,
-                  color: AppColors.warning,
-                  bg: AppColors.warningLight,
-                ),
+            ),
+            error: (e, _) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline,
+                      color: AppColors.danger, size: 18),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Gagal memuat absensi: ${friendlyError(e)}',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.danger),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: _AbsensiMiniCard(
-                  label: 'Izin',
-                  value: counts[AbsensiStatus.izin] ?? 0,
-                  color: AppColors.info,
-                  bg: AppColors.infoLight,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: _AbsensiMiniCard(
-                  label: 'Alfa',
-                  value: counts[AbsensiStatus.alfa] ?? 0,
-                  color: AppColors.danger,
-                  bg: AppColors.dangerLight,
-                ),
-              ),
-            ],
+            ),
+            data: (stats) {
+              final hadir = stats.hadirHariIni;
+              final sakit = stats.sakitHariIni;
+              final izin = stats.izinHariIni;
+              final alfa = stats.alfaHariIni;
+              final kehadiranPercent = stats.kehadiranPercent;
+              final total = hadir + sakit + izin + alfa;
+              if (total == 0) {
+                return Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        const Icon(Icons.event_busy,
+                            size: 32, color: AppColors.textMuted),
+                        const SizedBox(height: AppSpacing.xs),
+                        const Text(
+                          'Belum ada absensi hari ini',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Badge persentase kehadiran dengan progress bar.
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${kehadiranPercent.toStringAsFixed(0)}% kehadiran',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: kehadiranPercent >= 80
+                                ? AppColors.success
+                                : kehadiranPercent >= 60
+                                    ? AppColors.warning
+                                    : AppColors.danger,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: kehadiranPercent / 100,
+                              minHeight: 6,
+                              backgroundColor: AppColors.border,
+                              color: kehadiranPercent >= 80
+                                  ? AppColors.success
+                                  : kehadiranPercent >= 60
+                                      ? AppColors.warning
+                                      : AppColors.danger,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _AbsensiMiniCard(
+                          label: 'Hadir',
+                          value: hadir,
+                          color: AppColors.success,
+                          bg: AppColors.successLight,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: _AbsensiMiniCard(
+                          label: 'Sakit',
+                          value: sakit,
+                          color: AppColors.warning,
+                          bg: AppColors.warningLight,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: _AbsensiMiniCard(
+                          label: 'Izin',
+                          value: izin,
+                          color: AppColors.info,
+                          bg: AppColors.infoLight,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: _AbsensiMiniCard(
+                          label: 'Alfa',
+                          value: alfa,
+                          color: AppColors.danger,
+                          bg: AppColors.dangerLight,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -745,30 +845,22 @@ class _AbsensiMiniCard extends StatelessWidget {
 }
 
 class _QuickMenuSection extends StatelessWidget {
-  const _QuickMenuSection({required this.context});
-
-  final BuildContext context;
+  const _QuickMenuSection();
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Monitoring',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.text,
-          ),
+        SectionHeader(
+          title: 'Monitoring',
+          icon: Icons.monitoring_outlined,
         ),
-        const SizedBox(height: AppSpacing.sm),
-        GridView.count(
-          crossAxisCount: 3,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: AppSpacing.sm,
-          mainAxisSpacing: AppSpacing.sm,
+        const SizedBox(height: AppSpacing.md),
+        ResponsiveGrid(
+          phoneColumns: 3,
+          tabletColumns: 4,
+          desktopColumns: 6,
           childAspectRatio: 1.0,
           children: [
             _MenuTile(
@@ -844,42 +936,30 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return ModernCard(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
-              child: Icon(icon, color: color, size: 20),
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: AppColors.text,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            label,
+            style: AppTextStyles.body3.copyWith(fontWeight: FontWeight.w600),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

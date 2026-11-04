@@ -127,18 +127,67 @@ PaymentModel _paymentFromRowPublic(Map<String, dynamic> row) {
 }
 
 /// Verifikasi pembayaran (PENDING → VERIFIED). Update status + link ke kas.
-/// Setelah verify, server trigger seharusnya update balance kas + paidAmount
-/// tagihan. Di sini kita invalidate saja.
+///
+/// Setelah verify:
+///   1. Update Payment.status = VERIFIED, Payment.kasId = kasId.
+///   2. Jika kasId diset, update Kas.balance += amount (record pemasukan).
+///   3. Jika Payment.tagihanId diset, update Tagihan.paidAmount += amount,
+///      set status LUNAS / CICIL / BELUM_BAYAR berdasarkan paidAmount vs amount.
+///
+/// Catatan: Tidak atomic — race condition bisa terjadi kalau 2 verify bersamaan.
+/// Phase 6+ production: pakai Postgres RPC `verify_payment(p_id)` yang atomic.
 Future<void> verifyPembayaran(
   WidgetRef ref,
   String paymentId, {
   String? kasId,
 }) async {
   final client = ref.read(supabaseClientProvider);
+
+  // 1. Fetch payment untuk dapat amount + tagihanId (sebelum update).
+  final paymentRes = await client
+      .from('Payment')
+      .select('id, amount, tagihanId, santriId, status')
+      .eq('id', paymentId)
+      .maybeSingle();
+  if (paymentRes == null) {
+    throw Exception('Pembayaran tidak ditemukan');
+  }
+  final amount = (paymentRes['amount'] as num).toDouble();
+  final tagihanId = paymentRes['tagihanId'] as String?;
+
+  // 2. Update Payment status + kasId.
   await client.from('Payment').update({
     'status': PaymentStatus.verified,
     if (kasId != null && kasId.isNotEmpty) 'kasId': kasId,
+    'verifiedAt': DateTime.now().toUtc().toIso8601String(),
   }).eq('id', paymentId);
+
+  // 3. Update Kas balance (pemasukan) jika kasId diset.
+  if (kasId != null && kasId.isNotEmpty) {
+    await _updateKasBalance(client, kasId, amount);
+  }
+
+  // 4. Update Tagihan paidAmount + status jika payment terkait tagihan.
+  if (tagihanId != null && tagihanId.isNotEmpty) {
+    final tagihanRes = await client
+        .from('Tagihan')
+        .select('id, amount, paidAmount, status')
+        .eq('id', tagihanId)
+        .maybeSingle();
+    if (tagihanRes != null) {
+      final tAmount = (tagihanRes['amount'] as num).toDouble();
+      final tPaid =
+          (tagihanRes['paidAmount'] as num?)?.toDouble() ?? 0.0;
+      final newPaid = tPaid + amount;
+      final newStatus = newPaid >= tAmount
+          ? TagihanStatus.lunas
+          : (newPaid > 0 ? TagihanStatus.cicil : TagihanStatus.belumBayar);
+      await client.from('Tagihan').update({
+        'paidAmount': newPaid,
+        'status': newStatus,
+      }).eq('id', tagihanId);
+    }
+  }
 
   ref.invalidate(paymentRecentProvider);
   ref.invalidate(kasListProvider);

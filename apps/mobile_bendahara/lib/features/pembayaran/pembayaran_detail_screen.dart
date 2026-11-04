@@ -183,7 +183,7 @@ class _PembayaranDetailScreenState
       body: asyncValue.when(
         loading: () => const LoadingSkeleton(),
         error: (err, _) => ErrorView(
-          message: err.toString(),
+          message: friendlyError(err),
           onRetry: () =>
               ref.invalidate(paymentByIdProvider(widget.paymentId)),
         ),

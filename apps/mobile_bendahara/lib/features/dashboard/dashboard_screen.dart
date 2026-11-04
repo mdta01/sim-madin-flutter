@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
-import 'package:supabase_client/supabase_client.dart';
 import 'package:api_client/api_client.dart';
 
 import '../../app/router.dart';
@@ -27,33 +26,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      setupKepalaRealtime(ref); // same provider, subscribes 4 tabel
+      setupBendaharaRealtime(ref);
     });
-  }
-
-  Future<void> _handleLogout() => logoutAndNavigate(context, ref);
-
-  String get _title {
-    final i = widget.shell.currentIndex;
-    if (i < kBottomNavItems.length) {
-      return 'SIM Bendahara — ${kBottomNavItems[i].label}';
-    }
-    return 'SIM Bendahara';
   }
 
   @override
   Widget build(BuildContext context) {
+    // Outer shell hanya punya body + bottomNav.
+    // AppBar & logout ada di masing-masing tab supaya tidak nested AppBar.
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Keluar',
-            onPressed: _handleLogout,
-          ),
-        ],
-      ),
       body: widget.shell,
       bottomNavigationBar: NavigationBar(
         selectedIndex: widget.shell.currentIndex,
@@ -95,24 +76,35 @@ class DashboardHomeTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final paymentsAsync = ref.watch(paymentRecentProvider);
-    final tagihanAsync = ref.watch(tagihanListProvider(TagihanStatus.belumBayar));
-    final kasAsync = ref.watch(kasListProvider);
+    // KPI aggregate provider — exact counts/sums tanpa underestimate
+    // dari paymentRecentProvider.limit(50).
+    final kpiAsync = ref.watch(bendaharaKpiProvider);
 
-    return RefreshIndicator(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Beranda'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Keluar',
+            onPressed: () => logoutAndNavigate(context, ref),
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
       color: AppColors.primary,
       onRefresh: () async {
         ref.invalidate(paymentRecentProvider);
         ref.invalidate(tagihanListProvider);
         ref.invalidate(kasListProvider);
-        await ref.read(paymentRecentProvider.future);
+        ref.invalidate(bendaharaKpiProvider);
+        await ref.read(bendaharaKpiProvider.future);
       },
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
           _KpiSection(
-            paymentsAsync: paymentsAsync,
-            tagihanAsync: tagihanAsync,
-            kasAsync: kasAsync,
+            kpiAsync: kpiAsync,
           ),
           const SizedBox(height: AppSpacing.lg),
           _QuickMenuSection(),
@@ -121,113 +113,89 @@ class DashboardHomeTab extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xxl),
         ],
       ),
+      ),
     );
   }
 }
 
 class _KpiSection extends StatelessWidget {
   const _KpiSection({
-    required this.paymentsAsync,
-    required this.tagihanAsync,
-    required this.kasAsync,
+    required this.kpiAsync,
   });
 
-  final AsyncValue<List<PaymentModel>> paymentsAsync;
-  final AsyncValue<List<TagihanModel>> tagihanAsync;
-  final AsyncValue<List<KasModel>> kasAsync;
+  final AsyncValue<BendaharaKpiStats> kpiAsync;
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final pemasukanHariIni = paymentsAsync.maybeWhen(
-      data: (list) => list
-          .where((p) =>
-              p.status == PaymentStatus.verified &&
-              p.paymentDate.year == now.year &&
-              p.paymentDate.month == now.month &&
-              p.paymentDate.day == now.day)
-          .fold<double>(0, (s, p) => s + p.amount),
+    final pemasukanHariIni = kpiAsync.maybeWhen(
+      data: (k) => k.pemasukanHariIni,
       orElse: () => 0,
     );
-    final tunggakan = tagihanAsync.maybeWhen(
-      data: (list) =>
-          list.fold<double>(0, (s, t) => s + tagihanOutstanding(t)),
+    final pendingVerif = kpiAsync.maybeWhen(
+      data: (k) => k.pendingVerifCount,
       orElse: () => 0,
     );
-    final tunggakanCount = tagihanAsync.maybeWhen(
-      data: (list) => list.length,
+    final tunggakan = kpiAsync.maybeWhen(
+      data: (k) => k.tunggakan,
       orElse: () => 0,
     );
-    final pendingVerif = paymentsAsync.maybeWhen(
-      data: (list) =>
-          list.where((p) => p.status == PaymentStatus.pending).length,
+    final tunggakanCount = kpiAsync.maybeWhen(
+      data: (k) => k.tunggakanCount,
       orElse: () => 0,
     );
-    final saldoKas = kasAsync.maybeWhen(
-      data: (list) => list.fold<double>(0, (s, k) => s + k.balance),
+    final saldoKas = kpiAsync.maybeWhen(
+      data: (k) => k.saldoKas,
       orElse: () => 0,
     );
-
-    final isLoading = paymentsAsync.isLoading ||
-        tagihanAsync.isLoading ||
-        kasAsync.isLoading;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Text(
-              'Ringkasan Hari Ini',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.text,
-              ),
-            ),
-            if (isLoading) ...[
-              const SizedBox(width: 8),
-              const SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ],
-          ],
+        SectionHeader(
+          title: 'Ringkasan Hari Ini',
+          icon: Icons.dashboard_outlined,
         ),
-        const SizedBox(height: AppSpacing.sm),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: AppSpacing.sm,
-          mainAxisSpacing: AppSpacing.sm,
-          childAspectRatio: 1.4,
+        if (kpiAsync.isLoading) ...[
+          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.md),
+        ResponsiveGrid(
+          phoneColumns: 2,
+          tabletColumns: 4,
+          desktopColumns: 4,
+          childAspectRatio: 1.1,
           children: [
-            StatCard(
+            ModernStatCard(
               label: 'Pemasukan Hari Ini',
               value: formatRupiah(pemasukanHariIni),
               icon: Icons.trending_up,
               color: AppColors.success,
               bgColor: AppColors.successLight,
             ),
-            StatCard(
+            ModernStatCard(
               label: 'Tunggakan',
               value: formatRupiah(tunggakan),
-              subtitle: '$tunggakanCount tagihan',
+              subtitle: tunggakanCount > 0
+                  ? '$tunggakanCount tagihan'
+                  : null,
               icon: Icons.warning,
               color: AppColors.danger,
               bgColor: AppColors.dangerLight,
             ),
-            StatCard(
+            ModernStatCard(
               label: 'Perlu Verifikasi',
               value: '$pendingVerif',
-              subtitle: 'pembayaran pending',
+              subtitle: pendingVerif > 0 ? 'pembayaran pending' : null,
               icon: Icons.pending_actions,
               color: AppColors.warning,
               bgColor: AppColors.warningLight,
             ),
-            StatCard(
+            ModernStatCard(
               label: 'Saldo Kas',
               value: formatRupiah(saldoKas),
               icon: Icons.account_balance,
@@ -247,21 +215,15 @@ class _QuickMenuSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Menu Cepat',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.text,
-          ),
+        SectionHeader(
+          title: 'Menu Cepat',
+          icon: Icons.grid_view_outlined,
         ),
-        const SizedBox(height: AppSpacing.sm),
-        GridView.count(
-          crossAxisCount: 3,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: AppSpacing.sm,
-          mainAxisSpacing: AppSpacing.sm,
+        const SizedBox(height: AppSpacing.md),
+        ResponsiveGrid(
+          phoneColumns: 3,
+          tabletColumns: 4,
+          desktopColumns: 6,
           childAspectRatio: 1.0,
           children: [
             _MenuTile(
@@ -330,42 +292,30 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return ModernCard(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
-              child: Icon(icon, color: color, size: 20),
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: AppColors.text,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            label,
+            style: AppTextStyles.body3.copyWith(fontWeight: FontWeight.w600),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
@@ -381,23 +331,13 @@ class _RecentPaymentsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Text(
-              'Pembayaran Terbaru',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.text,
-              ),
-            ),
-            const Spacer(),
-            TextButton(
-              onPressed: () => context.go('/dashboard/pembayaran'),
-              child: const Text('Lihat Semua'),
-            ),
-          ],
+        SectionHeader(
+          title: 'Pembayaran Terbaru',
+          icon: Icons.receipt_outlined,
+          actionLabel: 'Lihat Semua',
+          onAction: () => context.go('/dashboard/pembayaran'),
         ),
+        const SizedBox(height: AppSpacing.md),
         paymentsAsync.when(
           loading: () => const SizedBox(
             height: 200,

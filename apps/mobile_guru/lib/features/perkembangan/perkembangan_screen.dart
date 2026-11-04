@@ -5,7 +5,7 @@ import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 
 import '../../widgets/feedback_widgets.dart';
-import '../../widgets/form_widgets.dart';
+import 'perkembangan_create_sheet.dart';
 
 class PerkembanganScreen extends ConsumerStatefulWidget {
   const PerkembanganScreen({super.key});
@@ -17,11 +17,27 @@ class PerkembanganScreen extends ConsumerStatefulWidget {
 class _PerkembanganScreenState extends ConsumerState<PerkembanganScreen> {
   String _tab = 'quran';
 
+  /// Mapping tab code ke label Indonesia untuk EmptyState dll.
+  static const _tabLabels = {
+    'quran': 'Quran',
+    'kitab': 'Kitab',
+    'akhlak': 'Akhlak',
+    'pembinaan': 'Pembinaan',
+  };
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Perkembangan Santri')),
+      // FAB kontekstual — buka sheet input sesuai tab aktif.
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => showPerkembanganCreateSheet(context, ref, tab: _tab),
+        icon: const Icon(Icons.add),
+        label: Text('Input ${_tabLabels[_tab] ?? ''}'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
+      ),
       body: Column(
         children: [
           // Tabs
@@ -229,15 +245,27 @@ class _PerkembanganScreenState extends ConsumerState<PerkembanganScreen> {
       data: (list) {
         if (list.isEmpty) {
           return EmptyState(
-              title: 'Belum ada data $_tab',
+              title: 'Belum ada data ${_tabLabels[_tab] ?? _tab}',
               icon: Icons.trending_up);
         }
         return RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(perkembanganQuranProvider);
-            ref.invalidate(hafalanKitabProvider);
-            ref.invalidate(akhlakPenilaianProvider);
-            ref.invalidate(pembinaanProvider);
+            // Conditional invalidate berdasarkan tab aktif supaya
+            // tidak refresh semua 4 provider padahal cuma 1 yang dilihat.
+            switch (_tab) {
+              case 'quran':
+                ref.invalidate(perkembanganQuranProvider);
+                break;
+              case 'kitab':
+                ref.invalidate(hafalanKitabProvider);
+                break;
+              case 'akhlak':
+                ref.invalidate(akhlakPenilaianProvider);
+                break;
+              case 'pembinaan':
+                ref.invalidate(pembinaanProvider);
+                break;
+            }
           },
           child: ListView.builder(
             itemCount: list.length,

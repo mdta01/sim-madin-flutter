@@ -49,8 +49,11 @@ import '../features/pertemuan/pertemuan_list_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/santri/santri_list_screen.dart';
 import '../features/splash_screen.dart';
+import '../features/tugas/tugas_create_screen.dart';
 import '../features/tugas/tugas_detail_screen.dart';
 import '../features/tugas/tugas_list_screen.dart';
+import '../features/ujian/bank_soal_create_screen.dart';
+import '../features/ujian/bank_soal_list_screen.dart';
 import '../features/ujian/ujian_create_screen.dart';
 import '../features/ujian/ujian_detail_screen.dart';
 import '../features/ujian/ujian_list_screen.dart';
@@ -118,6 +121,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (c, s) => const TugasListScreen(),
             routes: [
               GoRoute(
+                path: 'create',
+                name: 'tugas-create',
+                builder: (c, s) => const TugasCreateScreen(),
+              ),
+              GoRoute(
                 path: ':id',
                 name: 'tugas-detail',
                 builder: (c, s) =>
@@ -183,6 +191,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: 'ujian-detail',
                 builder: (c, s) =>
                     UjianDetailScreen(ujianId: s.pathParameters['id']!),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'bank-soal',
+            name: 'bank-soal-list',
+            builder: (c, s) => const BankSoalListScreen(),
+            routes: [
+              GoRoute(
+                path: 'create',
+                name: 'bank-soal-create',
+                builder: (c, s) => const BankSoalCreateScreen(),
               ),
             ],
           ),

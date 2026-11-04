@@ -117,6 +117,29 @@ class _PertemuanListScreenState extends ConsumerState<PertemuanListScreen> {
   }
 
   Future<void> _complete(String id) async {
+    // Konfirmasi dulu — complete pertemuan irreversible dari UI (data
+    // sudah final, tidak bisa di-un-complete).
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tandai Pertemuan Selesai?'),
+        content: const Text(
+            'Pertemuan akan ditandai selesai dan tidak bisa diubah kembali.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                foregroundColor: AppColors.white),
+            child: const Text('Ya, Selesai'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     try {
       await completePertemuan(ref, id);
       if (!mounted) return;

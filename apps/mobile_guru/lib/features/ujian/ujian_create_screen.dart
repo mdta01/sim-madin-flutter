@@ -72,6 +72,29 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
       _toast('Pilih mapel dan kelas', isError: true);
       return;
     }
+    // Validasi: endTime harus setelah startTime (kalau keduanya di-set).
+    if (_startTime != null && _endTime != null) {
+      if (!_endTime!.isAfter(_startTime!)) {
+        _toast('Waktu selesai harus setelah waktu mulai', isError: true);
+        return;
+      }
+    }
+    // Validasi: passingScore harus <= maxScore.
+    final maxScore = double.tryParse(_maxScoreController.text) ?? 100;
+    final passingScore = double.tryParse(_passingScoreController.text) ?? 70;
+    if (passingScore > maxScore) {
+      _toast('Passing score tidak boleh melebihi max score', isError: true);
+      return;
+    }
+    if (passingScore < 0 || maxScore <= 0) {
+      _toast('Score tidak valid', isError: true);
+      return;
+    }
+    final durationMnt = int.tryParse(_durationController.text) ?? 90;
+    if (durationMnt <= 0 || durationMnt > 300) {
+      _toast('Durasi harus 1-300 menit', isError: true);
+      return;
+    }
     setState(() => _saving = true);
     try {
       await createUjian(
@@ -85,12 +108,12 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
             : _descController.text.trim(),
         startTime: _startTime,
         endTime: _endTime,
-        durationMnt: int.tryParse(_durationController.text) ?? 90,
+        durationMnt: durationMnt,
         ruang: _ruangController.text.trim().isEmpty
             ? null
             : _ruangController.text.trim(),
-        maxScore: double.tryParse(_maxScoreController.text) ?? 100,
-        passingScore: double.tryParse(_passingScoreController.text) ?? 70,
+        maxScore: maxScore,
+        passingScore: passingScore,
         isPublished: _isPublished,
       );
       if (!mounted) return;
@@ -139,10 +162,21 @@ class _UjianCreateScreenState extends ConsumerState<UjianCreateScreen> {
               label: 'Tipe Ujian',
               child: Wrap(
                 spacing: AppSpacing.xs,
-                children: [UjianType.uts, UjianType.uas, UjianType.quiz]
-                    .map((t) {
+                children: [
+                  UjianType.uts,
+                  UjianType.uas,
+                  UjianType.quiz,
+                  UjianType.tugas,
+                ].map((t) {
+                  final label = t == UjianType.uts
+                      ? 'UTS'
+                      : t == UjianType.uas
+                          ? 'UAS'
+                          : t == UjianType.quiz
+                              ? 'Quiz'
+                              : 'Tugas';
                   return ChoiceChip(
-                    label: Text(t),
+                    label: Text(label),
                     selected: _type == t,
                     onSelected: (_) => setState(() => _type = t),
                     selectedColor: AppColors.primaryLight,

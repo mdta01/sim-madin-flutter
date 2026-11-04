@@ -12,6 +12,7 @@ class ChatListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncValue = ref.watch(chatRoomsGuruProvider);
+    final unreadAsync = ref.watch(chatUnreadCountGuruProvider);
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Chat Wali')),
@@ -27,9 +28,14 @@ class ChatListScreen extends ConsumerWidget {
               onRefresh: () => ref.invalidate(chatRoomsGuruProvider),
             );
           }
+          final unreadCounts = unreadAsync.maybeWhen(
+            data: (m) => m,
+            orElse: () => <String, int>{},
+          );
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(chatRoomsGuruProvider);
+              ref.invalidate(chatUnreadCountGuruProvider);
               await ref.read(chatRoomsGuruProvider.future);
             },
             child: ListView.builder(
@@ -37,59 +43,96 @@ class ChatListScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(AppSpacing.md),
               itemBuilder: (c, i) {
                 final r = list[i];
+                final unread = unreadCounts[r.id] ?? 0;
                 return Card(
                   margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                   child: ListTile(
                     contentPadding: const EdgeInsets.all(AppSpacing.md),
-                    leading: CircleAvatar(
-                      backgroundColor: r.type == ChatRoomType.waliGuru
-                          ? AppColors.infoLight
-                          : r.type == ChatRoomType.waliWali
-                              ? AppColors.successLight
-                              : const Color(0xFFEDE9FE),
-                      child: Icon(
-                        r.type == ChatRoomType.waliGuru
-                            ? Icons.school
-                            : Icons.people,
-                        color: r.type == ChatRoomType.waliGuru
-                            ? AppColors.info
-                            : r.type == ChatRoomType.waliWali
-                                ? AppColors.success
-                                : const Color(0xFF7C3AED),
-                      ),
-                    ),
-                    title: Text(r.waliName ?? 'Wali',
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w600)),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    leading: Stack(
                       children: [
-                        Text(ChatRoomType.label(r.type),
-                            style: const TextStyle(fontSize: 12)),
-                        if (r.lastMessage != null) ...[
-                          const SizedBox(height: 2),
-                          Text(r.lastMessage!,
+                        CircleAvatar(
+                          backgroundColor: r.type == ChatRoomType.waliGuru
+                              ? AppColors.infoLight
+                              : r.type == ChatRoomType.waliWali
+                                  ? AppColors.successLight
+                                  : const Color(0xFFEDE9FE),
+                          child: Icon(
+                            r.type == ChatRoomType.waliGuru
+                                ? Icons.school
+                                : Icons.people,
+                            color: r.type == ChatRoomType.waliGuru
+                                ? AppColors.info
+                                : r.type == ChatRoomType.waliWali
+                                    ? AppColors.success
+                                    : const Color(0xFF7C3AED),
+                          ),
+                        ),
+                        if (unread > 0)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.danger,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: AppColors.white, width: 1.5),
+                              ),
+                              child: Text(
+                                '$unread',
+                                style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.white),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(r.waliName ?? 'Wali',
                               style: const TextStyle(
-                                  fontSize: 11, color: AppColors.textMuted),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis),
-                        ],
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                        if (r.santriName != null)
+                          Text('anak: ${r.santriName}',
+                              style: const TextStyle(
+                                  fontSize: 10, color: AppColors.textMuted)),
                         if (r.lastMessageAt != null) ...[
-                          const SizedBox(height: 2),
-                          Text(formatDateTime(r.lastMessageAt),
+                          const SizedBox(width: 4),
+                          Text(_formatChatTime(r.lastMessageAt!),
                               style: const TextStyle(
                                   fontSize: 10, color: AppColors.textMuted)),
                         ],
                       ],
                     ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(ChatRoomType.label(r.type),
+                            style: const TextStyle(fontSize: 11)),
+                        if (r.lastMessage != null) ...[
+                          const SizedBox(height: 2),
+                          Text(r.lastMessage!,
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: unread > 0
+                                      ? AppColors.text
+                                      : AppColors.textMuted,
+                                  fontWeight: unread > 0
+                                      ? FontWeight.w600
+                                      : FontWeight.w400),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                        ],
+                      ],
+                    ),
                     isThreeLine: true,
-                    trailing: r.messageCount > 0
-                        ? StatusChip(
-                            label: '${r.messageCount} pesan',
-                            color: AppColors.info,
-                            bg: AppColors.infoLight,
-                            compact: true)
-                        : null,
                     onTap: () =>
                         context.push('/dashboard/akademik/chat/${r.id}'),
                   ),
@@ -100,5 +143,20 @@ class ChatListScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  /// Format waktu chat — relative time untuk <24 jam, kalau lebih pakai tanggal.
+  String _formatChatTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 1) return 'Baru saja';
+    if (diff.inHours < 1) return '${diff.inMinutes} mnt lalu';
+    if (diff.inDays < 1) {
+      final h = dt.hour.toString().padLeft(2, '0');
+      final m = dt.minute.toString().padLeft(2, '0');
+      return '$h:$m';
+    }
+    if (diff.inDays < 7) return '${diff.inDays} hari lalu';
+    return formatDate(dt, pattern: 'd MMM');
   }
 }

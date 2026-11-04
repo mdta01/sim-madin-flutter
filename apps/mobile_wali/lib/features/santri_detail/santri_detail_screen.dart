@@ -430,13 +430,19 @@ class _UjianTab extends ConsumerWidget {
                         bg: AppColors.dangerLight,
                         compact: true),
                 onTap: () {
-                  // TODO: cek apakah ujian bisa di-take (sudah publish + dalam waktu)
-                  // Untuk sekarang, arahkan langsung ke take screen.
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Fitur take ujian akan datang'),
-                        backgroundColor: AppColors.info),
-                  );
+                  // Hanya peserta yang hadir yang bisa take ujian.
+                  if (!p.isHadir) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text(
+                              'Anda tercatat absen pada ujian ini. Hubungi pengawas/admin.'),
+                          backgroundColor: AppColors.warning),
+                    );
+                    return;
+                  }
+                  // Navigasi ke UjianTakeScreen (fullscreen, anti-cheat).
+                  context.push(
+                      '/dashboard/home/santri/${widget.santriId}/ujian/${p.ujianId}/take');
                 },
               ),
             );
@@ -634,66 +640,74 @@ class _NotifTab extends ConsumerWidget {
   final String santriId;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final asyncValue = ref.watch(notifikasiWaliProvider);
+    // Filter notifikasi per santri (sebelumnya tampilkan semua notifikasi wali).
+    final asyncValue = ref.watch(notifikasiAnakProvider(santriId));
     return asyncValue.when(
       loading: () => const LoadingSkeleton(),
       error: (e, _) => ErrorView(message: e.toString()),
       data: (list) {
         if (list.isEmpty) {
           return const EmptyState(
-              title: 'Tidak ada notifikasi',
+              title: 'Belum ada notifikasi untuk anak ini',
+              subtitle: 'Notifikasi terkait anak akan muncul di sini.',
               icon: Icons.notifications_off_outlined);
         }
-        return ListView.builder(
-          itemCount: list.length,
-          padding: const EdgeInsets.all(AppSpacing.md),
-          itemBuilder: (c, i) {
-            final n = list[i];
-            return Card(
-              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-              color: n.isRead ? null : AppColors.infoLight.withOpacity(0.3),
-              child: InkWell(
-                onTap: n.isRead
-                    ? null
-                    : () async {
-                        await markNotifikasiRead(ref, n.id);
-                      },
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(n.title,
-                                style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600)),
-                          ),
-                          if (!n.isRead)
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                  color: AppColors.danger,
-                                  shape: BoxShape.circle),
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(notifikasiAnakProvider(santriId));
+            await ref.read(notifikasiAnakProvider(santriId).future);
+          },
+          child: ListView.builder(
+            itemCount: list.length,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            itemBuilder: (c, i) {
+              final n = list[i];
+              return Card(
+                margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                color: n.isRead ? null : AppColors.infoLight.withOpacity(0.3),
+                child: InkWell(
+                  onTap: n.isRead
+                      ? null
+                      : () async {
+                          await markNotifikasiRead(ref, n.id);
+                        },
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(n.title,
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600)),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(n.message,
-                          style: const TextStyle(fontSize: 13)),
-                      const SizedBox(height: 4),
-                      Text(formatDateTime(n.createdAt),
-                          style: const TextStyle(
-                              fontSize: 10, color: AppColors.textMuted)),
-                    ],
+                            if (!n.isRead)
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                    color: AppColors.danger,
+                                    shape: BoxShape.circle),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(n.message,
+                            style: const TextStyle(fontSize: 13)),
+                        const SizedBox(height: 4),
+                        Text(formatDateTime(n.createdAt),
+                            style: const TextStyle(
+                                fontSize: 10, color: AppColors.textMuted)),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         );
       },
     );

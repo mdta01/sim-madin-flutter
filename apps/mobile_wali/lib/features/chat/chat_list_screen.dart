@@ -12,6 +12,7 @@ class ChatListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncValue = ref.watch(chatRoomsWaliProvider);
+    final unreadAsync = ref.watch(chatUnreadCountWaliProvider);
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Chat dengan Guru')),
@@ -29,9 +30,15 @@ class ChatListScreen extends ConsumerWidget {
               onRefresh: () => ref.invalidate(chatRoomsWaliProvider),
             );
           }
+          // Resolve unread count map (empty map kalau masih loading).
+          final unreadCounts = unreadAsync.maybeWhen(
+            data: (m) => m,
+            orElse: () => <String, int>{},
+          );
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(chatRoomsWaliProvider);
+              ref.invalidate(chatUnreadCountWaliProvider);
               await ref.read(chatRoomsWaliProvider.future);
             },
             child: ListView.builder(
@@ -39,46 +46,73 @@ class ChatListScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(AppSpacing.md),
               itemBuilder: (c, i) {
                 final r = list[i];
+                final unread = unreadCounts[r.id] ?? 0;
                 return Card(
                   margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                   child: ListTile(
                     contentPadding: const EdgeInsets.all(AppSpacing.md),
                     leading: CircleAvatar(
-                      backgroundColor: AppColors.infoLight,
-                      foregroundColor: AppColors.info,
+                      backgroundColor: unread > 0
+                          ? AppColors.dangerLight
+                          : AppColors.infoLight,
+                      foregroundColor:
+                          unread > 0 ? AppColors.danger : AppColors.info,
                       child: const Icon(Icons.school),
                     ),
-                    title: Text(r.guruName ?? 'Guru',
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w600)),
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(r.guruName ?? 'Guru',
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                        if (r.lastMessageAt != null)
+                          Text(
+                            _formatChatTime(r.lastMessageAt!),
+                            style: const TextStyle(
+                                fontSize: 10, color: AppColors.textMuted),
+                          ),
+                      ],
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (r.lastMessage != null) ...[
                           Text(r.lastMessage!,
-                              style: const TextStyle(fontSize: 12),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: unread > 0
+                                      ? AppColors.text
+                                      : AppColors.textMuted,
+                                  fontWeight: unread > 0
+                                      ? FontWeight.w600
+                                      : FontWeight.w400),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis),
                         ] else
                           const Text('Belum ada pesan',
                               style: TextStyle(
                                   fontSize: 12, color: AppColors.textMuted)),
-                        if (r.lastMessageAt != null) ...[
-                          const SizedBox(height: 2),
-                          Text(formatDateTime(r.lastMessageAt),
-                              style: const TextStyle(
-                                  fontSize: 10,
-                                  color: AppColors.textMuted)),
-                        ],
                       ],
                     ),
                     isThreeLine: true,
-                    trailing: r.messageCount > 0
-                        ? StatusChip(
-                            label: '${r.messageCount}',
-                            color: AppColors.info,
-                            bg: AppColors.infoLight,
-                            compact: true)
+                    trailing: unread > 0
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.danger,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '$unread',
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.white),
+                            ),
+                          )
                         : null,
                     onTap: () =>
                         context.push('/dashboard/chat/${r.id}'),
@@ -90,5 +124,20 @@ class ChatListScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  /// Format waktu chat — relative time untuk <24 jam, kalau lebih pakai tanggal.
+  String _formatChatTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 1) return 'Baru saja';
+    if (diff.inHours < 1) return '${diff.inMinutes} mnt lalu';
+    if (diff.inDays < 1) {
+      final h = dt.hour.toString().padLeft(2, '0');
+      final m = dt.minute.toString().padLeft(2, '0');
+      return '$h:$m';
+    }
+    if (diff.inDays < 7) return '${diff.inDays} hari lalu';
+    return formatDate(dt, pattern: 'd MMM');
   }
 }

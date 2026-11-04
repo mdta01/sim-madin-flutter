@@ -1,12 +1,17 @@
 // Absensi monitor — read-only. Filter by tanggal (default hari ini).
-// Diakses dari Dashboard quick menu atau dari tab Akademik.
+// Refactored untuk pakai MonitorScaffold (reusable boilerplate).
+//
+// Catatan: untuk absensi, tanggal yang dipilih juga mempengaruhi
+// summary card (label + stats). Karena MonitorScaffold.summary adalah
+// satu widget, kita pakai _AbsensiSummaryBuilder yang meng-handle
+// tanggal + stats.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 
-import '../../widgets/feedback_views.dart';
+import '../../widgets/monitor_scaffold.dart';
 import '../../widgets/status_chip.dart';
 
 class AbsensiMonitorScreen extends ConsumerStatefulWidget {
@@ -20,93 +25,100 @@ class AbsensiMonitorScreen extends ConsumerStatefulWidget {
 class _AbsensiMonitorScreenState extends ConsumerState<AbsensiMonitorScreen> {
   DateTime? _selectedDate = DateTime.now();
 
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      // Hanya sampai hari ini — tidak boleh pilih tanggal masa depan.
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final asyncValue = ref.watch(absensiRecentProvider(_selectedDate));
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Monitor Absensi'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            tooltip: 'Pilih Tanggal',
-            onPressed: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: _selectedDate ?? DateTime.now(),
-                firstDate: DateTime(2020),
-                lastDate: DateTime.now().add(const Duration(days: 1)),
-              );
-              if (picked != null) {
-                setState(() => _selectedDate = picked);
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.clear),
-            tooltip: 'Semua Tanggal',
-            onPressed: () => setState(() => _selectedDate = null),
-          ),
-        ],
-      ),
-      body: asyncValue.when(
-        loading: () => const LoadingSkeleton(),
-        error: (err, _) => ErrorView(
-          message: err.toString(),
-          onRetry: () =>
-              ref.invalidate(absensiRecentProvider(_selectedDate)),
+    return MonitorScaffold<AbsensiModel>(
+      title: 'Monitor Absensi',
+      asyncValue: asyncValue,
+      onRefresh: () async {
+        ref.invalidate(absensiRecentProvider(_selectedDate));
+        await ref.read(absensiRecentProvider(_selectedDate).future);
+      },
+      emptyTitle: _selectedDate == null
+          ? 'Belum ada data absensi'
+          : 'Tidak ada absensi di tanggal ini',
+      emptySubtitle: _selectedDate == null
+          ? 'Absensi akan muncul setelah guru input.'
+          : formatDate(_selectedDate!),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.calendar_today),
+          tooltip: 'Pilih Tanggal',
+          onPressed: _pickDate,
         ),
-        data: (list) {
-          if (list.isEmpty) {
-            return EmptyState(
-              title: _selectedDate == null
-                  ? 'Belum ada data absensi'
-                  : 'Tidak ada absensi di tanggal ini',
-              subtitle: _selectedDate == null
-                  ? 'Absensi akan muncul setelah guru input.'
-                  : formatDate(_selectedDate!),
-              onRefresh: () =>
-                  ref.invalidate(absensiRecentProvider(_selectedDate)),
-            );
-          }
-
-          // Summary cards: count by status.
-          final hadir = list.where((a) => a.status == AbsensiStatus.hadir).length;
-          final sakit = list.where((a) => a.status == AbsensiStatus.sakit).length;
-          final izin = list.where((a) => a.status == AbsensiStatus.izin).length;
-          final alfa = list.where((a) => a.status == AbsensiStatus.alfa).length;
-
-          return RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: () async {
-              ref.invalidate(absensiRecentProvider(_selectedDate));
-              await ref.read(absensiRecentProvider(_selectedDate).future);
-            },
-            child: ListView(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              children: [
-                if (_selectedDate != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: Text(
-                      'Tanggal: ${formatDate(_selectedDate)}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textMuted,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                _AbsensiSummaryRow(hadir: hadir, sakit: sakit, izin: izin, alfa: alfa),
-                const SizedBox(height: AppSpacing.md),
-                ...list.map((a) => _AbsensiCard(absensi: a)),
-              ],
-            ),
-          );
-        },
+        IconButton(
+          icon: const Icon(Icons.clear),
+          tooltip: 'Semua Tanggal',
+          onPressed: () => setState(() => _selectedDate = null),
+        ),
+      ],
+      summary: _AbsensiSummaryBuilder(
+        asyncValue: asyncValue,
+        selectedDate: _selectedDate,
       ),
+      itemBuilder: (context, a) => _AbsensiCard(absensi: a),
+    );
+  }
+}
+
+/// Summary widget yang menampilkan tanggal (jika ada) + count by status.
+/// Di-render sebagai item pertama di ListView.
+class _AbsensiSummaryBuilder extends StatelessWidget {
+  const _AbsensiSummaryBuilder({
+    required this.asyncValue,
+    required this.selectedDate,
+  });
+
+  final AsyncValue<List<AbsensiModel>> asyncValue;
+  final DateTime? selectedDate;
+
+  @override
+  Widget build(BuildContext context) {
+    final list = asyncValue.maybeWhen(
+      data: (l) => l,
+      orElse: () => <AbsensiModel>[],
+    );
+    if (list.isEmpty) return const SizedBox.shrink();
+
+    final hadir =
+        list.where((a) => a.status == AbsensiStatus.hadir).length;
+    final sakit =
+        list.where((a) => a.status == AbsensiStatus.sakit).length;
+    final izin = list.where((a) => a.status == AbsensiStatus.izin).length;
+    final alfa = list.where((a) => a.status == AbsensiStatus.alfa).length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (selectedDate != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Text(
+              'Tanggal: ${formatDate(selectedDate)}',
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        _AbsensiSummaryRow(hadir: hadir, sakit: sakit, izin: izin, alfa: alfa),
+      ],
     );
   }
 }
@@ -199,22 +211,12 @@ class _StatusCount extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(
-            '$count',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: color,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          Text('$count',
+              style: TextStyle(
+                  fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 11, color: color, fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -223,7 +225,6 @@ class _StatusCount extends StatelessWidget {
 
 class _AbsensiCard extends StatelessWidget {
   const _AbsensiCard({required this.absensi});
-
   final AbsensiModel absensi;
 
   @override
@@ -239,32 +240,21 @@ class _AbsensiCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    absensi.santriName ?? 'Santri',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.text,
-                    ),
-                  ),
+                  Text(absensi.santriName ?? 'Santri',
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(
-                    '${absensi.kelasName ?? '-'} • ${formatDate(absensi.date)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
+                      '${absensi.kelasName ?? '-'} • ${formatDate(absensi.date)}',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textMuted)),
                   if (absensi.note != null && absensi.note!.isNotEmpty) ...[
                     const SizedBox(height: 2),
-                    Text(
-                      'Catatan: ${absensi.note}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
+                    Text('Catatan: ${absensi.note}',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                            fontStyle: FontStyle.italic)),
                   ],
                 ],
               ),

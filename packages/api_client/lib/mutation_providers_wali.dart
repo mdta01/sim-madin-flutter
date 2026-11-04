@@ -21,6 +21,8 @@
 //     (mirip TS app lama yang pakai `devOtp` field saat dev mode).
 // ============================================================================
 
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
@@ -111,6 +113,12 @@ Future<TypedWaliSession> loginWali(
   if (wali.activationStatus == WaliActivationStatus.suspended) {
     throw Exception('Akun Anda dinonaktifkan. Hubungi admin madrasah.');
   }
+  // Hanya wali dengan status ACTIVE yang boleh login.
+  // PENDING / PENDING_NO_PHONE harus di-approve admin dulu.
+  if (wali.activationStatus != WaliActivationStatus.active) {
+    throw Exception(
+        'Akun belum aktif (status: ${wali.activationStatus}). Hubungi admin madrasah untuk aktivasi.');
+  }
   if (wali.lockedUntil != null &&
       wali.lockedUntil!.isAfter(DateTime.now())) {
     final remaining = wali.lockedUntil!.difference(DateTime.now()).inMinutes;
@@ -168,20 +176,13 @@ Future<TypedWaliSession> loginWali(
     }
   }
 
-  // Get santri list via SantriWali join
-  // If we have authToken, use authenticated client (RLS will work).
-  // If not, use anon client (RLS will block some queries).
-  final santriRes = authToken != null
-      ? await client // client is now authenticated after signInWithPassword
-          .from('SantriWali')
-          .select('*, Santri(*, Kelas(*))')
-          .eq('waliId', wali.id)
-          .eq('canAccess', true)
-      : await client
-          .from('SantriWali')
-          .select('*, Santri(*, Kelas(*))')
-          .eq('waliId', wali.id)
-          .eq('canAccess', true);
+  // Get santri list via SantriWali join.
+  // Client is authenticated after signInWithPassword (if email existed).
+  final santriRes = await client
+      .from('SantriWali')
+      .select('*, Santri(*, Kelas(*))')
+      .eq('waliId', wali.id)
+      .eq('canAccess', true);
   final santriList = (santriRes as List)
       .map((r) {
         final santri = (r as Map<String, dynamic>)['Santri']
@@ -208,11 +209,30 @@ Future<TypedWaliSession> loginWali(
     santriList: santriList,
   );
 
-  // Save ke secure storage + set provider
+  // Save ke secure storage + set provider.
+  // CRITICAL: Simpan flattened Santri map (dengan nested Kelas di-merge ke
+  // top-level), BUKAN raw SantriWali row. Kalau tidak, splash_screen gagal
+  // parse SantriModel.fromJson (yang butuh 'name','nis','gender','entryDate'
+  // di top-level) → catch block redirect ke /login setiap app restart.
+  final santriMapsForStorage = (santriRes as List)
+      .map((r) {
+        final santri =
+            (r as Map<String, dynamic>)['Santri'] as Map<String, dynamic>?;
+        if (santri == null) return null;
+        final kelas = santri['Kelas'] as Map<String, dynamic>?;
+        return <String, dynamic>{
+          ...santri,
+          if (kelas != null) 'kelasName': kelas['name'],
+          if (kelas != null) 'kelasCode': kelas['code'],
+        };
+      })
+      .whereType<Map<String, dynamic>>()
+      .toList();
+
   await ref.read(authStorageProvider).saveWaliSession(
         token: token,
         wali: waliRes,
-        santriList: santriRes.cast<Map<String, dynamic>>().toList(),
+        santriList: santriMapsForStorage,
       );
   ref.read(waliSessionProvider.notifier).state = session;
 
@@ -332,8 +352,13 @@ Future<String> verifyOtp(
   }
 
   // OTP valid — clear otpCode + generate verifyToken
-  final verifyToken =
-      Uri.dataFromString('${wali.id}:verified:${DateTime.now().millisecondsSinceEpoch}').toString().split(',')[0];
+  // CRITICAL: pakai proper base64 encode supaya token unik per wali + per
+  // timestamp. Sebelumnya pakai Uri.dataFromString(...).toString().split(',')[0]
+  // yang selalu return "data:;base64" (konstan untuk semua wali) — security hole.
+  // TODO production: pakai proper signed JWT dengan HS256 + secret di env.
+  final rawPayload =
+      '${wali.id}:${DateTime.now().millisecondsSinceEpoch}';
+  final verifyToken = base64Encode(utf8.encode(rawPayload));
   await client.from('Wali').update({
     'otpCode': null,
     'otpExpiresAt': null,
@@ -388,6 +413,8 @@ final otpVerifyTokenProvider =
 // ---------------------------------------------------------------------------
 
 Future<void> logoutWali(WidgetRef ref) async {
+  // Unsubscribe realtime channels (prevent leak + double-trigger).
+  await disposeAppRealtime(ref);
   // Clear secure storage
   await ref.read(authStorageProvider).clear();
   // Clear session provider
@@ -410,6 +437,10 @@ Future<void> markNotifikasiRead(
     'readAt': DateTime.now().toIso8601String(),
   }).eq('id', notifikasiId);
   ref.invalidate(notifikasiWaliProvider);
+  // Invalidate juga notifikasiAnakProvider (family) supaya tab Notif per santri
+  // ikut refresh — sebelumnya hanya invalidate notifikasiWaliProvider yang
+  // tidak dipakai lagi di _NotifTab.
+  ref.invalidate(notifikasiAnakProvider);
 }
 
 // ---------------------------------------------------------------------------
@@ -441,6 +472,10 @@ Future<void> sendChatMessageAsWali(
 
   ref.invalidate(chatMessagesWaliProvider(roomId));
   ref.invalidate(chatRoomsWaliProvider);
+  // Invalidate juga unread count — supaya badge di chat list ikut update
+  // (kalau pesan terakhir dari wali, semua unread dari guru tetap, tapi
+  // kalau baru masuk room, mungkin ada perubahan status isRead).
+  ref.invalidate(chatUnreadCountWaliProvider);
 }
 
 // ---------------------------------------------------------------------------

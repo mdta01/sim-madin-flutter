@@ -19,7 +19,9 @@ class HonorGuruScreen extends ConsumerStatefulWidget {
 
 class _HonorGuruScreenState extends ConsumerState<HonorGuruScreen> {
   String _statusFilter = 'ALL';
-  bool _actionLoading = false;
+  // Track loading per honor ID supaya tidak semua tombol disabled saat satu
+  // honor sedang di-approve/pay (sebelumnya pakai single bool _actionLoading).
+  final Set<String> _loadingIds = <String>{};
 
   Future<void> _approve(HonorGuruModel honor) async {
     final confirmed = await showConfirmDialog(
@@ -29,7 +31,7 @@ class _HonorGuruScreenState extends ConsumerState<HonorGuruScreen> {
       confirmText: 'Setujui',
     );
     if (!confirmed) return;
-    setState(() => _actionLoading = true);
+    setState(() => _loadingIds.add(honor.id));
     try {
       await updateHonorGuruStatus(ref, honor.id, HonorGuruStatus.disetujui);
       if (mounted) {
@@ -49,16 +51,13 @@ class _HonorGuruScreenState extends ConsumerState<HonorGuruScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _actionLoading = false);
+      if (mounted) setState(() => _loadingIds.remove(honor.id));
     }
   }
 
   Future<void> _pay(HonorGuruModel honor) async {
-    final kasListAsync = ref.read(kasListProvider);
-    final kasList = kasListAsync.maybeWhen(
-      data: (list) => list,
-      orElse: () => <KasModel>[],
-    );
+    // Pakai await .future supaya tidak return list kosong saat masih loading.
+    final kasList = await ref.read(kasListProvider.future);
     if (kasList.isEmpty) {
       _toast('Belum ada kas terdaftar. Tambah dulu dari admin desktop.',
           isError: true);
@@ -106,7 +105,7 @@ class _HonorGuruScreenState extends ConsumerState<HonorGuruScreen> {
     );
     if (confirmed != true) return;
 
-    setState(() => _actionLoading = true);
+    setState(() => _loadingIds.add(honor.id));
     try {
       await updateHonorGuruStatus(
         ref,
@@ -131,7 +130,7 @@ class _HonorGuruScreenState extends ConsumerState<HonorGuruScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _actionLoading = false);
+      if (mounted) setState(() => _loadingIds.remove(honor.id));
     }
   }
 
@@ -188,7 +187,7 @@ class _HonorGuruScreenState extends ConsumerState<HonorGuruScreen> {
             child: asyncValue.when(
               loading: () => const LoadingSkeleton(),
               error: (err, _) => ErrorView(
-                message: err.toString(),
+                message: friendlyError(err),
                 onRetry: () =>
                     ref.invalidate(honorGuruListProvider(_statusFilter)),
               ),
@@ -214,7 +213,7 @@ class _HonorGuruScreenState extends ConsumerState<HonorGuruScreen> {
                     children: list
                         .map((h) => _HonorCard(
                               honor: h,
-                              actionLoading: _actionLoading,
+                              isLoading: _loadingIds.contains(h.id),
                               onApprove: () => _approve(h),
                               onPay: () => _pay(h),
                               onCetak: () => _cetakSlip(h),
@@ -234,14 +233,14 @@ class _HonorGuruScreenState extends ConsumerState<HonorGuruScreen> {
 class _HonorCard extends StatelessWidget {
   const _HonorCard({
     required this.honor,
-    required this.actionLoading,
+    required this.isLoading,
     required this.onApprove,
     required this.onPay,
     required this.onCetak,
   });
 
   final HonorGuruModel honor;
-  final bool actionLoading;
+  final bool isLoading;
   final VoidCallback onApprove;
   final VoidCallback onPay;
   final VoidCallback onCetak;
@@ -333,9 +332,15 @@ class _HonorCard extends StatelessWidget {
                 if (honor.status == HonorGuruStatus.draft) ...[
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: actionLoading ? null : onApprove,
-                      icon: const Icon(Icons.check, size: 18),
-                      label: const Text('Setujui'),
+                      onPressed: isLoading ? null : onApprove,
+                      icon: isLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2))
+                          : const Icon(Icons.check, size: 18),
+                      label: Text(isLoading ? 'Memproses...' : 'Setujui'),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
@@ -343,15 +348,21 @@ class _HonorCard extends StatelessWidget {
                 if (honor.status == HonorGuruStatus.disetujui) ...[
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: actionLoading ? null : onPay,
-                      icon: const Icon(Icons.payment, size: 18),
-                      label: const Text('Bayar'),
+                      onPressed: isLoading ? null : onPay,
+                      icon: isLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: AppColors.white))
+                          : const Icon(Icons.payment, size: 18),
+                      label: Text(isLoading ? 'Memproses...' : 'Bayar'),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
                 ],
                 IconButton(
-                  onPressed: onCetak,
+                  onPressed: isLoading ? null : onCetak,
                   icon: const Icon(Icons.print, size: 20),
                   tooltip: 'Cetak Slip PDF',
                 ),

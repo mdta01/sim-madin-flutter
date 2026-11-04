@@ -5,63 +5,96 @@ import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 
 import '../../widgets/feedback_widgets.dart';
+import 'ujian_add_soal_sheet.dart';
+import 'ujian_add_peserta_sheet.dart';
 
-class UjianDetailScreen extends ConsumerWidget {
+class UjianDetailScreen extends ConsumerStatefulWidget {
   const UjianDetailScreen({super.key, required this.ujianId});
   final String ujianId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<UjianDetailScreen> createState() => _UjianDetailScreenState();
+}
+
+class _UjianDetailScreenState extends ConsumerState<UjianDetailScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController =
+      TabController(length: 3, vsync: this);
+
+  @override
+  void initState() {
+    super.initState();
+    // Rebuild saat tab berubah supaya FAB kontekstual ikut update.
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) return;
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ujianId = widget.ujianId;
     final ujianAsync = ref.watch(ujianByIdProvider(ujianId));
     final soalAsync = ref.watch(ujianSoalByUjianProvider(ujianId));
     final pesertaAsync = ref.watch(ujianPesertaByUjianProvider(ujianId));
     final nilaiAsync = ref.watch(ujianNilaiByUjianProvider(ujianId));
+    // Get kelasId untuk add peserta — filter santri per kelas ujian.
+    final ujianData = ujianAsync.maybeWhen(data: (u) => u, orElse: () => null);
+    final kelasId = ujianData?.kelasId;
 
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: const Text('Detail Ujian'),
-          actions: [
-            ujianAsync.maybeWhen(
-              data: (u) => u != null && !u.isPublished
-                  ? IconButton(
-                      icon: const Icon(Icons.publish),
-                      tooltip: 'Publish',
-                      onPressed: () async {
-                        try {
-                          await publishUjian(ref, ujianId);
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('✅ Ujian dipublikasi'),
-                                backgroundColor: AppColors.success),
-                          );
-                        } catch (e) {
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text('Gagal: ${friendlyError(e)}'),
-                                backgroundColor: AppColors.danger),
-                          );
-                        }
-                      },
-                    )
-                  : const SizedBox.shrink(),
-              orElse: () => const SizedBox.shrink(),
-            ),
-          ],
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Info'),
-              Tab(text: 'Soal'),
-              Tab(text: 'Peserta'),
-            ],
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Detail Ujian'),
+        actions: [
+          ujianAsync.maybeWhen(
+            data: (u) => u != null && !u.isPublished
+                ? IconButton(
+                    icon: const Icon(Icons.upload_file),
+                    tooltip: 'Publish',
+                    onPressed: () async {
+                      try {
+                        await publishUjian(ref, ujianId);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('✅ Ujian dipublikasi'),
+                              backgroundColor: AppColors.success),
+                        );
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text('Gagal: ${friendlyError(e)}'),
+                              backgroundColor: AppColors.danger),
+                        );
+                      }
+                    },
+                  )
+                : const SizedBox.shrink(),
+            orElse: () => const SizedBox.shrink(),
           ),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Info'),
+            Tab(text: 'Soal'),
+            Tab(text: 'Peserta'),
+          ],
         ),
-        body: TabBarView(
-          children: [
+      ),
+      // FAB kontekstual berdasarkan tab aktif.
+      floatingActionButton: _buildFab(context, kelasId, soalAsync, pesertaAsync),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
             // Info tab
             ujianAsync.when(
               loading: () => const LoadingSkeleton(itemCount: 3),
@@ -207,6 +240,49 @@ class UjianDetailScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// FAB kontekstual berdasarkan tab aktif. Soal → add soal dari bank soal.
+  /// Peserta → add santri dari kelas. Info → tidak ada FAB.
+  Widget? _buildFab(
+    BuildContext context,
+    String? kelasId,
+    AsyncValue<List<UjianSoalModel>> soalAsync,
+    AsyncValue<List<UjianPesertaModel>> pesertaAsync,
+  ) {
+    switch (_tabController.index) {
+      case 1: // Soal
+        final soalCount = soalAsync.maybeWhen(
+            data: (l) => l.length, orElse: () => 0);
+        return FloatingActionButton.extended(
+          onPressed: () => showAddUjianSoalSheet(
+            context,
+            ref,
+            ujianId: widget.ujianId,
+            nextUrutan: soalCount + 1,
+          ),
+          icon: const Icon(Icons.add),
+          label: const Text('Tambah Soal'),
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.white,
+        );
+      case 2: // Peserta
+        if (kelasId == null) return null;
+        return FloatingActionButton.extended(
+          onPressed: () => showAddUjianPesertaSheet(
+            context,
+            ref,
+            ujianId: widget.ujianId,
+            kelasId: kelasId,
+          ),
+          icon: const Icon(Icons.group_add),
+          label: const Text('Tambah Peserta'),
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.white,
+        );
+      default:
+        return null;
+    }
   }
 
   Widget _infoRow(String label, String value) {

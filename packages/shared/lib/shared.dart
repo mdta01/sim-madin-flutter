@@ -9,6 +9,9 @@ library sim_madin_shared;
 // Theme
 export 'theme.dart';
 
+// Modern widgets (reusable across apps)
+export 'widgets/modern_widgets.dart';
+
 // Constants
 export 'constants.dart';
 

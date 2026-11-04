@@ -282,6 +282,21 @@ final pengumpulanByTugasProvider =
       .toList();
 });
 
+/// Detail tugas by ID — untuk header TugasDetailScreen.
+/// Termasuk join MataPelajaran, Kelas, Guru supaya nama tersedia.
+final tugasByIdProvider =
+    FutureProvider.family<TugasModel?, String>((ref, tugasId) async {
+  ref.watch(realtimeRefreshTick);
+  final client = ref.watch(supabaseClientProvider);
+  final res = await client
+      .from('Tugas')
+      .select('*, MataPelajaran(*), Kelas(*), Guru(*, User(*))')
+      .eq('id', tugasId)
+      .maybeSingle();
+  if (res == null) return null;
+  return _tugasFromRow(res as Map<String, dynamic>);
+});
+
 PengumpulanTugasModel _pengumpulanFromRow(Map<String, dynamic> row) {
   final santri = (row['Santri'] ?? row['santri']) as Map<String, dynamic>?;
   final tugas = (row['Tugas'] ?? row['tugas']) as Map<String, dynamic>?;
@@ -504,6 +519,38 @@ final chatRoomsGuruProvider = FutureProvider<List<ChatRoomModel>>((ref) async {
       .toList();
 });
 
+/// Unread message count per chat room untuk guru.
+/// Query ChatMessage where senderType != 'GURU' (pesan dari wali/yang belum
+/// dibaca guru) AND isRead = false. Return Map<roomId, count>.
+final chatUnreadCountGuruProvider =
+    FutureProvider<Map<String, int>>((ref) async {
+  ref.watch(realtimeRefreshTick);
+  final client = ref.watch(supabaseClientProvider);
+  // Get list room IDs yang aktif (RLS akan filter by guru).
+  final roomsRes = await client
+      .from('ChatRoom')
+      .select('id')
+      .eq('isActive', true)
+      .limit(50);
+  final roomIds = (roomsRes as List)
+      .map((r) => (r as Map<String, dynamic>)['id'] as String)
+      .toList();
+  if (roomIds.isEmpty) return {};
+
+  final msgRes = await client
+      .from('ChatMessage')
+      .select('chatRoomId')
+      .inFilter('chatRoomId', roomIds)
+      .neq('senderType', ChatSenderType.guru)
+      .eq('isRead', false);
+  final counts = <String, int>{};
+  for (final r in msgRes as List) {
+    final roomId = (r as Map<String, dynamic>)['chatRoomId'] as String;
+    counts[roomId] = (counts[roomId] ?? 0) + 1;
+  }
+  return counts;
+});
+
 final chatMessagesProvider =
     FutureProvider.family<List<ChatMessageModel>, String>((ref, roomId) async {
   ref.watch(realtimeRefreshTick);
@@ -569,6 +616,7 @@ void invalidateGuruQueries(WidgetRef ref) {
   ref.invalidate(jadwalHariIniProvider);
   ref.invalidate(materiGuruProvider);
   ref.invalidate(tugasGuruProvider);
+  ref.invalidate(tugasByIdProvider);
   ref.invalidate(pertemuanGuruProvider);
   ref.invalidate(ujianGuruProvider);
   ref.invalidate(bankSoalGuruProvider);
@@ -578,5 +626,6 @@ void invalidateGuruQueries(WidgetRef ref) {
   ref.invalidate(pembinaanProvider);
   ref.invalidate(pengumumanListProvider);
   ref.invalidate(chatRoomsGuruProvider);
+  ref.invalidate(chatUnreadCountGuruProvider);
   ref.invalidate(guruStatsProvider);
 }

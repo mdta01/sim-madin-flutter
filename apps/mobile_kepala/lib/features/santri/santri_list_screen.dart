@@ -39,10 +39,18 @@ class _SantriListScreenState extends ConsumerState<SantriListScreen> {
             padding: const EdgeInsets.all(AppSpacing.md),
             child: TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Cari santri (nama / NIS)',
-                prefixIcon: Icon(Icons.search),
-                suffixIcon: Icon(Icons.filter_list),
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _query = '');
+                        },
+                      )
+                    : const Icon(Icons.filter_list),
               ),
               onChanged: (v) => setState(() => _query = v.toLowerCase().trim()),
             ),
