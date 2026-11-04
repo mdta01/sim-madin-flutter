@@ -97,7 +97,7 @@ class DashboardScreen extends ConsumerWidget {
                   value: '${stats.totalKelas}',
                   icon: Icons.class_,
                   color: const Color(0xFF7C3AED),
-                  bg: const Color(0xFFEDE9FE),
+                  bgColor: const Color(0xFFEDE9FE),
                   subtitle: 'Kelas aktif',
                 ),
                 StatCard(

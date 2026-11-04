@@ -104,7 +104,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                                     fontWeight: FontWeight.bold)),
                             Text('Admin Desktop',
                                 style: TextStyle(
-                                    color: AppColors.white.withOpacity(0.7),
+                                    color: Colors.white70,
                                     fontSize: 10)),
                           ],
                         ),
@@ -286,7 +286,7 @@ class _SidebarItem extends StatelessWidget {
                 size: 18,
                 color: isActive
                     ? AppColors.white
-                    : AppColors.white.withOpacity(0.7),
+                    : Colors.white70,
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
@@ -297,7 +297,7 @@ class _SidebarItem extends StatelessWidget {
                     fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                     color: isActive
                         ? AppColors.white
-                        : AppColors.white.withOpacity(0.7),
+                        : Colors.white70,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),

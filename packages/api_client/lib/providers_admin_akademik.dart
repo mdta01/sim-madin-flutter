@@ -365,7 +365,7 @@ class KompetensiModel {
     category: (j['category'] as String?) ?? 'UMUM',
     sortOrder: (j['sortOrder'] as num?)?.toInt() ?? 0,
     isActive: (j['isActive'] as bool?) ?? true,
-    createdAt: DateTime.parse(j['createdAt'] as String),
-    updatedAt: DateTime.parse(j['updatedAt'] as String),
+    createdAt: DateTime.parse(j['createdAt'].toString()),
+    updatedAt: DateTime.parse(j['updatedAt'].toString()),
   );
 }

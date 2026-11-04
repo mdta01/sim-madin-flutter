@@ -186,7 +186,7 @@ final notifikasiListAdminProvider = FutureProvider<List<NotifikasiAdminModel>>((
   final res = await client.from('Notifikasi').select('*, Wali(name)').order('createdAt', ascending: false).limit(100);
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
-    return NotifikasiAdminModel(id: row['id'] as String, waliName: (row['Wali'] ?? row['wali'])?['name'] ?? '-', title: row['title'] as String, message: row['message'] as String, type: row['type'] as String, priority: (row['priority'] as String?) ?? 'NORMAL', isRead: (row['isRead'] as bool?) ?? false, createdAt: DateTime.parse(row['createdAt'] as String));
+    return NotifikasiAdminModel(id: row['id'].toString(), waliName: (row['Wali'] ?? row['wali'])?['name'] ?? '-', title: row['title'].toString(), message: row['message'].toString(), type: row['type'].toString(), priority: row['priority']?.toString() ?? 'NORMAL', isRead: (row['isRead'] as bool?) ?? false, createdAt: DateTime.parse(row['createdAt'].toString()));
   }).toList();
 });
 
@@ -219,7 +219,7 @@ final suratListAdminProvider = FutureProvider<List<SuratAdminModel>>((ref) async
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
     final santri = row['Santri'] as Map<String, dynamic>?;
-    return SuratAdminModel(id: row['id'] as String, nomorSurat: row['nomorSurat'] as String? ?? '-', type: row['type'] as String? ?? '-', title: row['title'] as String, santriName: santri?['name'] ?? '-', status: row['status'] as String? ?? '-', tanggalSurat: row['tanggalSurat'] is String ? DateTime.parse(row['tanggalSurat'] as String) : null);
+    return SuratAdminModel(id: row['id'].toString(), nomorSurat: row['nomorSurat'] as String? ?? '-', type: row['type'].toString()? ?? '-', title: row['title'].toString(), santriName: santri?['name'] ?? '-', status: row['status'] as String? ?? '-', tanggalSurat: row['tanggalSurat'] is String ? DateTime.parse(row['tanggalSurat'] as String) : null);
   }).toList();
 });
 
@@ -251,7 +251,7 @@ final alumniListAdminProvider = FutureProvider<List<AlumniAdminModel>>((ref) asy
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
     final santri = row['Santri'] as Map<String, dynamic>?;
-    return AlumniAdminModel(id: row['id'] as String, santriName: santri?['name'] ?? '-', santriNis: santri?['nis'] ?? '-', tahunLulus: (row['tahunLulus'] as num?)?.toInt() ?? 0, statusKelulusan: (row['statusKelulusan'] as String?) ?? '-', pekerjaan: (row['pekerjaan'] as String?) ?? '-', domisiliKota: (row['domisiliKota'] as String?) ?? '-');
+    return AlumniAdminModel(id: row['id'].toString(), santriName: santri?['name'] ?? '-', santriNis: santri?['nis'] ?? '-', tahunLulus: (row['tahunLulus'] as num?)?.toInt() ?? 0, statusKelulusan: (row['statusKelulusan'] as String?) ?? '-', pekerjaan: (row['pekerjaan'] as String?) ?? '-', domisiliKota: (row['domisiliKota'] as String?) ?? '-');
   }).toList();
 });
 
@@ -282,7 +282,7 @@ final chatRoomsListAdminProvider = FutureProvider<List<ChatRoomAdminModel>>((ref
   final res = await client.from('ChatRoom').select('*, Wali(name), Guru(name), Santri(name)').eq('isActive', true).order('lastMessageAt', ascending: false).limit(100);
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
-    return ChatRoomAdminModel(id: row['id'] as String, type: row['type'] as String, waliName: (row['Wali'] ?? row['wali'])?['name'] ?? '-', guruName: (row['Guru'] ?? row['guru'])?['name'] ?? '-', santriName: (row['Santri'] ?? row['santri'])?['name'] ?? '-', lastMessage: row['lastMessage'] as String?, lastMessageAt: row['lastMessageAt'] is String ? DateTime.parse(row['lastMessageAt'] as String) : null);
+    return ChatRoomAdminModel(id: row['id'].toString(), type: row['type'].toString(), waliName: (row['Wali'] ?? row['wali'])?['name'] ?? '-', guruName: (row['Guru'] ?? row['guru'])?['name'] ?? '-', santriName: (row['Santri'] ?? row['santri'])?['name'] ?? '-', lastMessage: row['lastMessage'] as String?, lastMessageAt: row['lastMessageAt'] is String ? DateTime.parse(row['lastMessageAt'] as String) : null);
   }).toList();
 });
 
@@ -307,7 +307,7 @@ final qrScanListAdminProvider = FutureProvider<List<QRScanAdminModel>>((ref) asy
   final res = await client.from('QRScan').select().order('createdAt', ascending: false).limit(100);
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
-    return QRScanAdminModel(id: row['id'] as String, qrType: row['qrType'] as String? ?? '-', scanType: row['scanType'] as String? ?? '-', result: row['result'] as String? ?? '-', message: row['message'] as String?, createdAt: DateTime.parse(row['createdAt'] as String));
+    return QRScanAdminModel(id: row['id'].toString(), qrType: row['qrType'] as String? ?? '-', scanType: row['scanType'] as String? ?? '-', result: row['result'] as String? ?? '-', message: row['message'].toString()?, createdAt: DateTime.parse(row['createdAt'].toString()));
   }).toList();
 });
 
@@ -331,7 +331,7 @@ final auditLogListAdminProvider = FutureProvider<List<AuditLogAdminModel>>((ref)
   final res = await client.from('AuditLog').select().order('createdAt', ascending: false).limit(200);
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
-    return AuditLogAdminModel(id: row['id'] as String, action: row['action'] as String? ?? '-', entity: row['entity'] as String? ?? '-', entityId: row['entityId'] as String?, details: row['details'] as String?, userId: row['userId'] as String?, createdAt: DateTime.parse(row['createdAt'] as String));
+    return AuditLogAdminModel(id: row['id'].toString(), action: row['action'] as String? ?? '-', entity: row['entity'] as String? ?? '-', entityId: row['entityId'] as String?, details: row['details'] as String?, userId: row['userId'] as String?, createdAt: DateTime.parse(row['createdAt'].toString()));
   }).toList();
 });
 

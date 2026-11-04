@@ -22,7 +22,6 @@ class _PerkembanganScreenState extends ConsumerState<PerkembanganScreen> {
           const Spacer(),
           IconButton(icon: const Icon(Icons.refresh), onPressed: () { ref.invalidate(perkembanganQuranListAdminProvider); ref.invalidate(perkembanganKitabListAdminProvider); ref.invalidate(perkembanganAkhlakListAdminProvider); ref.invalidate(perkembanganPembinaanListAdminProvider); }),
         ])),
-        // Tab bar
         Container(color: AppColors.white, child: Row(children: [
           _tabBtn('Quran', 'quran'), _tabBtn('Kitab', 'kitab'), _tabBtn('Akhlak', 'akhlak'), _tabBtn('Pembinaan', 'pembinaan'),
         ])),
@@ -59,8 +58,9 @@ class _PerkembanganScreenState extends ConsumerState<PerkembanganScreen> {
   Widget _pembinaanTab() {
     final async = ref.watch(perkembanganPembinaanListAdminProvider);
     return async.when(loading: () => const LoadingSkeleton(itemCount: 8), error: (e, _) => ErrorView(message: e.toString()), data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada data Pembinaan', icon: Icons.psychology_outlined) : _table(list, ['Judul','Santri','Type','Severity','Status','Tanggal'], (p) {
-      final sevStyle = pembinaanSeverityStyle(p.severity);
-      return [DataCell(Text(p.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))), DataCell(Text(p.santriName ?? '-', style: const TextStyle(fontSize: 12))), DataCell(Text(p.type, style: const TextStyle(fontSize: 12))), DataCell(StatusChip(label: sevStyle.label, color: sevStyle.color, bg: sevStyle.bg, compact: true)), DataCell(StatusChip(label: p.status == 'OPEN' ? 'Open' : 'Resolved', color: p.status == 'OPEN' ? AppColors.danger : AppColors.success, bg: p.status == 'OPEN' ? AppColors.dangerLight : AppColors.successLight, compact: true)), DataCell(Text(formatDate(p.createdAt), style: const TextStyle(fontSize: 12)))];
+      final sevColor = p.severity == 'BERAT' ? AppColors.danger : p.severity == 'SEDANG' ? AppColors.warning : AppColors.success;
+      final sevBg = p.severity == 'BERAT' ? AppColors.dangerLight : p.severity == 'SEDANG' ? AppColors.warningLight : AppColors.successLight;
+      return [DataCell(Text(p.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))), DataCell(Text(p.santriName ?? '-', style: const TextStyle(fontSize: 12))), DataCell(Text(p.type, style: const TextStyle(fontSize: 12))), DataCell(StatusChip(label: p.severity, color: sevColor, bg: sevBg, compact: true)), DataCell(StatusChip(label: p.status == 'OPEN' ? 'Open' : 'Resolved', color: p.status == 'OPEN' ? AppColors.danger : AppColors.success, bg: p.status == 'OPEN' ? AppColors.dangerLight : AppColors.successLight, compact: true)), DataCell(Text(formatDate(p.createdAt), style: const TextStyle(fontSize: 12)))];
     }));
   }
   Widget _table<T>(List<T> list, List<String> cols, List<DataCell> Function(T) cells) {

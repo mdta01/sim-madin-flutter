@@ -84,7 +84,7 @@ RealtimeChannel subscribeToTable({
         eventType: payload.eventType.name.toUpperCase(),
         newRecord: payload.newRecord as Map<String, dynamic>?,
         oldRecord: payload.oldRecord as Map<String, dynamic>?,
-        errors: payload.errors?.cast<String>(),
+        errors: payload.errors?.map((e) => e.toString()).toList(),
       ));
     },
   );
