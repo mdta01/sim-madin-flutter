@@ -5,8 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 
-import '../../widgets/feedback_widgets.dart';
-
 class MateriListScreen extends ConsumerWidget {
   const MateriListScreen({super.key});
   @override
@@ -25,17 +23,18 @@ class MateriListScreen extends ConsumerWidget {
         ],
       ),
       body: asyncValue.when(
-        loading: () => const LoadingSkeleton(),
-        error: (e, _) => ErrorView(
-            message: e.toString(),
+        loading: () => const ModernLoadingSkeleton(),
+        error: (e, _) => ModernErrorView(
+            message: friendlyError(e),
             onRetry: () => ref.invalidate(materiGuruProvider)),
         data: (list) {
           if (list.isEmpty) {
-            return EmptyState(
+            return ModernEmptyState(
               title: 'Belum ada materi',
               subtitle: 'Tap + untuk buat materi pertama',
               icon: Icons.book_outlined,
-              onRefresh: () => ref.invalidate(materiGuruProvider),
+              actionLabel: 'Refresh',
+              onAction: () => ref.invalidate(materiGuruProvider),
             );
           }
           return RefreshIndicator(
@@ -98,58 +97,56 @@ class MateriListScreen extends ConsumerWidget {
                       ref.invalidate(materiGuruProvider);
                     }
                   },
-                  child: Card(
+                  child: ModernCard(
                     margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.all(AppSpacing.md),
-                      leading: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: AppColors.infoLight,
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.infoLight,
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                          child: const Icon(Icons.book, color: AppColors.info, size: 22),
                         ),
-                        child: const Icon(Icons.book, color: AppColors.info),
-                      ),
-                      title: Text(m.title,
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w600)),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                              '${MateriType.label(m.type)} • ${m.mapelName ?? '-'} • ${m.kelasName ?? '-'}',
-                              style: const TextStyle(fontSize: 12)),
-                          if (m.description != null) ...[
-                            const SizedBox(height: 2),
-                            Text(m.description!,
-                                style: const TextStyle(
-                                    fontSize: 11, color: AppColors.textMuted),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis),
-                          ],
-                          const SizedBox(height: 2),
-                          Text(formatDateTime(m.createdAt),
-                              style: const TextStyle(
-                                  fontSize: 10, color: AppColors.textMuted)),
-                        ],
-                      ),
-                      isThreeLine: true,
-                      trailing: m.isPublished
-                          ? const StatusChip(
-                              label: 'Terbit',
-                              color: AppColors.success,
-                              bg: AppColors.successLight,
-                              compact: true)
-                          : const StatusChip(
-                              label: 'Draft',
-                              color: AppColors.textMuted,
-                              bg: Color(0xFFF1F5F9),
-                              compact: true),
-                      onTap: () {
-                        // Show materi detail in modal bottom sheet (read-only).
-                        _showMateriDetail(context, m);
-                      },
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(m.title, style: AppTextStyles.h4),
+                              Text(
+                                  '${MateriType.label(m.type)} • ${m.mapelName ?? '-'} • ${m.kelasName ?? '-'}',
+                                  style: AppTextStyles.body3
+                                      .copyWith(color: AppColors.textMuted)),
+                              if (m.description != null) ...[
+                                const SizedBox(height: 2),
+                                Text(m.description!,
+                                    style: AppTextStyles.body3
+                                        .copyWith(color: AppColors.textMuted),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis),
+                              ],
+                              const SizedBox(height: 2),
+                              Text(formatDateTime(m.createdAt),
+                                  style: AppTextStyles.caption
+                                      .copyWith(color: AppColors.textMuted)),
+                            ],
+                          ),
+                        ),
+                        ModernChip(
+                          label: m.isPublished ? 'Terbit' : 'Draft',
+                          color: m.isPublished
+                              ? AppColors.success
+                              : AppColors.textMuted,
+                          bg: m.isPublished
+                              ? AppColors.successLight
+                              : const Color(0xFFF1F5F9),
+                          compact: true,
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -210,7 +207,7 @@ class MateriListScreen extends ConsumerWidget {
             if (m.isPublished)
               const Padding(
                 padding: EdgeInsets.only(top: AppSpacing.sm),
-                child: StatusChip(
+                child: ModernChip(
                     label: 'Sudah dipublikasi',
                     color: AppColors.success,
                     bg: AppColors.successLight),

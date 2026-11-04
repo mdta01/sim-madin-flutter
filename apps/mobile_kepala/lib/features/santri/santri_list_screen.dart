@@ -6,9 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 
-import '../../widgets/feedback_views.dart';
-import '../../widgets/status_chip.dart';
-
 class SantriListScreen extends ConsumerStatefulWidget {
   const SantriListScreen({super.key});
 
@@ -57,9 +54,9 @@ class _SantriListScreenState extends ConsumerState<SantriListScreen> {
           ),
           Expanded(
             child: santriAsync.when(
-              loading: () => const LoadingSkeleton(),
-              error: (err, _) => ErrorView(
-                message: err.toString(),
+              loading: () => const ModernLoadingSkeleton(),
+              error: (err, _) => ModernErrorView(
+                message: friendlyError(err),
                 onRetry: () => ref.invalidate(santriListProvider),
               ),
               data: (list) {
@@ -71,12 +68,13 @@ class _SantriListScreenState extends ConsumerState<SantriListScreen> {
                             s.nis.toLowerCase().contains(_query))
                         .toList();
                 if (filtered.isEmpty) {
-                  return EmptyState(
+                  return ModernEmptyState(
                     title: _query.isEmpty
                         ? 'Belum ada data santri'
                         : 'Tidak ditemukan',
                     subtitle: _query.isEmpty ? null : 'Coba kata kunci lain',
-                    onRefresh: () => ref.invalidate(santriListProvider),
+                    actionLabel: 'Refresh',
+                    onAction: () => ref.invalidate(santriListProvider),
                   );
                 }
                 return RefreshIndicator(
@@ -111,43 +109,47 @@ class _SantriCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return ModernCard(
+      onTap: () => _showDetail(context, santri),
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-        leading: CircleAvatar(
-          backgroundColor: AppColors.primaryLight,
-          foregroundColor: AppColors.primary,
-          child: Text(santri.initials),
-        ),
-        title: Text(
-          santri.name,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('NIS: ${santri.nis} • ${santri.kelasName ?? '-'}'),
-            Text('Wali: ${santri.waliName ?? '-'}${santri.waliPhone != null ? ' (${santri.waliPhone})' : ''}'),
-          ],
-        ),
-        trailing: StatusChip(
-          status: santri.status,
-          style: santri.status == SantriStatus.aktif
-              ? const StatusStyle(
-                  label: 'Aktif',
-                  color: AppColors.success,
-                  bg: AppColors.successLight,
-                )
-              : StatusStyle(
-                  label: santri.status,
-                  color: AppColors.danger,
-                  bg: AppColors.dangerLight,
-                ),
-          compact: true,
-        ),
-        onTap: () => _showDetail(context, santri),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      child: Row(
+        children: [
+          ModernAvatar(
+            name: santri.name,
+            photoUrl: santri.photoUrl,
+            radius: 24,
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(santri.name, style: AppTextStyles.h4),
+                const SizedBox(height: 2),
+                Text(
+                    'NIS: ${santri.nis} • ${santri.kelasName ?? '-'}',
+                    style: AppTextStyles.body3
+                        .copyWith(color: AppColors.textMuted)),
+                Text(
+                    'Wali: ${santri.waliName ?? '-'}${santri.waliPhone != null ? ' (${santri.waliPhone})' : ''}',
+                    style: AppTextStyles.body3
+                        .copyWith(color: AppColors.textMuted)),
+              ],
+            ),
+          ),
+          ModernChip(
+            label: santri.status == SantriStatus.aktif ? 'Aktif' : santri.status,
+            color: santri.status == SantriStatus.aktif
+                ? AppColors.success
+                : AppColors.danger,
+            bg: santri.status == SantriStatus.aktif
+                ? AppColors.successLight
+                : AppColors.dangerLight,
+            compact: true,
+          ),
+        ],
       ),
     );
   }
@@ -207,23 +209,14 @@ class _DetailRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 100,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textMuted,
-              ),
-            ),
+            child: Text(label,
+                style: AppTextStyles.body2
+                    .copyWith(color: AppColors.textMuted)),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.text,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            child: Text(value,
+                style: AppTextStyles.body2
+                    .copyWith(fontWeight: FontWeight.w500)),
           ),
         ],
       ),
