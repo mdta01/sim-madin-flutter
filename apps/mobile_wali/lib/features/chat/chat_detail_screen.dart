@@ -158,10 +158,18 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
 
   Widget _buildInputBar() {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border(top: BorderSide(color: AppColors.border)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
       child: SafeArea(
         child: Row(
@@ -169,26 +177,61 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
             Expanded(
               child: TextField(
                 controller: _msgController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Tulis pesan...',
+                  hintStyle: AppTextStyles.body2
+                      .copyWith(color: AppColors.textMuted),
                   isDense: true,
-                  border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: AppColors.backgroundSecondary,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.xl),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.xl),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.xl),
+                    borderSide: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        width: 1.5),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg, vertical: AppSpacing.sm + 2),
                 ),
+                style: AppTextStyles.body1,
                 maxLines: null,
                 textCapitalization: TextCapitalization.sentences,
                 onSubmitted: (_) => _send(),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            IconButton.filled(
-              onPressed: _sending ? null : _send,
-              icon: _sending
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppColors.white))
-                  : const Icon(Icons.send),
+            Container(
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                shape: BoxShape.circle,
+                boxShadow: AppColors.primaryShadow,
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _sending ? null : _send,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.sm + 2),
+                    child: _sending
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: AppColors.white))
+                        : const Icon(Icons.send,
+                            color: AppColors.white, size: 20),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -212,31 +255,56 @@ class _MessageBubble extends StatelessWidget {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        margin: const EdgeInsets.only(bottom: AppSpacing.xs),
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
+          maxWidth: MediaQuery.of(context).size.width * 0.78,
         ),
         decoration: BoxDecoration(
-          color: isMe ? AppColors.primary : AppColors.white,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: isMe ? null : Border.all(color: AppColors.border),
+          gradient: isMe ? AppColors.primaryGradient : null,
+          color: isMe ? null : AppColors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(AppRadius.lg),
+            topRight: const Radius.circular(AppRadius.lg),
+            bottomLeft: Radius.circular(isMe ? AppRadius.lg : AppRadius.xs),
+            bottomRight: Radius.circular(isMe ? AppRadius.xs : AppRadius.lg),
+          ),
+          boxShadow: isMe
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : AppColors.cardShadow,
+          border: isMe ? null : Border.all(color: AppColors.border, width: 0.5),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(message,
-                style: TextStyle(
-                    fontSize: 14,
-                    color: isMe ? AppColors.white : AppColors.text)),
+                style: AppTextStyles.body1.copyWith(
+                    color: isMe ? AppColors.white : AppColors.text,
+                    height: 1.4)),
             const SizedBox(height: 2),
-            Text(time,
-                style: TextStyle(
-                    fontSize: 10,
-                    color: isMe
-                        ? AppColors.white.withOpacity(0.7)
-                        : AppColors.textMuted)),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(time,
+                    style: AppTextStyles.caption.copyWith(
+                        color: isMe
+                            ? AppColors.white.withValues(alpha: 0.7)
+                            : AppColors.textMuted)),
+                if (isMe) ...[
+                  const SizedBox(width: 4),
+                  Icon(Icons.done_all,
+                      size: 12,
+                      color: AppColors.white.withValues(alpha: 0.7)),
+                ],
+              ],
+            ),
           ],
         ),
       ),
