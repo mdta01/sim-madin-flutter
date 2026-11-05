@@ -29,7 +29,7 @@ import 'supabase_rpc.dart';
 /// Tagihan belum lunas untuk santri tertentu. Dipakai di form input
 /// pembayaran supaya user bisa pilih tagihan yang akan dibayar.
 final tagihanBySantriProvider =
-    FutureProvider.family<List<TagihanModel>, String>((ref, santriId) async {
+    FutureProvider.autoDispose.family<List<TagihanModel>, String>((ref, santriId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   final res = await client
@@ -252,7 +252,7 @@ class LaporanKeuangan {
 }
 
 final laporanKeuanganProvider =
-    FutureProvider.family<LaporanKeuangan, ({int month, int year})>(
+    FutureProvider.autoDispose.family<LaporanKeuangan, ({int month, int year})>(
         (ref, range) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);

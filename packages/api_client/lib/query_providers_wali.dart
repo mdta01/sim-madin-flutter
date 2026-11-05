@@ -76,7 +76,7 @@ final santriAnakProvider = FutureProvider<List<SantriModel>>((ref) async {
 
 /// Detail santri (profil lengkap + kelas + wali).
 final santriDetailProvider =
-    FutureProvider.family<SantriModel?, String>((ref, santriId) async {
+    FutureProvider.autoDispose.family<SantriModel?, String>((ref, santriId) async {
   final session = ref.watch(waliSessionProvider);
   if (session == null) return null;
   return session.santriList.where((s) => s.id == santriId).firstOrNull;
@@ -87,7 +87,7 @@ final santriDetailProvider =
 // ---------------------------------------------------------------------------
 
 final absensiAnakProvider =
-    FutureProvider.family<List<AbsensiModel>, String>((ref, santriId) async {
+    FutureProvider.autoDispose.family<List<AbsensiModel>, String>((ref, santriId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   final res = await client
@@ -118,7 +118,7 @@ AbsensiModel _absensiFromRow(Map<String, dynamic> row) {
 // ---------------------------------------------------------------------------
 
 final nilaiAnakProvider =
-    FutureProvider.family<List<NilaiModel>, String>((ref, santriId) async {
+    FutureProvider.autoDispose.family<List<NilaiModel>, String>((ref, santriId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   final res = await client
@@ -156,7 +156,7 @@ NilaiModel _nilaiFromRow(Map<String, dynamic> row) {
 /// Join ke MataPelajaran + Kelas + Guru untuk info display.
 /// Filter: published + tidak di-soft-delete + urut by createdAt desc, limit 30.
 final materiAnakProvider =
-    FutureProvider.family<List<MateriModel>, String>((ref, santriId) async {
+    FutureProvider.autoDispose.family<List<MateriModel>, String>((ref, santriId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
 
@@ -196,7 +196,7 @@ final materiAnakProvider =
 // ---------------------------------------------------------------------------
 
 final tagihanAnakProvider =
-    FutureProvider.family<List<TagihanModel>, String>((ref, santriId) async {
+    FutureProvider.autoDispose.family<List<TagihanModel>, String>((ref, santriId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   final res = await client
@@ -230,7 +230,7 @@ TagihanModel _tagihanFromRow(Map<String, dynamic> row) {
 // ---------------------------------------------------------------------------
 
 final paymentAnakProvider =
-    FutureProvider.family<List<PaymentModel>, String>((ref, santriId) async {
+    FutureProvider.autoDispose.family<List<PaymentModel>, String>((ref, santriId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   final res = await client
@@ -263,7 +263,7 @@ PaymentModel _paymentFromRow(Map<String, dynamic> row) {
 // ---------------------------------------------------------------------------
 
 final ujianPesertaAnakProvider =
-    FutureProvider.family<List<UjianPesertaModel>, String>(
+    FutureProvider.autoDispose.family<List<UjianPesertaModel>, String>(
         (ref, santriId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
@@ -285,7 +285,7 @@ final ujianPesertaAnakProvider =
 /// Get ujian detail (with soal list) — for taking ujian.
 /// Soal di-shuffle per santri (Fisher-Yates) di sisi server atau client.
 final ujianDetailForWaliProvider =
-    FutureProvider.family<UjianTakeData?, ({String ujianId, String santriId})>(
+    FutureProvider.autoDispose.family<UjianTakeData?, ({String ujianId, String santriId})>(
         (ref, p) async {
   final client = ref.watch(supabaseClientProvider);
 
@@ -383,7 +383,7 @@ final notifikasiWaliProvider = FutureProvider<List<NotifikasiWaliModel>>(
 /// di santri_detail_screen. Sebelumnya tab Notif menampilkan SEMUA notifikasi
 /// wali (campur untuk semua anak) — sekarang filter by santriId.
 final notifikasiAnakProvider =
-    FutureProvider.family<List<NotifikasiWaliModel>, String>(
+    FutureProvider.autoDispose.family<List<NotifikasiWaliModel>, String>(
         (ref, santriId) async {
   ref.watch(realtimeRefreshTick);
   final session = ref.watch(waliSessionProvider);
@@ -468,7 +468,7 @@ final chatUnreadCountWaliProvider =
 });
 
 final chatMessagesWaliProvider =
-    FutureProvider.family<List<ChatMessageModel>, String>((ref, roomId) async {
+    FutureProvider.autoDispose.family<List<ChatMessageModel>, String>((ref, roomId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   final res = await client

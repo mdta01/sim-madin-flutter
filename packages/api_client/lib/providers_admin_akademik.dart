@@ -18,7 +18,7 @@ import 'storage_service.dart';
 // ===========================================================================
 
 final jadwalListAdminProvider =
-    FutureProvider.family<List<JadwalModel>, String?>((ref, taId) async {
+    FutureProvider.autoDispose.family<List<JadwalModel>, String?>((ref, taId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Jadwal').select('*, Kelas(*), MataPelajaran(*), Guru(*)').limit(200);
@@ -74,7 +74,7 @@ Future<void> adminDeletePertemuan(WidgetRef ref, String id) async {
 // ABSENSI
 // ===========================================================================
 
-final absensiListAdminProvider = FutureProvider.family<List<AbsensiModel>, AbsensiFilterParams>((ref, params) async {
+final absensiListAdminProvider = FutureProvider.autoDispose.family<List<AbsensiModel>, AbsensiFilterParams>((ref, params) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Absensi').select('*, Santri(*), Kelas(*)');
@@ -109,7 +109,7 @@ Future<void> adminDeleteAbsensi(WidgetRef ref, String id) async {
 // NILAI
 // ===========================================================================
 
-final nilaiListAdminProvider = FutureProvider.family<List<NilaiModel>, NilaiFilterParams>((ref, params) async {
+final nilaiListAdminProvider = FutureProvider.autoDispose.family<List<NilaiModel>, NilaiFilterParams>((ref, params) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Nilai').select('*, Santri(*), Kelas(*), MataPelajaran(*)');

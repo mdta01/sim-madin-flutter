@@ -1,0 +1,326 @@
+From f13587828bc0b4fc2aed3f8b932b87b6339895b0 Mon Sep 17 00:00:00 2001
+From: Z User <z@container>
+Date: Thu, 5 Nov 2026 23:22:26 +0000
+Subject: [PATCH] refactor: remove 10 dead providers + 2 dead classes (197
+ lines removed)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Audit found 20 providers defined but never used in any app screen.
+After deeper analysis:
+  - 10 are TRULY DEAD (0 refs anywhere) → REMOVED
+  - 10 are used INTERNALLY (cache invalidation in mutations) → KEPT
+
+## Removed (10 providers + 2 classes = 197 lines)
+
+### query_providers_wali.dart (−88 lines)
+- perkembanganQuranAnakProvider — 0 refs (wali reads via santriDetail tab instead)
+- hafalanKitabAnakProvider — 0 refs (same)
+- akhlakAnakProvider — 0 refs (same)
+- pembinaanAnakProvider — 0 refs (same)
+
+### providers_admin_keuangan.dart (−20 lines)
+- qrScanListAdminProvider — 0 refs (QR scan feature uses screen-local provider)
+- QRScanAdminModel class — only used by qrScanListAdminProvider (removed together)
+
+### storage_service.dart (−14 lines)
+- storageBucketConfigProvider — 0 refs (StorageBucketConfig.configs map used directly)
+- storageListProvider — 0 refs (list() method called directly via storageServiceProvider)
+
+### api_client.dart (−78 lines)
+- dioProvider — 0 refs (legacy Phase 1 Dio HTTP client, replaced by Supabase client)
+- apiClientConfigProvider — only used by dioProvider (dead chain)
+- authTokenProvider — only used by dioProvider (dead chain)
+- ApiClientConfig class — only used by apiClientConfigProvider (dead chain)
+- Unused Dio import removed
+
+## Kept (10 providers — used internally for cache invalidation)
+- chatMessagesProvider — ref.invalidate() in sendChatMessage (guru)
+- chatMessagesWaliProvider — ref.invalidate() in sendChatMessage (wali)
+- guruListProvider — ref.invalidate() in invalidateAllQueries
+- otpVerifyTokenProvider — used in setNewPin (OTP verify flow)
+- permissionsByModuleProvider — ref.invalidate() in grant/revokePermission
+- realtimeChannelsProvider — used in setupAppRealtime + disposeAppRealtime
+- roleByIdProvider — used in mutation_providers_admin (4 refs)
+- systemSettingByKeyProvider — used in admin settings (3 refs)
+- userByIdProvider — used in admin mutations (3 refs)
+- userCountProvider — used in admin dashboard stats (2 refs)
+
+## Verification
+All 12 removed items verified to have 0 references remaining (no broken imports).
+---
+ packages/api_client/lib/api_client.dart       | 78 +---------------
+ .../lib/providers_admin_keuangan.dart         | 20 -----
+ .../api_client/lib/query_providers_wali.dart  | 88 -------------------
+ packages/api_client/lib/storage_service.dart  | 14 ---
+ 4 files changed, 3 insertions(+), 197 deletions(-)
+
+diff --git a/packages/api_client/lib/api_client.dart b/packages/api_client/lib/api_client.dart
+index 033acdc..1db9400 100755
+--- a/packages/api_client/lib/api_client.dart
++++ b/packages/api_client/lib/api_client.dart
+@@ -1,9 +1,9 @@
+ // ============================================================================
+-// SIM MADIN — API Client (Dio + Serverpod-generated client)
++// SIM MADIN — API Client (Supabase client + auth)
+ // ============================================================================
+ // Wrapper untuk komunikasi dengan backend Serverpod.
+ // Untuk Phase 1 (foundation), hanya berisi:
+-//   - Dio HTTP client dengan auth interceptor
++//   - Supabase client dengan auth interceptor
+ //   - Wali session storage (SecureStore)
+ //   - Riverpod providers (auth state, current user)
+ //
+@@ -49,77 +49,15 @@ export 'storage_service.dart';
+ 
+ import 'dart:convert';
+ 
+-import 'package:dio/dio.dart';
+ import 'package:flutter/foundation.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+ import 'package:shared/shared.dart';
+ import 'package:supabase_client/supabase_client.dart';
+ 
+-/// Konfigurasi dasar untuk Dio HTTP client.
+-class ApiClientConfig {
+-  const ApiClientConfig({
+-    this.baseUrl = 'http://localhost:8080',
+-    this.connectTimeout = const Duration(seconds: 30),
+-    this.receiveTimeout = const Duration(seconds: 30),
+-  });
+-  final String baseUrl;
+-  final Duration connectTimeout;
+-  final Duration receiveTimeout;
+-}
+-
+ /// Provider konfigurasi API client.
+ /// Override di main.dart untuk setiap app (admin desktop vs mobile).
+-final apiClientConfigProvider = Provider<ApiClientConfig>((ref) {
+-  return const ApiClientConfig(
+-    baseUrl: String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8080'),
+-  );
+-});
+-
+-/// Provider Dio HTTP client dengan auth interceptor.
+-final dioProvider = Provider<Dio>((ref) {
+-  final config = ref.watch(apiClientConfigProvider);
+-  final dio = Dio(BaseOptions(
+-    baseUrl: config.baseUrl,
+-    connectTimeout: config.connectTimeout,
+-    receiveTimeout: config.receiveTimeout,
+-    headers: {'Content-Type': 'application/json'},
+-  ));
+-
+-  // Auth interceptor: tambahkan Authorization header untuk setiap request
+-  dio.interceptors.add(InterceptorsWrapper(
+-    onRequest: (options, handler) async {
+-      // Cek token admin (Supabase) atau wali (custom JWT)
+-      final token = await ref.read(authTokenProvider.future);
+-      if (token != null) {
+-        options.headers['Authorization'] = 'Bearer $token';
+-      }
+-      handler.next(options);
+-    },
+-    onError: (err, handler) async {
+-      // Auto-logout kalau 401
+-      if (err.response?.statusCode == 401) {
+-        await ref.read(authStorageProvider).clear();
+-        ref.invalidate(currentUserProvider);
+-      }
+-      handler.next(err);
+-    },
+-  ));
+-
+-  if (kDebugMode) {
+-    dio.interceptors.add(LogInterceptor(
+-      request: true,
+-      requestHeader: false,
+-      responseHeader: false,
+-      responseBody: true,
+-      error: true,
+-      logPrint: (obj) => debugPrint('[DIO] $obj'),
+-    ));
+-  }
+-
+-  return dio;
+-});
+-
++/// (Removed — Dio was unused, Supabase client handles all HTTP.)
+ /// Secure storage untuk token & session data.
+ final authStorageProvider = Provider<AuthStorage>((ref) => AuthStorage());
+ 
+@@ -317,16 +255,6 @@ Future<void> ensureUserRoleOrSignOut(
+ 
+ /// Provider untuk dapatkan auth token aktif (admin atau wali).
+ /// Di-override per app (admin desktop vs wali mobile).
+-final authTokenProvider = FutureProvider<String?>((ref) async {
+-  final storage = ref.read(authStorageProvider);
+-  // Default: cek admin token dulu (admin/guru/bendahara/kepala)
+-  final adminToken = await storage.getAdminToken();
+-  if (adminToken != null) return adminToken;
+-  // Fallback: cek wali session
+-  final waliSession = await storage.loadWaliSession();
+-  return waliSession?.token;
+-});
+-
+ /// Data session wali (untuk mobile_wali).
+ class WaliSession {
+   const WaliSession({
+diff --git a/packages/api_client/lib/providers_admin_keuangan.dart b/packages/api_client/lib/providers_admin_keuangan.dart
+index 4ac3cab..1d4b4f0 100755
+--- a/packages/api_client/lib/providers_admin_keuangan.dart
++++ b/packages/api_client/lib/providers_admin_keuangan.dart
+@@ -566,26 +566,6 @@ class ChatRoomAdminModel {
+ // QR — read-only list of scans
+ // ===========================================================================
+ 
+-final qrScanListAdminProvider = FutureProvider<List<QRScanAdminModel>>((ref) async {
+-  ref.watch(realtimeRefreshTick);
+-  final client = ref.watch(supabaseClientProvider);
+-  final res = await client.from('QRScan').select().order('createdAt', ascending: false).limit(100);
+-  return (res as List).map((r) {
+-    final row = r as Map<String, dynamic>;
+-    return QRScanAdminModel(id: row['id'].toString(), qrType: row['qrType'] as String? ?? '-', scanType: row['scanType'] as String? ?? '-', result: row['result'] as String? ?? '-', message: row['message']?.toString() ?? '-', createdAt: DateTime.parse(row['createdAt'].toString()));
+-  }).toList();
+-});
+-
+-class QRScanAdminModel {
+-  const QRScanAdminModel({required this.id, required this.qrType, required this.scanType, required this.result, this.message, required this.createdAt});
+-  final String id;
+-  final String qrType;
+-  final String scanType;
+-  final String result;
+-  final String? message;
+-  final DateTime createdAt;
+-}
+-
+ // ===========================================================================
+ // AUDIT LOG — read-only list
+ // ===========================================================================
+diff --git a/packages/api_client/lib/query_providers_wali.dart b/packages/api_client/lib/query_providers_wali.dart
+index caf042b..fd7a541 100755
+--- a/packages/api_client/lib/query_providers_wali.dart
++++ b/packages/api_client/lib/query_providers_wali.dart
+@@ -507,94 +507,6 @@ final pengumumanWaliProvider =
+ // Perkembangan anak (4 jenis)
+ // ---------------------------------------------------------------------------
+ 
+-final perkembanganQuranAnakProvider =
+-    FutureProvider.family<List<PerkembanganQuranModel>, String>(
+-        (ref, santriId) async {
+-  ref.watch(realtimeRefreshTick);
+-  final client = ref.watch(supabaseClientProvider);
+-  final res = await client
+-      .from('PerkembanganQuran')
+-      .select('*, Santri(*), Guru(*, User(*))')
+-      .eq('santriId', santriId)
+-      .limit(50)
+-      .order('pertemuanDate', ascending: false)
+-      .limit(30);
+-  return (res as List)
+-      .map((r) => PerkembanganQuranModel.fromJson({
+-            ...(r as Map<String, dynamic>),
+-            'santriName': (r['Santri'] ?? r['santri'])?['name'],
+-            'guruName': (r['Guru'] ?? r['guru'])?['User']?['name'] ??
+-                (r['Guru'] ?? r['guru'])?['name'],
+-          }))
+-      .toList();
+-});
+-
+-final hafalanKitabAnakProvider =
+-    FutureProvider.family<List<HafalanKitabModel>, String>(
+-        (ref, santriId) async {
+-  ref.watch(realtimeRefreshTick);
+-  final client = ref.watch(supabaseClientProvider);
+-  final res = await client
+-      .from('HafalanKitab')
+-      .select('*, Santri(*), Guru(*, User(*))')
+-      .eq('santriId', santriId)
+-      .limit(50)
+-      .order('pertemuanDate', ascending: false)
+-      .limit(30);
+-  return (res as List)
+-      .map((r) => HafalanKitabModel.fromJson({
+-            ...(r as Map<String, dynamic>),
+-            'santriName': (r['Santri'] ?? r['santri'])?['name'],
+-            'guruName': (r['Guru'] ?? r['guru'])?['User']?['name'] ??
+-                (r['Guru'] ?? r['guru'])?['name'],
+-          }))
+-      .toList();
+-});
+-
+-final akhlakAnakProvider =
+-    FutureProvider.family<List<AkhlakPenilaianModel>, String>(
+-        (ref, santriId) async {
+-  ref.watch(realtimeRefreshTick);
+-  final client = ref.watch(supabaseClientProvider);
+-  final res = await client
+-      .from('AkhlakPenilaian')
+-      .select('*, Santri(*), Guru(*, User(*))')
+-      .eq('santriId', santriId)
+-      .limit(50)
+-      .order('periodeDate', ascending: false)
+-      .limit(20);
+-  return (res as List)
+-      .map((r) => AkhlakPenilaianModel.fromJson({
+-            ...(r as Map<String, dynamic>),
+-            'santriName': (r['Santri'] ?? r['santri'])?['name'],
+-            'guruName': (r['Guru'] ?? r['guru'])?['User']?['name'] ??
+-                (r['Guru'] ?? r['guru'])?['name'],
+-          }))
+-      .toList();
+-});
+-
+-final pembinaanAnakProvider =
+-    FutureProvider.family<List<PembinaanModel>, String>(
+-        (ref, santriId) async {
+-  ref.watch(realtimeRefreshTick);
+-  final client = ref.watch(supabaseClientProvider);
+-  final res = await client
+-      .from('Pembinaan')
+-      .select('*, Santri(*), Guru(*, User(*))')
+-      .eq('santriId', santriId)
+-      .limit(50)
+-      .order('createdAt', ascending: false)
+-      .limit(30);
+-  return (res as List)
+-      .map((r) => PembinaanModel.fromJson({
+-            ...(r as Map<String, dynamic>),
+-            'santriName': (r['Santri'] ?? r['santri'])?['name'],
+-            'guruName': (r['Guru'] ?? r['guru'])?['User']?['name'] ??
+-                (r['Guru'] ?? r['guru'])?['name'],
+-          }))
+-      .toList();
+-});
+-
+ // ---------------------------------------------------------------------------
+ // Helper: invalidate semua providers wali
+ // ---------------------------------------------------------------------------
+diff --git a/packages/api_client/lib/storage_service.dart b/packages/api_client/lib/storage_service.dart
+index 652942f..983f8fa 100755
+--- a/packages/api_client/lib/storage_service.dart
++++ b/packages/api_client/lib/storage_service.dart
+@@ -436,18 +436,4 @@ final storageServiceProvider = Provider<StorageService>((ref) {
+ });
+ 
+ /// Provider untuk cek konfigurasi bucket (max size, allowed MIME).
+-/// Pakai dengan: `ref.read(storageBucketConfigProvider('photos'))`.
+-final storageBucketConfigProvider =
+-    Provider.family<StorageBucketConfig?, String>((ref, bucketName) {
+-  return StorageBucketConfig.configs[bucketName];
+-});
+-
+ /// Provider untuk list objects dalam bucket (auto-refresh via realtime tick).
+-/// Pakai dengan: `ref.watch(storageListProvider((bucket: 'photos', folder: 'santri/abc')))`.
+-final storageListProvider = FutureProvider.family<
+-    List<StorageObjectInfo>,
+-    ({String bucket, String? folder})>((ref, params) async {
+-  ref.watch(realtimeRefreshTick);
+-  final storage = ref.watch(storageServiceProvider);
+-  return storage.list(bucket: params.bucket, folder: params.folder);
+-});
+-- 
+2.47.3
+

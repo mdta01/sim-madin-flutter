@@ -17,7 +17,7 @@ import 'storage_service.dart';
 // ===========================================================================
 
 final tagihanListAdminProvider =
-    FutureProvider.family<List<TagihanModel>, String?>((ref, status) async {
+    FutureProvider.autoDispose.family<List<TagihanModel>, String?>((ref, status) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Tagihan').select('*, Santri(name, nis, Kelas(name)), JenisTagihan(name, code)');
@@ -137,7 +137,7 @@ Future<void> adminUpdateTagihan(
 // ===========================================================================
 
 final pembayaranListAdminProvider =
-    FutureProvider.family<List<PaymentModel>, String?>((ref, status) async {
+    FutureProvider.autoDispose.family<List<PaymentModel>, String?>((ref, status) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Payment').select('*, Santri(name, nis), Tagihan(*, JenisTagihan(code))');
@@ -199,7 +199,7 @@ Future<void> adminDeleteKas(WidgetRef ref, String id) async {
 // ===========================================================================
 
 final honorGuruListAdminProvider =
-    FutureProvider.family<List<HonorGuruModel>, String?>((ref, status) async {
+    FutureProvider.autoDispose.family<List<HonorGuruModel>, String?>((ref, status) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('HonorGuru').select('*, Guru(name, specialization)');

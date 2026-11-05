@@ -21,7 +21,7 @@ import 'query_providers.dart' show realtimeRefreshTick;
 // ---------------------------------------------------------------------------
 
 final userListProvider =
-    FutureProvider.family<List<UserModel>, UserListParams>((ref, params) async {
+    FutureProvider.autoDispose.family<List<UserModel>, UserListParams>((ref, params) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   // Apply filter BEFORE order+range (Supabase SDK constraint — filter
@@ -60,7 +60,7 @@ UserModel _userFromRow(Map<String, dynamic> row) {
 }
 
 final userByIdProvider =
-    FutureProvider.family<UserModel?, String>((ref, id) async {
+    FutureProvider.autoDispose.family<UserModel?, String>((ref, id) async {
   final client = ref.watch(supabaseClientProvider);
   final res = await client
       .from('User')
@@ -75,7 +75,7 @@ final userByIdProvider =
 /// Catatan: supabase_flutter v2.8 tidak expose FetchOptions/CountOption
 /// dengan cara yang sama dengan v2.x terbaru. Pakai select-all + count
 /// manual untuk simplicity. Untuk dataset besar, ganti dengan RPC count.
-final userCountProvider = FutureProvider.family<int, String?>((ref, search) async {
+final userCountProvider = FutureProvider.autoDispose.family<int, String?>((ref, search) async {
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('User').select('id');
   if (search != null && search.isNotEmpty) {
@@ -100,7 +100,7 @@ final roleListProvider = FutureProvider<List<RoleModel>>((ref) async {
 });
 
 final roleByIdProvider =
-    FutureProvider.family<RoleModel?, String>((ref, id) async {
+    FutureProvider.autoDispose.family<RoleModel?, String>((ref, id) async {
   final client = ref.watch(supabaseClientProvider);
   final res = await client
       .from('Role')
@@ -141,7 +141,7 @@ final permissionsByModuleProvider =
 /// Role permissions matrix — Map<roleId, Set<permissionCode>>.
 /// Dipakai di Roles screen untuk toggle permissions per role.
 final rolePermissionsMatrixProvider =
-    FutureProvider.family<Map<String, Set<String>>, String>((ref, roleId) async {
+    FutureProvider.autoDispose.family<Map<String, Set<String>>, String>((ref, roleId) async {
   final client = ref.watch(supabaseClientProvider);
   final res = await client
       .from('RolePermission')
@@ -193,7 +193,7 @@ final systemSettingsProvider =
 });
 
 final systemSettingByKeyProvider =
-    FutureProvider.family<SystemSettingModel?, String>((ref, key) async {
+    FutureProvider.autoDispose.family<SystemSettingModel?, String>((ref, key) async {
   final client = ref.watch(supabaseClientProvider);
   final res = await client
       .from('SystemSetting')

@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthChangeEvent, AuthState;
 
 import 'app/router.dart';
 
@@ -47,6 +48,14 @@ class SimMadinWaliApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Auth state listener — redirect ke /login saat session expired.
+    ref.listen<AsyncValue<AuthState>>(authStateProvider, (_, next) {
+      next.whenData((authState) {
+        if (authState.event == AuthChangeEvent.signedOut) {
+          ref.read(appRouterProvider).go('/login');
+        }
+      });
+    });
     return MaterialApp.router(
       title: 'SIM Wali',
       debugShowCheckedModeBanner: !kReleaseMode,

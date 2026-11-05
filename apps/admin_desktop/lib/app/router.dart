@@ -20,6 +20,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_client/supabase_client.dart';
 
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/guru/guru_screen.dart';
@@ -62,6 +63,26 @@ import '../widgets/app_shell.dart';
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/splash',
+
+    redirect: (context, state) {
+      final isLoggedIn = ref.read(supabaseClientProvider).auth.currentUser != null;
+      final isAuthRoute = state.matchedLocation == '/splash' ||
+          state.matchedLocation == '/login' ||
+          state.matchedLocation == '/forgot-pin';
+      final isProtectedRoute = state.matchedLocation.startsWith('/dashboard') ||
+          state.matchedLocation.startsWith('/admin');
+
+      // Not logged in + trying to access protected route → redirect to /login
+      if (!isLoggedIn && isProtectedRoute) {
+        return '/login';
+      }
+      // Logged in + trying to access /login → redirect to /dashboard/home (or /admin)
+      if (isLoggedIn && state.matchedLocation == '/login') {
+        return '/admin/dashboard';
+      }
+      // All other cases — no redirect
+      return null;
+    },
     routes: [
       GoRoute(
           path: '/splash',

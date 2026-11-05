@@ -20,7 +20,7 @@ import 'query_providers.dart';
 
 // --- Guru list (all, with search) ---
 final guruListAdminProvider =
-    FutureProvider.family<List<GuruModel>, String?>((ref, search) async {
+    FutureProvider.autoDispose.family<List<GuruModel>, String?>((ref, search) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Guru').select('*, User(*)').filter('deletedAt', 'is', null);
@@ -43,7 +43,7 @@ GuruModel _guruFromRow(Map<String, dynamic> row) {
 
 // --- Wali list (all, with search) ---
 final waliListAdminProvider =
-    FutureProvider.family<List<WaliModel>, String?>((ref, search) async {
+    FutureProvider.autoDispose.family<List<WaliModel>, String?>((ref, search) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Wali').select().filter('deletedAt', 'is', null);
@@ -69,7 +69,7 @@ final tahunAjaranListProvider = FutureProvider<List<TahunAjaranModel>>(
 
 // --- Semester list (all, filter by tahunAjaranId) ---
 final semesterListProvider =
-    FutureProvider.family<List<SemesterModel>, String?>((ref, taId) async {
+    FutureProvider.autoDispose.family<List<SemesterModel>, String?>((ref, taId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Semester').select().limit(100);
@@ -82,7 +82,7 @@ final semesterListProvider =
 
 // --- SantriWali list (link wali ↔ santri) ---
 final santriWaliByWaliProvider =
-    FutureProvider.family<List<SantriWaliModel>, String>((ref, waliId) async {
+    FutureProvider.autoDispose.family<List<SantriWaliModel>, String>((ref, waliId) async {
   final client = ref.watch(supabaseClientProvider);
   final res = await client
       .from('SantriWali')

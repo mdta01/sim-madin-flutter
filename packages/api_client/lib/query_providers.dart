@@ -216,7 +216,7 @@ final santriListProvider =
 // ---------------------------------------------------------------------------
 
 final absensiRecentProvider =
-    FutureProvider.family<List<AbsensiModel>, DateTime?>((ref, date) async {
+    FutureProvider.autoDispose.family<List<AbsensiModel>, DateTime?>((ref, date) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Absensi').select('*, Santri(*), Kelas(*)');
@@ -238,7 +238,7 @@ final absensiRecentProvider =
 // ---------------------------------------------------------------------------
 
 final nilaiRecentProvider =
-    FutureProvider.family<List<NilaiModel>, String?>((ref, mapelId) async {
+    FutureProvider.autoDispose.family<List<NilaiModel>, String?>((ref, mapelId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Nilai').select('*, Santri(*), Kelas(*), MataPelajaran(*)');
@@ -256,7 +256,7 @@ final nilaiRecentProvider =
 // ---------------------------------------------------------------------------
 
 final tagihanListProvider =
-    FutureProvider.family<List<TagihanModel>, String?>((ref, statusFilter) async {
+    FutureProvider.autoDispose.family<List<TagihanModel>, String?>((ref, statusFilter) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client
@@ -382,7 +382,7 @@ final bendaharaKpiProvider =
 // ---------------------------------------------------------------------------
 
 final honorGuruListProvider =
-    FutureProvider.family<List<HonorGuruModel>, String?>((ref, statusFilter) async {
+    FutureProvider.autoDispose.family<List<HonorGuruModel>, String?>((ref, statusFilter) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('HonorGuru').select('*, Guru(*)');
@@ -400,7 +400,7 @@ final honorGuruListProvider =
 // ---------------------------------------------------------------------------
 
 final transaksiKasByPeriodProvider =
-    FutureProvider.family<List<TransaksiKasModel>, ({DateTime start, DateTime end})>(
+    FutureProvider.autoDispose.family<List<TransaksiKasModel>, ({DateTime start, DateTime end})>(
         (ref, range) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
