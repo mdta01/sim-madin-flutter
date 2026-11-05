@@ -1,5 +1,4 @@
 // Jadwal — port dari Prisma. Dipakai di dashboard guru + jadwal list.
-import 'package:shared/shared.dart';
 
 class JadwalModel {
   const JadwalModel({

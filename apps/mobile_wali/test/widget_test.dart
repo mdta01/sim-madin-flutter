@@ -1,30 +1,18 @@
-// This is a basic Flutter widget test.
+// Smoke test — verify app entry point can be imported without compile errors.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Real widget tests would require mocking Supabase + Firebase (out of scope
+// for current iteration). This test catches import errors and class
+// definition issues that would crash on app launch.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mobile_wali/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
-
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  testWidgets('App entry point is importable', (WidgetTester tester) async {
+    // Verify that the app class exists and is constructible.
+    // We don't pump it because it requires Supabase.initializeApp()
+    // + Firebase.initializeApp() to be called first.
+    expect(SimMadinWaliApp.new, isA<Function>());
   });
 }

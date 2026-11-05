@@ -17,7 +17,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'query_providers.dart' show realtimeRefreshTick, supabaseClientProvider;
 
@@ -294,7 +293,7 @@ final tugasByIdProvider =
       .eq('id', tugasId)
       .maybeSingle();
   if (res == null) return null;
-  return _tugasFromRow(res as Map<String, dynamic>);
+  return _tugasFromRow(res);
 });
 
 PengumpulanTugasModel _pengumpulanFromRow(Map<String, dynamic> row) {
@@ -351,7 +350,7 @@ final ujianByIdProvider =
       .eq('id', id)
       .maybeSingle();
   if (res == null) return null;
-  return _ujianFromRow(res as Map<String, dynamic>);
+  return _ujianFromRow(res);
 });
 
 final ujianSoalByUjianProvider =

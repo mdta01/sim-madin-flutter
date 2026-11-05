@@ -18,7 +18,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'query_providers.dart';
 import 'supabase_rpc.dart';
@@ -104,7 +103,7 @@ Future<PembayaranCreateResult> createPembayaran(
       .insert(body)
       .select('*, Santri(*), Tagihan(*, JenisTagihan(*))')
       .single();
-  final payment = _paymentFromRowPublic(res as Map<String, dynamic>);
+  final payment = _paymentFromRowPublic(res);
 
   // Invalidate read providers supaya UI refresh.
   ref.invalidate(paymentRecentProvider);
@@ -203,7 +202,7 @@ Future<TransaksiKasModel> createTransaksiKas(
       .select('*, Kas(*)')
       .eq('id', result.transaksiId)
       .single();
-  final transaksi = _transaksiFromRowPublic(res as Map<String, dynamic>);
+  final transaksi = _transaksiFromRowPublic(res);
 
   ref.invalidate(kasListProvider);
   ref.invalidate(transaksiKasByPeriodProvider);

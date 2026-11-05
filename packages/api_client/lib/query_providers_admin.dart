@@ -68,7 +68,7 @@ final userByIdProvider =
       .eq('id', id)
       .maybeSingle();
   if (res == null) return null;
-  return _userFromRow(res as Map<String, dynamic>);
+  return _userFromRow(res);
 });
 
 /// Count total users (untuk pagination info).
@@ -108,7 +108,7 @@ final roleByIdProvider =
       .eq('id', id)
       .maybeSingle();
   if (res == null) return null;
-  return RoleModel.fromJson(res as Map<String, dynamic>);
+  return RoleModel.fromJson(res);
 });
 
 // ---------------------------------------------------------------------------
@@ -201,7 +201,7 @@ final systemSettingByKeyProvider =
       .eq('key', key)
       .maybeSingle();
   if (res == null) return null;
-  return SystemSettingModel.fromJson(res as Map<String, dynamic>);
+  return SystemSettingModel.fromJson(res);
 });
 
 // ---------------------------------------------------------------------------

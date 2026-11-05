@@ -108,7 +108,7 @@ Future<TypedWaliSession> loginWali(
     throw Exception('Nomor WhatsApp tidak terdaftar');
   }
 
-  final wali = WaliModel.fromJson(waliRes as Map<String, dynamic>);
+  final wali = WaliModel.fromJson(waliRes);
 
   // Check auto-lock
   if (wali.activationStatus == WaliActivationStatus.suspended) {
@@ -309,7 +309,7 @@ Future<String> requestOtp(
   if (waliRes == null) {
     throw Exception('Nomor WhatsApp tidak terdaftar');
   }
-  final wali = WaliModel.fromJson(waliRes as Map<String, dynamic>);
+  final wali = WaliModel.fromJson(waliRes);
 
   // Check rate limit (5 per jam)
   final now = DateTime.now();
@@ -369,7 +369,7 @@ Future<String> verifyOtp(
   if (waliRes == null) {
     throw Exception('Nomor WhatsApp tidak terdaftar');
   }
-  final wali = WaliModel.fromJson(waliRes as Map<String, dynamic>);
+  final wali = WaliModel.fromJson(waliRes);
 
   // Check OTP expiry
   if (wali.otpExpiresAt == null ||
@@ -543,7 +543,7 @@ Future<UjianSesiData> startUjianSesi(
 
   if (existingRes != null) {
     // Resume existing sesi
-    return UjianSesiData.fromJson(existingRes as Map<String, dynamic>);
+    return UjianSesiData.fromJson(existingRes);
   }
 
   // Get soal list untuk shuffle
@@ -575,7 +575,7 @@ Future<UjianSesiData> startUjianSesi(
       .insert(body)
       .select()
       .single();
-  return UjianSesiData.fromJson(res as Map<String, dynamic>);
+  return UjianSesiData.fromJson(res);
 }
 
 /// Submit jawaban ujian + compute score (auto-correct untuk PG).

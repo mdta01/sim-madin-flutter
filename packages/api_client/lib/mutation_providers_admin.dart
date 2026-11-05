@@ -45,7 +45,7 @@ Future<UserModel> createUser(
   final res = await client.from('User').insert(body).select().single();
   ref.invalidate(userListProvider);
   ref.invalidate(userCountProvider);
-  return UserModel.fromJson(res as Map<String, dynamic>);
+  return UserModel.fromJson(res);
 }
 
 /// Update user (admin edit).
@@ -76,7 +76,7 @@ Future<UserModel> updateUser(
       .single();
   ref.invalidate(userListProvider);
   ref.invalidate(userByIdProvider(userId));
-  return UserModel.fromJson(res as Map<String, dynamic>);
+  return UserModel.fromJson(res);
 }
 
 /// Soft delete user (set deletedAt).
@@ -155,7 +155,7 @@ Future<RoleModel> createRole(
     'sortOrder': sortOrder,
   }).select().single();
   ref.invalidate(roleListProvider);
-  return RoleModel.fromJson(res as Map<String, dynamic>);
+  return RoleModel.fromJson(res);
 }
 
 Future<RoleModel> updateRole(
@@ -179,7 +179,7 @@ Future<RoleModel> updateRole(
       .single();
   ref.invalidate(roleListProvider);
   ref.invalidate(roleByIdProvider(roleId));
-  return RoleModel.fromJson(res as Map<String, dynamic>);
+  return RoleModel.fromJson(res);
 }
 
 Future<void> deleteRole(WidgetRef ref, String roleId) async {
@@ -304,7 +304,7 @@ Future<SystemSettingModel> upsertSystemSetting(
     }).eq('key', key).select().single();
     ref.invalidate(systemSettingsProvider);
     ref.invalidate(systemSettingByKeyProvider(key));
-    return SystemSettingModel.fromJson(res as Map<String, dynamic>);
+    return SystemSettingModel.fromJson(res);
   } else {
     final res = await client.from('SystemSetting').insert({
       'key': key,
@@ -315,7 +315,7 @@ Future<SystemSettingModel> upsertSystemSetting(
     }).select().single();
     ref.invalidate(systemSettingsProvider);
     ref.invalidate(systemSettingByKeyProvider(key));
-    return SystemSettingModel.fromJson(res as Map<String, dynamic>);
+    return SystemSettingModel.fromJson(res);
   }
 }
 

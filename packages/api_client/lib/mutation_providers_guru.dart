@@ -228,7 +228,7 @@ Future<MateriModel> createMateri(
       .select('*, MataPelajaran(*), Kelas(*), Guru(*, User(*))')
       .single();
   final materi = MateriModel.fromJson({
-    ...res as Map<String, dynamic>,
+    ...res,
     'mapelName': res['MataPelajaran']?['name'],
     'kelasName': res['Kelas']?['name'],
     'guruName': res['Guru']?['User']?['name'] ?? res['Guru']?['name'],
@@ -308,7 +308,7 @@ Future<TugasModel> createTugas(
       .select('*, MataPelajaran(*), Kelas(*), Guru(*, User(*))')
       .single();
   final tugas = TugasModel.fromJson({
-    ...res as Map<String, dynamic>,
+    ...res,
     'mapelName': res['MataPelajaran']?['name'],
     'kelasName': res['Kelas']?['name'],
     'guruName': res['Guru']?['User']?['name'] ?? res['Guru']?['name'],
@@ -410,7 +410,7 @@ Future<PertemuanModel> createPertemuan(
       .select('*, Kelas(*), MataPelajaran(*), Guru(*, User(*))')
       .single();
   final pertemuan = PertemuanModel.fromJson({
-    ...res as Map<String, dynamic>,
+    ...res,
     'kelasName': res['Kelas']?['name'],
     'mapelName': res['MataPelajaran']?['name'],
     'guruName': res['Guru']?['User']?['name'] ?? res['Guru']?['name'],
@@ -482,7 +482,7 @@ Future<UjianModel> createUjian(
       .select('*, MataPelajaran(*), Kelas(*), Guru(*, User(*))')
       .single();
   final ujian = UjianModel.fromJson({
-    ...res as Map<String, dynamic>,
+    ...res,
     'mapelName': res['MataPelajaran']?['name'],
     'kelasName': res['Kelas']?['name'],
     'guruName': res['Guru']?['User']?['name'] ?? res['Guru']?['name'],
@@ -538,7 +538,7 @@ Future<BankSoalModel> createBankSoal(
       .select()
       .single();
   ref.invalidate(bankSoalGuruProvider);
-  return BankSoalModel.fromJson(res as Map<String, dynamic>);
+  return BankSoalModel.fromJson(res);
 }
 
 /// Add soal to ujian (link BankSoal to Ujian via UjianSoal).
@@ -632,7 +632,7 @@ Future<PerkembanganQuranModel> createPerkembanganQuran(
       .single();
   ref.invalidate(perkembanganQuranProvider);
   return PerkembanganQuranModel.fromJson({
-    ...res as Map<String, dynamic>,
+    ...res,
     'santriName': res['Santri']?['name'],
     'guruName': res['Guru']?['User']?['name'] ?? res['Guru']?['name'],
   });
@@ -677,7 +677,7 @@ Future<HafalanKitabModel> createHafalanKitab(
       .single();
   ref.invalidate(hafalanKitabProvider);
   return HafalanKitabModel.fromJson({
-    ...res as Map<String, dynamic>,
+    ...res,
     'santriName': res['Santri']?['name'],
     'guruName': res['Guru']?['User']?['name'] ?? res['Guru']?['name'],
   });
@@ -729,7 +729,7 @@ Future<AkhlakPenilaianModel> createAkhlakPenilaian(
       .single();
   ref.invalidate(akhlakPenilaianProvider);
   return AkhlakPenilaianModel.fromJson({
-    ...res as Map<String, dynamic>,
+    ...res,
     'santriName': res['Santri']?['name'],
     'guruName': res['Guru']?['User']?['name'] ?? res['Guru']?['name'],
   });
@@ -772,7 +772,7 @@ Future<PembinaanModel> createPembinaan(
       .single();
   ref.invalidate(pembinaanProvider);
   return PembinaanModel.fromJson({
-    ...res as Map<String, dynamic>,
+    ...res,
     'santriName': res['Santri']?['name'],
     'guruName': res['Guru']?['User']?['name'] ?? res['Guru']?['name'],
   });
@@ -809,7 +809,7 @@ Future<ChatRoomModel> createChatRoom(
       .single();
   ref.invalidate(chatRoomsGuruProvider);
   return ChatRoomModel.fromJson({
-    ...res as Map<String, dynamic>,
+    ...res,
     'waliName': res['Wali']?['name'],
     'guruName': res['Guru']?['User']?['name'] ?? res['Guru']?['name'],
     'santriName': res['Santri']?['name'],
@@ -849,5 +849,5 @@ Future<ChatMessageModel> sendChatMessage(
   ref.invalidate(chatRoomsGuruProvider);
   // Invalidate juga unread count — supaya badge di chat list ikut update.
   ref.invalidate(chatUnreadCountGuruProvider);
-  return ChatMessageModel.fromJson(res as Map<String, dynamic>);
+  return ChatMessageModel.fromJson(res);
 }

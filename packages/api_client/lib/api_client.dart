@@ -394,7 +394,7 @@ final userProfileProvider =
         .eq('firebaseUid', authUser.id)
         .maybeSingle();
     if (res == null) return null;
-    final row = res as Map<String, dynamic>;
+    final row = res;
     final userRoles = (row['UserRole'] as List?) ?? [];
     final roleCodes = <String>[];
     final roleNames = <String>[];
@@ -479,7 +479,7 @@ final currentGuruProfileProvider =
         .eq('User.firebaseUid', authUser.id)
         .maybeSingle();
     if (res == null) return null;
-    final row = res as Map<String, dynamic>;
+    final row = res;
     final user = row['User'] as Map<String, dynamic>?;
     return GuruModel.fromJson({
       ...row,

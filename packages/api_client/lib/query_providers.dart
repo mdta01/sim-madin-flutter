@@ -168,7 +168,7 @@ final tahunAjaranActiveProvider = FutureProvider<TahunAjaranModel?>((ref) async 
       .limit(1)
       .maybeSingle();
   if (res == null) return null;
-  return TahunAjaranModel.fromJson(res as Map<String, dynamic>);
+  return TahunAjaranModel.fromJson(res);
 });
 
 final semesterActiveProvider = FutureProvider<SemesterModel?>((ref) async {
@@ -180,7 +180,7 @@ final semesterActiveProvider = FutureProvider<SemesterModel?>((ref) async {
       .limit(1)
       .maybeSingle();
   if (res == null) return null;
-  return SemesterModel.fromJson(res as Map<String, dynamic>);
+  return SemesterModel.fromJson(res);
 });
 
 final jenisTagihanListProvider =

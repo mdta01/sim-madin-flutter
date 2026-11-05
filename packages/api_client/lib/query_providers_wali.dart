@@ -43,7 +43,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'query_providers.dart' show realtimeRefreshTick;
 
@@ -294,7 +293,7 @@ final ujianDetailForWaliProvider =
   if (ujianRes == null) return null;
 
   final ujian = UjianModel.fromJson({
-    ...ujianRes as Map<String, dynamic>,
+    ...ujianRes,
     'mapelName': ujianRes['MataPelajaran']?['name'],
     'kelasName': ujianRes['Kelas']?['name'],
   });
@@ -327,7 +326,7 @@ final ujianDetailForWaliProvider =
 
   UjianSesiData? sesi;
   if (sesiRes != null) {
-    sesi = UjianSesiData.fromJson(sesiRes as Map<String, dynamic>);
+    sesi = UjianSesiData.fromJson(sesiRes);
   }
 
   // Get existing answers (for recovery)

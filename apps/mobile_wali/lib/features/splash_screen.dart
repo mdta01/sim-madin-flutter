@@ -50,7 +50,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       if (token != null && waliJson != null && santriJson != null) {
         final wali = WaliModel.fromJson(waliJson);
         final santriModels = santriJson
-            .map((s) => SantriModel.fromJson(s as Map<String, dynamic>))
+            .map((s) => SantriModel.fromJson(s))
             .toList();
         ref.read(waliSessionProvider.notifier).state = TypedWaliSession(
           token: token,
