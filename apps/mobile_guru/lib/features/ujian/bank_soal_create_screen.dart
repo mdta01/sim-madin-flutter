@@ -351,7 +351,7 @@ class _BankSoalCreateScreenState extends ConsumerState<BankSoalCreateScreen> {
             decoration: InputDecoration(
               isDense: true,
               hintText: 'Teks opsi $label',
-              border: OutlineInputBorder(),
+              border: const OutlineInputBorder(),
             ),
           ),
         ),
