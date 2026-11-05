@@ -436,18 +436,4 @@ final storageServiceProvider = Provider<StorageService>((ref) {
 });
 
 /// Provider untuk cek konfigurasi bucket (max size, allowed MIME).
-/// Pakai dengan: `ref.read(storageBucketConfigProvider('photos'))`.
-final storageBucketConfigProvider =
-    Provider.family<StorageBucketConfig?, String>((ref, bucketName) {
-  return StorageBucketConfig.configs[bucketName];
-});
-
 /// Provider untuk list objects dalam bucket (auto-refresh via realtime tick).
-/// Pakai dengan: `ref.watch(storageListProvider((bucket: 'photos', folder: 'santri/abc')))`.
-final storageListProvider = FutureProvider.family<
-    List<StorageObjectInfo>,
-    ({String bucket, String? folder})>((ref, params) async {
-  ref.watch(realtimeRefreshTick);
-  final storage = ref.watch(storageServiceProvider);
-  return storage.list(bucket: params.bucket, folder: params.folder);
-});

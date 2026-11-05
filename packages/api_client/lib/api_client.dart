@@ -1,9 +1,9 @@
 // ============================================================================
-// SIM MADIN — API Client (Dio + Serverpod-generated client)
+// SIM MADIN — API Client (Supabase client + auth)
 // ============================================================================
 // Wrapper untuk komunikasi dengan backend Serverpod.
 // Untuk Phase 1 (foundation), hanya berisi:
-//   - Dio HTTP client dengan auth interceptor
+//   - Supabase client dengan auth interceptor
 //   - Wali session storage (SecureStore)
 //   - Riverpod providers (auth state, current user)
 //
@@ -49,77 +49,15 @@ export 'storage_service.dart';
 
 import 'dart:convert';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
 
-/// Konfigurasi dasar untuk Dio HTTP client.
-class ApiClientConfig {
-  const ApiClientConfig({
-    this.baseUrl = 'http://localhost:8080',
-    this.connectTimeout = const Duration(seconds: 30),
-    this.receiveTimeout = const Duration(seconds: 30),
-  });
-  final String baseUrl;
-  final Duration connectTimeout;
-  final Duration receiveTimeout;
-}
-
 /// Provider konfigurasi API client.
 /// Override di main.dart untuk setiap app (admin desktop vs mobile).
-final apiClientConfigProvider = Provider<ApiClientConfig>((ref) {
-  return const ApiClientConfig(
-    baseUrl: String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8080'),
-  );
-});
-
-/// Provider Dio HTTP client dengan auth interceptor.
-final dioProvider = Provider<Dio>((ref) {
-  final config = ref.watch(apiClientConfigProvider);
-  final dio = Dio(BaseOptions(
-    baseUrl: config.baseUrl,
-    connectTimeout: config.connectTimeout,
-    receiveTimeout: config.receiveTimeout,
-    headers: {'Content-Type': 'application/json'},
-  ));
-
-  // Auth interceptor: tambahkan Authorization header untuk setiap request
-  dio.interceptors.add(InterceptorsWrapper(
-    onRequest: (options, handler) async {
-      // Cek token admin (Supabase) atau wali (custom JWT)
-      final token = await ref.read(authTokenProvider.future);
-      if (token != null) {
-        options.headers['Authorization'] = 'Bearer $token';
-      }
-      handler.next(options);
-    },
-    onError: (err, handler) async {
-      // Auto-logout kalau 401
-      if (err.response?.statusCode == 401) {
-        await ref.read(authStorageProvider).clear();
-        ref.invalidate(currentUserProvider);
-      }
-      handler.next(err);
-    },
-  ));
-
-  if (kDebugMode) {
-    dio.interceptors.add(LogInterceptor(
-      request: true,
-      requestHeader: false,
-      responseHeader: false,
-      responseBody: true,
-      error: true,
-      logPrint: (obj) => debugPrint('[DIO] $obj'),
-    ));
-  }
-
-  return dio;
-});
-
+/// (Removed — Dio was unused, Supabase client handles all HTTP.)
 /// Secure storage untuk token & session data.
 final authStorageProvider = Provider<AuthStorage>((ref) => AuthStorage());
 
@@ -317,16 +255,6 @@ Future<void> ensureUserRoleOrSignOut(
 
 /// Provider untuk dapatkan auth token aktif (admin atau wali).
 /// Di-override per app (admin desktop vs wali mobile).
-final authTokenProvider = FutureProvider<String?>((ref) async {
-  final storage = ref.read(authStorageProvider);
-  // Default: cek admin token dulu (admin/guru/bendahara/kepala)
-  final adminToken = await storage.getAdminToken();
-  if (adminToken != null) return adminToken;
-  // Fallback: cek wali session
-  final waliSession = await storage.loadWaliSession();
-  return waliSession?.token;
-});
-
 /// Data session wali (untuk mobile_wali).
 class WaliSession {
   const WaliSession({

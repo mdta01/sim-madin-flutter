@@ -566,26 +566,6 @@ class ChatRoomAdminModel {
 // QR — read-only list of scans
 // ===========================================================================
 
-final qrScanListAdminProvider = FutureProvider<List<QRScanAdminModel>>((ref) async {
-  ref.watch(realtimeRefreshTick);
-  final client = ref.watch(supabaseClientProvider);
-  final res = await client.from('QRScan').select().order('createdAt', ascending: false).limit(100);
-  return (res as List).map((r) {
-    final row = r as Map<String, dynamic>;
-    return QRScanAdminModel(id: row['id'].toString(), qrType: row['qrType'] as String? ?? '-', scanType: row['scanType'] as String? ?? '-', result: row['result'] as String? ?? '-', message: row['message']?.toString() ?? '-', createdAt: DateTime.parse(row['createdAt'].toString()));
-  }).toList();
-});
-
-class QRScanAdminModel {
-  const QRScanAdminModel({required this.id, required this.qrType, required this.scanType, required this.result, this.message, required this.createdAt});
-  final String id;
-  final String qrType;
-  final String scanType;
-  final String result;
-  final String? message;
-  final DateTime createdAt;
-}
-
 // ===========================================================================
 // AUDIT LOG — read-only list
 // ===========================================================================
