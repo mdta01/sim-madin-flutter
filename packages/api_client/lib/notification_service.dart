@@ -20,6 +20,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_client/supabase_client.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Provider untuk NotificationService singleton.
 /// Pakai SupabaseClient langsung (bukan WidgetRef) supaya type-safe.

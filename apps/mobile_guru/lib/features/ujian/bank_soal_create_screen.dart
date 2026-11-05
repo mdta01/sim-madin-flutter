@@ -348,7 +348,7 @@ class _BankSoalCreateScreenState extends ConsumerState<BankSoalCreateScreen> {
         Expanded(
           child: TextField(
             controller: ctrl,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               isDense: true,
               hintText: 'Teks opsi $label',
               border: OutlineInputBorder(),

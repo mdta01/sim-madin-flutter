@@ -49,8 +49,7 @@ class Mobile_guruApp extends ConsumerWidget {
     // dashboard walau sesi sudah mati, dan semua fetch 401.
     ref.listen<AsyncValue<AuthState>>(authStateProvider, (_, next) {
       next.whenData((authState) {
-        if (authState.event == AuthChangeEvent.signedOut ||
-            authState.event == AuthChangeEvent.tokenRefreshFailed) {
+        if (authState.event == AuthChangeEvent.signedOut) {
           ref.read(appRouterProvider).go('/login');
         }
       });

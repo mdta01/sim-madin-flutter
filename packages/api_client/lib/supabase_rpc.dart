@@ -140,7 +140,7 @@ class SupabaseRpc {
       });
 
       if (res == null) {
-        return (success: false, transaksiId: '', newKasBalance: 0);
+        return (success: false, transaksiId: '', newKasBalance: 0.0);
       }
 
       final row = (res as List).first as Map<String, dynamic>;
@@ -148,10 +148,10 @@ class SupabaseRpc {
         success: row['success'] == true,
         transaksiId: row['transaksi_id'] as String? ?? '',
         newKasBalance:
-            (row['new_kas_balance'] as num?)?.toDouble() ?? 0,
+            (row['new_kas_balance'] as num?)?.toDouble() ?? 0.0,
       );
     } catch (e) {
-      return (success: false, transaksiId: '', newKasBalance: 0);
+      return (success: false, transaksiId: '', newKasBalance: 0.0);
     }
   }
 
@@ -173,7 +173,7 @@ class SupabaseRpc {
       });
 
       if (res == null) {
-        return (success: false, message: 'Response null', newKasBalance: 0);
+        return (success: false, message: 'Response null', newKasBalance: 0.0);
       }
 
       final row = (res as List).first as Map<String, dynamic>;
@@ -181,10 +181,10 @@ class SupabaseRpc {
         success: row['success'] == true,
         message: row['message'] as String? ?? 'Unknown',
         newKasBalance:
-            (row['new_kas_balance'] as num?)?.toDouble() ?? 0,
+            (row['new_kas_balance'] as num?)?.toDouble() ?? 0.0,
       );
     } catch (e) {
-      return (success: false, message: e.toString(), newKasBalance: 0);
+      return (success: false, message: e.toString(), newKasBalance: 0.0);
     }
   }
 

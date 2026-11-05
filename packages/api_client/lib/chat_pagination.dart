@@ -12,8 +12,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'query_providers.dart' show realtimeRefreshTick, supabaseClientProvider;
+import 'query_providers.dart' show realtimeRefreshTick;
 
 /// State untuk paginated chat messages.
 class ChatMessagesState {

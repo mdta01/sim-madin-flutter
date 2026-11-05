@@ -238,7 +238,6 @@ class _UjianDetailScreenState extends ConsumerState<UjianDetailScreen>
             ),
           ],
         ),
-      ),
     );
   }
 

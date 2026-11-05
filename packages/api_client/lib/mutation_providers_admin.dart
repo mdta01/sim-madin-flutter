@@ -13,9 +13,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'query_providers.dart' show supabaseClientProvider;
 import 'query_providers_admin.dart';
 
 // ---------------------------------------------------------------------------
