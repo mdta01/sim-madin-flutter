@@ -1,9 +1,10 @@
-// Surat — read-only list + delete.
+// Surat — list + delete + create.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 import '../../widgets/feedback_widgets.dart';
+import '../../widgets/form_widgets.dart';
 
 class SuratScreen extends ConsumerWidget {
   const SuratScreen({super.key});
@@ -16,6 +17,8 @@ class SuratScreen extends ConsumerWidget {
         Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Row(children: [
           const Text('Surat', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const Spacer(),
+          FilledButton.icon(onPressed: () => _showCreateDialog(context, ref), icon: const Icon(Icons.add), label: const Text('Buat Surat')),
+          const SizedBox(width: AppSpacing.sm),
           IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(suratListAdminProvider)),
         ])),
         Expanded(child: async.when(
@@ -42,5 +45,66 @@ class SuratScreen extends ConsumerWidget {
         const SizedBox(height: AppSpacing.md),
       ]),
     );
+  }
+
+  static const _types = ['KETERANGAN', 'PINDAH', 'LULUS', 'LAINNYA'];
+  static const _statuses = ['DRAFT', 'ISSUED', 'CANCELLED'];
+
+  Future<void> _showCreateDialog(BuildContext context, WidgetRef ref) async {
+    final santriList = await ref.read(santriListProvider.future);
+    if (!context.mounted) return;
+
+    final nomorCtrl = TextEditingController();
+    final titleCtrl = TextEditingController();
+    final contentCtrl = TextEditingController();
+    String? santriId;
+    String type = 'KETERANGAN';
+    String status = 'DRAFT';
+    DateTime? tanggalSurat = DateTime.now();
+    bool saving = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setInner) => AlertDialog(
+        title: const Text('Buat Surat'),
+        content: SizedBox(width: 550, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          FormFieldLabel(label: 'Santri', child: DropdownButtonFormField<String>(value: santriId, hint: const Text('Pilih Santri'), decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), items: santriList.map((s) => DropdownMenuItem(value: s.id, child: Text('${s.name} (${s.nis})'))).toList(), onChanged: (v) => setInner(() => santriId = v))),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: FormFieldLabel(label: 'Type', child: DropdownButtonFormField<String>(value: type, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (v) => setInner(() => type = v!)))),
+            const SizedBox(width: 8),
+            Expanded(child: FormFieldLabel(label: 'Status', child: DropdownButtonFormField<String>(value: status, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), items: _statuses.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(), onChanged: (v) => setInner(() => status = v!)))),
+          ]),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: FormFieldLabel(label: 'No. Surat (opsional)', child: TextField(controller: nomorCtrl, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, hintText: 'Auto jika kosong')))),
+            const SizedBox(width: 8),
+            Expanded(child: FormFieldLabel(label: 'Tanggal Surat', child: OutlinedButton.icon(onPressed: () async { final d = await showDatePicker(context: context, initialDate: tanggalSurat ?? DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 30))); if (d != null) setInner(() => tanggalSurat = d); }, icon: const Icon(Icons.calendar_today, size: 16), label: Text(tanggalSurat != null ? formatDate(tanggalSurat) : 'Pilih')))),
+          ]),
+          const SizedBox(height: 8),
+          FormFieldLabel(label: 'Judul', child: TextField(controller: titleCtrl, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true))),
+          const SizedBox(height: 8),
+          FormFieldLabel(label: 'Isi Surat', child: TextField(controller: contentCtrl, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), maxLines: 6)),
+        ]))),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Batal')),
+          ElevatedButton(onPressed: saving ? null : () async {
+            if (santriId == null) { _toast(context, 'Santri wajib dipilih', true); return; }
+            if (titleCtrl.text.trim().isEmpty) { _toast(context, 'Judul wajib diisi', true); return; }
+            setInner(() => saving = true);
+            try {
+              await adminCreateSurat(ref, santriId: santriId!, type: type, title: titleCtrl.text.trim(), nomorSurat: nomorCtrl.text.trim().isEmpty ? null : nomorCtrl.text.trim(), content: contentCtrl.text.trim().isEmpty ? null : contentCtrl.text.trim(), status: status, tanggalSurat: tanggalSurat);
+              if (!context.mounted) return;
+              Navigator.of(ctx).pop();
+              _toast(context, '✅ Surat dibuat');
+            } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+          }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Create')),
+        ],
+      )),
+    );
+  }
+
+  void _toast(BuildContext context, String msg, [bool isError = false]) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: isError ? AppColors.danger : AppColors.success));
   }
 }

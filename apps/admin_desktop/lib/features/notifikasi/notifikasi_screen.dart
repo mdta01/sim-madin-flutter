@@ -1,9 +1,10 @@
-// Notifikasi — read-only list + delete.
+// Notifikasi — list + delete + create/broadcast.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 import '../../widgets/feedback_widgets.dart';
+import '../../widgets/form_widgets.dart';
 
 class NotifikasiScreen extends ConsumerWidget {
   const NotifikasiScreen({super.key});
@@ -16,6 +17,10 @@ class NotifikasiScreen extends ConsumerWidget {
         Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Row(children: [
           const Text('Notifikasi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const Spacer(),
+          FilledButton.icon(onPressed: () => _showCreateDialog(context, ref), icon: const Icon(Icons.send), label: const Text('Kirim Notifikasi')),
+          const SizedBox(width: AppSpacing.sm),
+          OutlinedButton.icon(onPressed: () => _showBroadcastDialog(context, ref), icon: const Icon(Icons.campaign), label: const Text('Broadcast All')),
+          const SizedBox(width: AppSpacing.sm),
           IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(notifikasiListAdminProvider)),
         ])),
         Expanded(child: async.when(
@@ -42,5 +47,99 @@ class NotifikasiScreen extends ConsumerWidget {
         const SizedBox(height: AppSpacing.md),
       ]),
     );
+  }
+
+  static const _types = ['NILAI', 'ABSENSI', 'TAGIHAN', 'PAYMENT', 'CHAT', 'PENGUMUMAN', 'CUSTOM'];
+  static const _priorities = ['NORMAL', 'PENTING', 'URGENT'];
+
+  Future<void> _showCreateDialog(BuildContext context, WidgetRef ref) async {
+    final waliList = await ref.read(waliListAdminProvider(null).future);
+    if (!context.mounted) return;
+
+    final titleCtrl = TextEditingController();
+    final msgCtrl = TextEditingController();
+    String? waliId;
+    String type = 'CUSTOM';
+    String priority = 'NORMAL';
+    bool saving = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setInner) => AlertDialog(
+        title: const Text('Kirim Notifikasi'),
+        content: SizedBox(width: 500, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          FormFieldLabel(label: 'Wali', child: DropdownButtonFormField<String>(value: waliId, hint: const Text('Pilih Wali'), decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), items: waliList.map((w) => DropdownMenuItem(value: w.id, child: Text(w.name))).toList(), onChanged: (v) => setInner(() => waliId = v))),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: FormFieldLabel(label: 'Type', child: DropdownButtonFormField<String>(value: type, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (v) => setInner(() => type = v!)))),
+            const SizedBox(width: 8),
+            Expanded(child: FormFieldLabel(label: 'Priority', child: DropdownButtonFormField<String>(value: priority, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), items: _priorities.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(), onChanged: (v) => setInner(() => priority = v!)))),
+          ]),
+          const SizedBox(height: 8),
+          FormFieldLabel(label: 'Judul', child: TextField(controller: titleCtrl, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true))),
+          const SizedBox(height: 8),
+          FormFieldLabel(label: 'Pesan', child: TextField(controller: msgCtrl, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), maxLines: 4)),
+        ]))),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Batal')),
+          ElevatedButton(onPressed: saving ? null : () async {
+            if (waliId == null) { _toast(context, 'Wali wajib dipilih', true); return; }
+            if (titleCtrl.text.trim().isEmpty || msgCtrl.text.trim().isEmpty) { _toast(context, 'Judul & Pesan wajib diisi', true); return; }
+            setInner(() => saving = true);
+            try {
+              await adminCreateNotifikasi(ref, waliId: waliId!, type: type, title: titleCtrl.text.trim(), message: msgCtrl.text.trim(), priority: priority);
+              if (!context.mounted) return;
+              Navigator.of(ctx).pop();
+              _toast(context, '✅ Notifikasi terkirim');
+            } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+          }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Kirim')),
+        ],
+      )),
+    );
+  }
+
+  Future<void> _showBroadcastDialog(BuildContext context, WidgetRef ref) async {
+    final titleCtrl = TextEditingController();
+    final msgCtrl = TextEditingController();
+    String type = 'PENGUMUMAN';
+    String priority = 'NORMAL';
+    bool saving = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setInner) => AlertDialog(
+        title: const Text('Broadcast Notifikasi ke Semua Wali'),
+        content: SizedBox(width: 500, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('Kirim notifikasi ke semua wali dengan status ACTIVE. Akan trigger FCM push ke device masing-masing.', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: FormFieldLabel(label: 'Type', child: DropdownButtonFormField<String>(value: type, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (v) => setInner(() => type = v!)))),
+            const SizedBox(width: 8),
+            Expanded(child: FormFieldLabel(label: 'Priority', child: DropdownButtonFormField<String>(value: priority, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), items: _priorities.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(), onChanged: (v) => setInner(() => priority = v!)))),
+          ]),
+          const SizedBox(height: 8),
+          FormFieldLabel(label: 'Judul', child: TextField(controller: titleCtrl, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true))),
+          const SizedBox(height: 8),
+          FormFieldLabel(label: 'Pesan', child: TextField(controller: msgCtrl, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), maxLines: 4)),
+        ]))),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Batal')),
+          ElevatedButton(onPressed: saving ? null : () async {
+            if (titleCtrl.text.trim().isEmpty || msgCtrl.text.trim().isEmpty) { _toast(context, 'Judul & Pesan wajib diisi', true); return; }
+            setInner(() => saving = true);
+            try {
+              final count = await adminCreateNotifikasiBulk(ref, type: type, title: titleCtrl.text.trim(), message: msgCtrl.text.trim(), priority: priority);
+              if (!context.mounted) return;
+              Navigator.of(ctx).pop();
+              _toast(context, '✅ $count notifikasi broadcast');
+            } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } finally { if (ctx.mounted) setInner(() => saving = false); }
+          }, child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Broadcast')),
+        ],
+      )),
+    );
+  }
+
+  void _toast(BuildContext context, String msg, [bool isError = false]) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: isError ? AppColors.danger : AppColors.success));
   }
 }

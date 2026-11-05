@@ -39,6 +39,100 @@ Future<void> adminDeleteTagihan(WidgetRef ref, String id) async {
   ref.invalidate(tagihanListAdminProvider);
 }
 
+/// Create tagihan untuk satu santri.
+Future<TagihanModel> adminCreateTagihan(
+  WidgetRef ref, {
+  required String santriId,
+  required String jenisTagihanId,
+  required double amount,
+  String? description,
+  DateTime? dueDate,
+  String? tahunAjaranId,
+  String? semesterId,
+}) async {
+  final client = ref.read(supabaseClientProvider);
+  final taId = tahunAjaranId ?? (await ref.read(tahunAjaranActiveProvider.future))?.id;
+  final body = {
+    'santriId': santriId,
+    'jenisTagihanId': jenisTagihanId,
+    'amount': amount,
+    'paidAmount': 0.0,
+    'status': TagihanStatus.belumBayar,
+    if (description != null) 'description': description,
+    if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
+    if (taId != null) 'tahunAjaranId': taId,
+    if (semesterId != null) 'semesterId': semesterId,
+  };
+  final res = await client.from('Tagihan').insert(body).select('*, Santri(name, nis, Kelas(name)), JenisTagihan(name, code)').single();
+  final row = res as Map<String, dynamic>;
+  final santri = row['Santri'] as Map<String, dynamic>?;
+  final kelas = santri?['Kelas'] as Map<String, dynamic>?;
+  final jenis = row['JenisTagihan'] as Map<String, dynamic>?;
+  ref.invalidate(tagihanListAdminProvider);
+  return TagihanModel.fromJson({...row, 'santriName': santri?['name'], 'santriNis': santri?['nis'], 'kelasName': kelas?['name'], 'jenisTagihanCode': jenis?['code'], 'jenisTagihanName': jenis?['name']});
+}
+
+/// Bulk create tagihan untuk semua santri di satu kelas.
+/// Dipakai untuk generate tagihan syahriyah/uang ujian per kelas.
+Future<int> adminCreateTagihanBulk(
+  WidgetRef ref, {
+  required String kelasId,
+  required String jenisTagihanId,
+  required double amount,
+  String? description,
+  DateTime? dueDate,
+  String? tahunAjaranId,
+  String? semesterId,
+}) async {
+  final client = ref.read(supabaseClientProvider);
+  final taId = tahunAjaranId ?? (await ref.read(tahunAjaranActiveProvider.future))?.id;
+
+  // Get all santri in kelas
+  final santriRes = await client.from('Santri').select('id').eq('kelasId', kelasId).eq('status', SantriStatus.aktif).filter('deletedAt', 'is', null);
+  final santriIds = (santriRes as List).map((r) => (r as Map<String, dynamic>)['id'] as String).toList();
+  if (santriIds.isEmpty) return 0;
+
+  // Build rows
+  final rows = santriIds.map((sid) => {
+    'santriId': sid,
+    'jenisTagihanId': jenisTagihanId,
+    'amount': amount,
+    'paidAmount': 0.0,
+    'status': TagihanStatus.belumBayar,
+    if (description != null) 'description': description,
+    if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
+    if (taId != null) 'tahunAjaranId': taId,
+    if (semesterId != null) 'semesterId': semesterId,
+  }).toList();
+
+  await client.from('Tagihan').insert(rows);
+  ref.invalidate(tagihanListAdminProvider);
+  return santriIds.length;
+}
+
+/// Update tagihan (edit amount, dueDate, status).
+Future<void> adminUpdateTagihan(
+  WidgetRef ref, {
+  required String tagihanId,
+  double? amount,
+  double? paidAmount,
+  String? status,
+  String? description,
+  DateTime? dueDate,
+}) async {
+  final client = ref.read(supabaseClientProvider);
+  final body = <String, dynamic>{
+    if (amount != null) 'amount': amount,
+    if (paidAmount != null) 'paidAmount': paidAmount,
+    if (status != null) 'status': status,
+    if (description != null) 'description': description,
+    if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
+    'updatedAt': DateTime.now().toIso8601String(),
+  };
+  await client.from('Tagihan').update(body).eq('id', tagihanId);
+  ref.invalidate(tagihanListAdminProvider);
+}
+
 // ===========================================================================
 // PEMBAYARAN
 // ===========================================================================
@@ -125,6 +219,52 @@ Future<void> adminDeleteHonorGuru(WidgetRef ref, String id) async {
   ref.invalidate(honorGuruListAdminProvider);
 }
 
+/// Generate honor guru bulk untuk semua guru aktif di periode tertentu.
+/// Dipanggil oleh admin dari admin_desktop.
+Future<int> adminGenerateHonorGuruBulk(
+  WidgetRef ref, {
+  required String tahunAjaranId,
+  required String semesterId,
+  required String periode, // "2025-10"
+  required String periodeLabel, // "Oktober 2025"
+  double defaultHonorMengajar = 500000,
+  double defaultInsentif = 100000,
+  double defaultTunjangan = 50000,
+  double defaultPotongan = 0,
+}) async {
+  final client = ref.read(supabaseClientProvider);
+
+  // Get all active guru
+  final guruRes = await client.from('Guru').select('id').eq('status', GuruStatus.aktif).filter('deletedAt', 'is', null);
+  final guruIds = (guruRes as List).map((r) => (r as Map<String, dynamic>)['id'] as String).toList();
+  if (guruIds.isEmpty) return 0;
+
+  // Check if already generated for this periode
+  final existing = await client.from('HonorGuru').select('id').eq('periode', periode);
+  if ((existing as List).isNotEmpty) {
+    throw Exception('Honor untuk periode $periode sudah pernah di-generate');
+  }
+
+  final total = defaultHonorMengajar + defaultInsentif + defaultTunjangan - defaultPotongan;
+  final rows = guruIds.map((guruId) => {
+    'tahunAjaranId': tahunAjaranId,
+    'semesterId': semesterId,
+    'guruId': guruId,
+    'periode': periode,
+    'periodeLabel': periodeLabel,
+    'honorMengajar': defaultHonorMengajar,
+    'insentif': defaultInsentif,
+    'tunjangan': defaultTunjangan,
+    'potongan': defaultPotongan,
+    'totalHonor': total,
+    'status': HonorGuruStatus.draft,
+  }).toList();
+
+  await client.from('HonorGuru').insert(rows);
+  ref.invalidate(honorGuruListAdminProvider);
+  return guruIds.length;
+}
+
 // ===========================================================================
 // SIKLUS — simplified read-only overview (no complex auto-tagihan)
 // ===========================================================================
@@ -208,6 +348,63 @@ Future<void> adminDeleteNotifikasi(WidgetRef ref, String id) async {
   ref.invalidate(notifikasiListAdminProvider);
 }
 
+/// Create notifikasi manual (admin kirim push notification ke wali).
+/// Notifikasi INSERT akan otomatis trigger FCM push via trigger.
+Future<void> adminCreateNotifikasi(
+  WidgetRef ref, {
+  required String waliId,
+  required String type,
+  required String title,
+  required String message,
+  String? santriId,
+  String priority = 'NORMAL',
+  String? entityType,
+  String? entityId,
+}) async {
+  final client = ref.read(supabaseClientProvider);
+  await client.from('Notifikasi').insert({
+    'waliId': waliId,
+    'santriId': santriId,
+    'type': type,
+    'title': title,
+    'message': message,
+    'priority': priority,
+    'entityType': entityType,
+    'entityId': entityId,
+    'isRead': false,
+    'isPushSent': false,
+  });
+  ref.invalidate(notifikasiListAdminProvider);
+}
+
+/// Bulk create notifikasi untuk semua wali (broadcast).
+Future<int> adminCreateNotifikasiBulk(
+  WidgetRef ref, {
+  required String type,
+  required String title,
+  required String message,
+  String priority = 'NORMAL',
+}) async {
+  final client = ref.read(supabaseClientProvider);
+  final waliRes = await client.from('Wali').select('id').filter('deletedAt', 'is', null).eq('activationStatus', 'ACTIVE');
+  final waliIds = (waliRes as List).map((r) => (r as Map<String, dynamic>)['id'] as String).toList();
+  if (waliIds.isEmpty) return 0;
+
+  final rows = waliIds.map((wid) => {
+    'waliId': wid,
+    'type': type,
+    'title': title,
+    'message': message,
+    'priority': priority,
+    'isRead': false,
+    'isPushSent': false,
+  }).toList();
+
+  await client.from('Notifikasi').insert(rows);
+  ref.invalidate(notifikasiListAdminProvider);
+  return waliIds.length;
+}
+
 // ===========================================================================
 // SURAT — read-only list
 // ===========================================================================
@@ -237,6 +434,30 @@ class SuratAdminModel {
 Future<void> adminDeleteSurat(WidgetRef ref, String id) async {
   final client = ref.read(supabaseClientProvider);
   await client.from('Surat').delete().eq('id', id);
+  ref.invalidate(suratListAdminProvider);
+}
+
+/// Create surat (surat keterangan, surat pindah, dll).
+Future<void> adminCreateSurat(
+  WidgetRef ref, {
+  required String santriId,
+  required String type,
+  required String title,
+  String? nomorSurat,
+  String? content,
+  String status = 'DRAFT',
+  DateTime? tanggalSurat,
+}) async {
+  final client = ref.read(supabaseClientProvider);
+  await client.from('Surat').insert({
+    'santriId': santriId,
+    'type': type,
+    'title': title,
+    if (nomorSurat != null) 'nomorSurat': nomorSurat,
+    if (content != null) 'content': content,
+    'status': status,
+    'tanggalSurat': (tanggalSurat ?? DateTime.now()).toIso8601String(),
+  });
   ref.invalidate(suratListAdminProvider);
 }
 
