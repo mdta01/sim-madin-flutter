@@ -20,8 +20,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_client/supabase_client.dart';
 
 /// Provider untuk NotificationService singleton.
+/// Pakai SupabaseClient langsung (bukan WidgetRef) supaya type-safe.
 final notificationServiceProvider = Provider<NotificationService>((ref) {
-  return NotificationService(ref);
+  return NotificationService(ref.read(supabaseClientProvider));
 });
 
 /// Callback untuk background message handler (harus top-level function).
@@ -32,9 +33,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class NotificationService {
-  NotificationService(this._ref);
+  NotificationService(this._client);
 
-  final WidgetRef _ref;
+  final SupabaseClient _client;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
@@ -122,7 +123,7 @@ class NotificationService {
       if (token == null) return null;
 
       // Save ke Supabase User table
-      final client = _ref.read(supabaseClientProvider);
+      final client = _client;
       final currentUser = client.auth.currentUser;
       if (currentUser != null) {
         await client.from('User').update({
@@ -213,7 +214,7 @@ class NotificationService {
   /// Cleanup saat logout — delete FCM token dari DB.
   Future<void> clearToken() async {
     try {
-      final client = _ref.read(supabaseClientProvider);
+      final client = _client;
       final currentUser = client.auth.currentUser;
       if (currentUser != null) {
         await client.from('User').update({

@@ -57,7 +57,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await ensureUserRoleOrSignOut(ref,
           roleCode: 'KEPALA', roleLabel: _roleLabel);
       if (!mounted) return;
-      context.go('/dashboard/home');
+      context.go("/dashboard/home");
+      // Save FCM token for push notifications
+      await ref.read(notificationServiceProvider).getAndSaveToken();
     } catch (e) {
       _showError(friendlyError(e));
     } finally {
