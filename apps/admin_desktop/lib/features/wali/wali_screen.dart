@@ -22,36 +22,49 @@ class _WaliScreenState extends ConsumerState<WaliScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(children: [
-        Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Row(children: [
-          SizedBox(width: 300, child: TextField(controller: _searchCtrl, decoration: const InputDecoration(hintText: 'Cari wali (nama, phone)...', prefixIcon: Icon(Icons.search), isDense: true, border: OutlineInputBorder()), onChanged: (v) => setState(() => _search = v.trim()))),
-          const Spacer(),
-          FilledButton.icon(onPressed: () => _showDialog(context), icon: const Icon(Icons.person_add), label: const Text('Tambah Wali')),
-          const SizedBox(width: 8),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(waliListAdminProvider)),
-        ])),
+        AdminScreenHeader(
+          title: 'Daftar Wali',
+          icon: Icons.family_restroom,
+          subtitle: 'Kelola data wali santri',
+          actions: [
+            SizedBox(
+              width: 240,
+              child: TextField(
+                controller: _searchCtrl,
+                decoration: const InputDecoration(
+                  hintText: 'Cari wali (nama, phone)...',
+                  prefixIcon: Icon(Icons.search, size: 18),
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (v) => setState(() => _search = v.trim()),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            FilledButton.icon(onPressed: () => _showDialog(context), icon: const Icon(Icons.person_add, size: 18), label: const Text('Tambah Wali')),
+            const SizedBox(width: AppSpacing.sm),
+            IconButton(tooltip: 'Refresh', icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(waliListAdminProvider)),
+          ],
+        ),
         Expanded(child: async.when(
           loading: () => const LoadingSkeleton(itemCount: 8),
-          error: (e, _) => ErrorView(message: e.toString(), onRetry: () => ref.invalidate(waliListAdminProvider)),
-          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada wali', icon: Icons.family_restroom) : Container(
-            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
-            child: SingleChildScrollView(child: DataTable(
-              columns: const [DataColumn(label: Text('Nama')), DataColumn(label: Text('Telepon')), DataColumn(label: Text('Email')), DataColumn(label: Text('Pekerjaan')), DataColumn(label: Text('Status')), DataColumn(label: Text('Actions'))],
-              rows: list.map((w) => DataRow(cells: [
-                DataCell(Text(w.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-                DataCell(Text(w.phone ?? '-', style: const TextStyle(fontSize: 12))),
-                DataCell(Text(w.email ?? '-', style: const TextStyle(fontSize: 12))),
-                DataCell(Text(w.occupation ?? '-', style: const TextStyle(fontSize: 12))),
-                DataCell(StatusChip(label: w.activationStatus, color: w.activationStatus == WaliActivationStatus.active ? AppColors.success : AppColors.warning, bg: w.activationStatus == WaliActivationStatus.active ? AppColors.successLight : AppColors.warningLight, compact: true)),
-                DataCell(Row(children: [
-                  IconButton(icon: const Icon(Icons.link, size: 18), color: AppColors.info, tooltip: 'Link Santri', onPressed: () => _showLinkSantriDialog(context, w)),
-                  IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, wali: w)),
-                  IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Wali', message: 'Yakin hapus "${w.name}"?', destructive: true)) { try { await adminSoftDeleteWali(ref, w.id); _toast('✅ Wali dihapus'); } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } } }),
-                ])),
-              ])).toList(),
-              headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
-            )),
-          ),
+          error: (e, _) => ErrorView(message: friendlyError(e), onRetry: () => ref.invalidate(waliListAdminProvider)),
+          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada wali', subtitle: 'Tambahkan wali pertama Anda dengan tombol di atas.', icon: Icons.family_restroom, onRefresh: null) : ModernDataTableContainer(child: SingleChildScrollView(child: DataTable(
+            columns: const [DataColumn(label: Text('Nama')), DataColumn(label: Text('Telepon')), DataColumn(label: Text('Email')), DataColumn(label: Text('Pekerjaan')), DataColumn(label: Text('Status')), DataColumn(label: Text('Actions'))],
+            rows: list.map((w) => DataRow(cells: [
+              DataCell(Text(w.name, style: AppTextStyles.label)),
+              DataCell(Text(w.phone ?? '-', style: AppTextStyles.body3)),
+              DataCell(Text(w.email ?? '-', style: AppTextStyles.body3)),
+              DataCell(Text(w.occupation ?? '-', style: AppTextStyles.body3)),
+              DataCell(StatusChip(label: w.activationStatus, color: w.activationStatus == WaliActivationStatus.active ? AppColors.success : AppColors.warning, bg: w.activationStatus == WaliActivationStatus.active ? AppColors.successLight : AppColors.warningLight, icon: w.activationStatus == WaliActivationStatus.active ? Icons.check_circle : Icons.cancel, compact: true)),
+              DataCell(Row(children: [
+                IconButton(icon: const Icon(Icons.link, size: 18), color: AppColors.info, tooltip: 'Link Santri', onPressed: () => _showLinkSantriDialog(context, w)),
+                IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, wali: w)),
+                IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Wali', message: 'Yakin hapus "${w.name}"?', destructive: true)) { try { await adminSoftDeleteWali(ref, w.id); _toast('✅ Wali dihapus'); } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } } }),
+              ])),
+            ])).toList(),
+            headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
+          ))),
         )),
         const SizedBox(height: AppSpacing.md),
       ]),

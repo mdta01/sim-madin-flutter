@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
+import 'package:supabase_client/supabase_client.dart';
 import '../../widgets/feedback_widgets.dart';
 import '../../widgets/form_widgets.dart';
 
@@ -29,7 +30,7 @@ final raporGeneratorProvider = FutureProvider.family
       .maybeSingle();
   SantriInfo? santriInfo;
   if (santriRes != null) {
-    final s = santriRes as Map<String, dynamic>;
+    final s = santriRes;
     final kelas = s['Kelas'] as Map<String, dynamic>?;
     santriInfo = SantriInfo(
       id: s['id'] as String,

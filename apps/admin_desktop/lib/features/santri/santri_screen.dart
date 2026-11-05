@@ -38,7 +38,7 @@ class _SantriScreenState extends ConsumerState<SantriScreen> {
           Expanded(
             child: asyncValue.when(
               loading: () => const LoadingSkeleton(itemCount: 10),
-              error: (e, _) => ErrorView(message: e.toString(), onRetry: () => ref.invalidate(santriListProvider)),
+              error: (e, _) => ErrorView(message: friendlyError(e), onRetry: () => ref.invalidate(santriListProvider)),
               data: (list) {
                 final filtered = _search.isEmpty
                     ? list
@@ -48,8 +48,9 @@ class _SantriScreenState extends ConsumerState<SantriScreen> {
                 if (filtered.isEmpty) {
                   return EmptyState(
                     title: _search.isEmpty ? 'Belum ada santri' : 'Tidak ditemukan',
-                    icon: Icons.people_outline,
-                    onRefresh: () => ref.invalidate(santriListProvider),
+                    subtitle: _search.isEmpty ? 'Tambahkan santri pertama Anda dengan tombol di atas.' : 'Coba kata kunci lain.',
+                    icon: _search.isEmpty ? Icons.people_outline : Icons.search_off,
+                    onRefresh: null,
                   );
                 }
                 return _buildTable(context, filtered, kelasAsync, waliAsync);
@@ -63,31 +64,29 @@ class _SantriScreenState extends ConsumerState<SantriScreen> {
   }
 
   Widget _buildToolbar(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 300,
-            child: TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(hintText: 'Cari santri (nama, NIS)...', prefixIcon: Icon(Icons.search), isDense: true, border: OutlineInputBorder()),
-              onChanged: (v) => setState(() => _search = v.trim().toLowerCase()),
-            ),
+    return AdminScreenHeader(
+      title: 'Daftar Santri',
+      icon: Icons.people_outline,
+      subtitle: 'Kelola data santri aktif',
+      actions: [
+        SizedBox(
+          width: 240,
+          child: TextField(
+            controller: _searchController,
+            decoration: const InputDecoration(hintText: 'Cari santri (nama, NIS)...', prefixIcon: Icon(Icons.search, size: 18), isDense: true, border: OutlineInputBorder()),
+            onChanged: (v) => setState(() => _search = v.trim().toLowerCase()),
           ),
-          const Spacer(),
-          FilledButton.icon(onPressed: () => _showCreateEditDialog(context), icon: const Icon(Icons.person_add), label: const Text('Tambah Santri')),
-          const SizedBox(width: AppSpacing.sm),
-          IconButton(icon: const Icon(Icons.refresh), tooltip: 'Refresh', onPressed: () => ref.invalidate(santriListProvider)),
-        ],
-      ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        FilledButton.icon(onPressed: () => _showCreateEditDialog(context), icon: const Icon(Icons.person_add, size: 18), label: const Text('Tambah Santri')),
+        const SizedBox(width: AppSpacing.sm),
+        IconButton(icon: const Icon(Icons.refresh), tooltip: 'Refresh', onPressed: () => ref.invalidate(santriListProvider)),
+      ],
     );
   }
 
   Widget _buildTable(BuildContext context, List<SantriModel> list, AsyncValue<List<KelasModel>> kelasAsync, AsyncValue<List<WaliModel>> waliAsync) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
+    return ModernDataTableContainer(
       child: SingleChildScrollView(
         child: DataTable(
           columns: const [
@@ -97,12 +96,12 @@ class _SantriScreenState extends ConsumerState<SantriScreen> {
             DataColumn(label: Text('Actions')),
           ],
           rows: list.map((s) => DataRow(cells: [
-            DataCell(Text(s.nis, style: const TextStyle(fontSize: 12, fontFamily: 'monospace'))),
-            DataCell(Text(s.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-            DataCell(Text(SantriGender.label(s.gender), style: const TextStyle(fontSize: 12))),
-            DataCell(Text(s.kelasName ?? '-', style: const TextStyle(fontSize: 12))),
-            DataCell(Text(s.waliName ?? '-', style: const TextStyle(fontSize: 12))),
-            DataCell(StatusChip(label: s.status, color: s.status == SantriStatus.aktif ? AppColors.success : AppColors.danger, bg: s.status == SantriStatus.aktif ? AppColors.successLight : AppColors.dangerLight, compact: true)),
+            DataCell(Text(s.nis, style: AppTextStyles.body3.copyWith(fontFamily: AppFonts.mono))),
+            DataCell(Text(s.name, style: AppTextStyles.label)),
+            DataCell(Text(SantriGender.label(s.gender), style: AppTextStyles.body3)),
+            DataCell(Text(s.kelasName ?? '-', style: AppTextStyles.body3)),
+            DataCell(Text(s.waliName ?? '-', style: AppTextStyles.body3)),
+            DataCell(StatusChip(label: s.status, color: s.status == SantriStatus.aktif ? AppColors.success : AppColors.danger, bg: s.status == SantriStatus.aktif ? AppColors.successLight : AppColors.dangerLight, icon: s.status == SantriStatus.aktif ? Icons.check_circle : Icons.cancel, compact: true)),
             DataCell(Row(children: [
               IconButton(icon: const Icon(Icons.edit, size: 18), tooltip: 'Edit', onPressed: () => _showCreateEditDialog(context, santri: s)),
               IconButton(icon: const Icon(Icons.delete, size: 18), tooltip: 'Hapus', color: AppColors.danger, onPressed: () => _confirmDelete(context, s)),

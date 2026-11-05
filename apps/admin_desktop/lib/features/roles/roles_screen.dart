@@ -22,51 +22,40 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // Toolbar
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Row(
-              children: [
-                const Text('Daftar Role',
-                    style: TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed: () => _showCreateEditDialog(context),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Tambah Role'),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  tooltip: 'Refresh',
-                  onPressed: () => ref.invalidate(roleListProvider),
-                ),
-              ],
-            ),
+          AdminScreenHeader(
+            title: 'Roles',
+            icon: Icons.admin_panel_settings_outlined,
+            subtitle: 'Kelola role & permissions',
+            actions: [
+              FilledButton.icon(
+                onPressed: () => _showCreateEditDialog(context),
+                icon: const Icon(Icons.add),
+                label: const Text('Tambah Role'),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Refresh',
+                onPressed: () => ref.invalidate(roleListProvider),
+              ),
+            ],
           ),
           // Table
           Expanded(
             child: asyncValue.when(
               loading: () => const LoadingSkeleton(itemCount: 6),
               error: (e, _) => ErrorView(
-                  message: e.toString(),
+                  message: friendlyError(e),
                   onRetry: () => ref.invalidate(roleListProvider)),
               data: (list) {
                 if (list.isEmpty) {
                   return const EmptyState(
                       title: 'Belum ada role',
                       subtitle: 'Klik "Tambah Role" untuk membuat role',
-                      icon: Icons.admin_panel_settings_outlined);
+                      icon: Icons.admin_panel_settings_outlined,
+                      onRefresh: null);
                 }
-                return Container(
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: AppColors.border),
-                  ),
+                return ModernDataTableContainer(
                   child: SingleChildScrollView(
                     child: DataTable(
                       columns: const [
@@ -83,8 +72,7 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
                                 horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: AppColors.primaryLight,
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.sm),
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
                             ),
                             child: Text(r.code,
                                 style: const TextStyle(
@@ -95,29 +83,28 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
                           DataCell(Text(r.name,
                               style: const TextStyle(fontSize: 13))),
                           DataCell(Text(r.description ?? '-',
-                              style: const TextStyle(fontSize: 12))),
-                          DataCell(Text('${r.sortOrder ?? 0}',
-                              style: const TextStyle(fontSize: 12))),
+                              style: AppTextStyles.body3)),
+                          DataCell(Text('${r.sortOrder}',
+                              style: AppTextStyles.body3)),
                           DataCell(Row(
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.edit, size: 18),
                                 tooltip: 'Edit',
-                                onPressed: () => _showCreateEditDialog(
-                                    context, role: r),
+                                onPressed: () =>
+                                    _showCreateEditDialog(context, role: r),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.lock, size: 18),
                                 tooltip: 'Permissions',
-                                onPressed: () => _showPermissionMatrix(
-                                    context, r),
+                                onPressed: () =>
+                                    _showPermissionMatrix(context, r),
                                 color: AppColors.info,
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete, size: 18),
                                 tooltip: 'Delete',
-                                onPressed: () =>
-                                    _confirmDelete(context, r),
+                                onPressed: () => _confirmDelete(context, r),
                                 color: AppColors.danger,
                               ),
                             ],
@@ -222,8 +209,7 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
                       }
                       setInner(() => saving = true);
                       try {
-                        final sortOrder =
-                            int.tryParse(sortCtrl.text) ?? 99;
+                        final sortOrder = int.tryParse(sortCtrl.text) ?? 99;
                         if (isEdit) {
                           await updateRole(
                             ref,
@@ -249,9 +235,8 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
                         Navigator.of(ctx).pop();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                              content: Text(isEdit
-                                  ? '✅ Role updated'
-                                  : '✅ Role created'),
+                              content: Text(
+                                  isEdit ? '✅ Role updated' : '✅ Role created'),
                               backgroundColor: AppColors.success),
                         );
                       } catch (e) {
@@ -392,8 +377,7 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Hapus Role',
-      message:
-          'Yakin ingin menghapus role "${role.name}" (${role.code})?\n\n'
+      message: 'Yakin ingin menghapus role "${role.name}" (${role.code})?\n\n'
           'Catatan: kalau role masih dipakai oleh user, FK constraint '
           'akan block delete. Reassign users dulu sebelum delete.',
       confirmText: 'Hapus',

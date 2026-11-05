@@ -18,10 +18,8 @@
 //   /alumni, /chat, /qr, /audit-log
 // ============================================================================
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared/shared.dart';
 
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/guru/guru_screen.dart';
@@ -131,7 +129,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/surat', name: 'surat', builder: (c, s) => const SuratScreen()),
           GoRoute(path: '/alumni', name: 'alumni', builder: (c, s) => const AlumniScreen()),
           GoRoute(path: '/chat', name: 'chat', builder: (c, s) => const ChatScreen()),
-          GoRoute(path: '/qr', name: 'qr', builder: (c, s) => const QRScreen()),
+          GoRoute(path: '/qr', name: 'qr', builder: (c, s) => const QrScreen()),
           GoRoute(path: '/audit-log', name: 'audit-log', builder: (c, s) => const AuditLogScreen()),
         ],
       ),

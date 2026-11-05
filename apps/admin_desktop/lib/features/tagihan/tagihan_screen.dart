@@ -19,33 +19,34 @@ class _TagihanScreenState extends ConsumerState<TagihanScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(children: [
-        Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Row(children: [
-          const Text('Tagihan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 16),
-          SizedBox(width: 180, child: DropdownButtonFormField<String>(value: _status, decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()), items: const [DropdownMenuItem(value: 'ALL', child: Text('Semua')), DropdownMenuItem(value: TagihanStatus.belumBayar, child: Text('Belum Bayar')), DropdownMenuItem(value: TagihanStatus.cicil, child: Text('Cicil')), DropdownMenuItem(value: TagihanStatus.lunas, child: Text('Lunas'))], onChanged: (v) => setState(() => _status = v ?? 'ALL'))),
-          const Spacer(),
-          FilledButton.icon(onPressed: () => _showCreateDialog(context, ref), icon: const Icon(Icons.add), label: const Text('Tambah Tagihan')),
-          const SizedBox(width: AppSpacing.sm),
-          OutlinedButton.icon(onPressed: () => _showBulkDialog(context, ref), icon: const Icon(Icons.auto_awesome), label: const Text('Generate Bulk')),
-          const SizedBox(width: AppSpacing.sm),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(tagihanListAdminProvider)),
-        ])),
+        AdminScreenHeader(
+          title: 'Tagihan SPP',
+          icon: Icons.receipt_long_outlined,
+          subtitle: 'Kelola tagihan & invoice',
+          actions: [
+            SizedBox(width: 180, child: DropdownButtonFormField<String>(value: _status, decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()), items: const [DropdownMenuItem(value: 'ALL', child: Text('Semua')), DropdownMenuItem(value: TagihanStatus.belumBayar, child: Text('Belum Bayar')), DropdownMenuItem(value: TagihanStatus.cicil, child: Text('Cicil')), DropdownMenuItem(value: TagihanStatus.lunas, child: Text('Lunas'))], onChanged: (v) => setState(() => _status = v ?? 'ALL'))),
+            const SizedBox(width: AppSpacing.sm),
+            FilledButton.icon(onPressed: () => _showCreateDialog(context, ref), icon: const Icon(Icons.add), label: const Text('Tambah Tagihan')),
+            const SizedBox(width: AppSpacing.sm),
+            OutlinedButton.icon(onPressed: () => _showBulkDialog(context, ref), icon: const Icon(Icons.auto_awesome), label: const Text('Generate Bulk')),
+            const SizedBox(width: AppSpacing.sm),
+            IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(tagihanListAdminProvider)),
+          ],
+        ),
         Expanded(child: async.when(
           loading: () => const LoadingSkeleton(itemCount: 10),
-          error: (e, _) => ErrorView(message: e.toString(), onRetry: () => ref.invalidate(tagihanListAdminProvider)),
-          data: (list) => list.isEmpty ? const EmptyState(title: 'Tidak ada tagihan', icon: Icons.receipt_long_outlined) : Container(
-            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
+          error: (e, _) => ErrorView(message: friendlyError(e), onRetry: () => ref.invalidate(tagihanListAdminProvider)),
+          data: (list) => list.isEmpty ? const EmptyState(title: 'Tidak ada tagihan', subtitle: 'Tambahkan tagihan pertama Anda dengan tombol di atas.', icon: Icons.receipt_long_outlined, onRefresh: null) : ModernDataTableContainer(
             child: SingleChildScrollView(child: DataTable(
               columns: const [DataColumn(label: Text('Santri')), DataColumn(label: Text('Jenis')), DataColumn(label: Text('Total')), DataColumn(label: Text('Dibayar')), DataColumn(label: Text('Sisa')), DataColumn(label: Text('Status')), DataColumn(label: Text('Actions'))],
               rows: list.map((t) {
                 final outstanding = tagihanOutstanding(t);
                 return DataRow(cells: [
-                  DataCell(Text(t.santriName ?? '-', style: const TextStyle(fontSize: 13))),
-                  DataCell(Text(t.jenisTagihanName ?? t.jenisTagihanCode ?? '-', style: const TextStyle(fontSize: 12))),
-                  DataCell(Text(formatRupiah(t.amount), style: const TextStyle(fontSize: 12))),
-                  DataCell(Text(formatRupiah(t.paidAmount), style: const TextStyle(fontSize: 12, color: AppColors.success))),
-                  DataCell(Text(formatRupiah(outstanding), style: TextStyle(fontSize: 12, color: outstanding > 0 ? AppColors.danger : AppColors.success))),
+                  DataCell(Text(t.santriName ?? '-', style: AppTextStyles.label)),
+                  DataCell(Text(t.jenisTagihanName ?? t.jenisTagihanCode ?? '-', style: AppTextStyles.body3)),
+                  DataCell(Text(formatRupiah(t.amount), style: AppTextStyles.body3)),
+                  DataCell(Text(formatRupiah(t.paidAmount), style: AppTextStyles.body3.copyWith(color: AppColors.success))),
+                  DataCell(Text(formatRupiah(outstanding), style: AppTextStyles.body3.copyWith(color: outstanding > 0 ? AppColors.danger : AppColors.success))),
                   DataCell(StatusChip(label: t.status == TagihanStatus.lunas ? 'Lunas' : t.status == TagihanStatus.cicil ? 'Cicil' : 'Belum', color: t.status == TagihanStatus.lunas ? AppColors.success : t.status == TagihanStatus.cicil ? AppColors.warning : AppColors.danger, bg: t.status == TagihanStatus.lunas ? AppColors.successLight : t.status == TagihanStatus.cicil ? AppColors.warningLight : AppColors.dangerLight, compact: true)),
                   DataCell(Row(children: [
                     IconButton(icon: const Icon(Icons.edit, size: 18), tooltip: 'Edit', onPressed: () => _showCreateDialog(context, ref, tagihan: t)),
@@ -85,9 +86,9 @@ class _TagihanScreenState extends ConsumerState<TagihanScreen> {
       builder: (ctx) => StatefulBuilder(builder: (ctx, setInner) => AlertDialog(
         title: Text(isEdit ? 'Edit Tagihan' : 'Tambah Tagihan'),
         content: SizedBox(width: 500, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          FormFieldLabel(label: 'Santri', child: DropdownButtonFormField<String>(value: santriValue, hint: const Text('Pilih Santri'), decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), items: santriList.map((s) => DropdownMenuItem(value: s.id, child: Text('${s.name} (${s.nis})'))).toList(), onChanged: isEdit ? null : (v) => setInner(() => santriId = v), disabledHint: isEdit ? Text(tagihan?.santriName ?? (santriInList ? santriList.firstWhere((s) => s.id == santriId).name : '-')) : null)),
+          FormFieldLabel(label: 'Santri', child: DropdownButtonFormField<String>(value: santriValue, hint: const Text('Pilih Santri'), decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), items: santriList.map((s) => DropdownMenuItem(value: s.id, child: Text('${s.name} (${s.nis})'))).toList(), onChanged: isEdit ? null : (v) => setInner(() => santriId = v), disabledHint: isEdit ? Text(tagihan.santriName ?? (santriInList ? santriList.firstWhere((s) => s.id == santriId).name : '-')) : null)),
           const SizedBox(height: 8),
-          FormFieldLabel(label: 'Jenis Tagihan', child: DropdownButtonFormField<String>(value: jenisValue, hint: const Text('Pilih Jenis Tagihan'), decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), items: jenisList.map((j) => DropdownMenuItem(value: j.id, child: Text('${j.name} (${j.code})'))).toList(), onChanged: isEdit ? null : (v) => setInner(() { jenisTagihanId = v; final sel = jenisList.firstWhere((j) => j.id == v); if (amountCtrl.text.isEmpty && sel.defaultAmount > 0) amountCtrl.text = sel.defaultAmount.toString(); }), disabledHint: isEdit ? Text(tagihan?.jenisTagihanName ?? (jenisInList ? jenisList.firstWhere((j) => j.id == jenisTagihanId).name : '-')) : null)),
+          FormFieldLabel(label: 'Jenis Tagihan', child: DropdownButtonFormField<String>(value: jenisValue, hint: const Text('Pilih Jenis Tagihan'), decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), items: jenisList.map((j) => DropdownMenuItem(value: j.id, child: Text('${j.name} (${j.code})'))).toList(), onChanged: isEdit ? null : (v) => setInner(() { jenisTagihanId = v; final sel = jenisList.firstWhere((j) => j.id == v); if (amountCtrl.text.isEmpty && sel.defaultAmount > 0) amountCtrl.text = sel.defaultAmount.toString(); }), disabledHint: isEdit ? Text(tagihan.jenisTagihanName ?? (jenisInList ? jenisList.firstWhere((j) => j.id == jenisTagihanId).name : '-')) : null)),
           const SizedBox(height: 8),
           FormFieldLabel(label: 'Amount (Rp)', child: TextField(controller: amountCtrl, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, prefixText: 'Rp '), keyboardType: TextInputType.number)),
           const SizedBox(height: 8),

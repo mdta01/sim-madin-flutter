@@ -14,33 +14,32 @@ class MapelScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(children: [
-        Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Row(children: [
-          const Text('Mata Pelajaran', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const Spacer(),
-          FilledButton.icon(onPressed: () => _showDialog(context, ref), icon: const Icon(Icons.add), label: const Text('Tambah Mapel')),
-          const SizedBox(width: 8),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(mapelListProvider)),
-        ])),
+        AdminScreenHeader(
+          title: 'Mata Pelajaran',
+          icon: Icons.book_outlined,
+          subtitle: 'Daftar mapel & KKM',
+          actions: [
+            FilledButton.icon(onPressed: () => _showDialog(context, ref), icon: const Icon(Icons.add, size: 18), label: const Text('Tambah Mapel')),
+            const SizedBox(width: AppSpacing.sm),
+            IconButton(tooltip: 'Refresh', icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(mapelListProvider)),
+          ],
+        ),
         Expanded(child: async.when(
           loading: () => const LoadingSkeleton(itemCount: 8),
-          error: (e, _) => ErrorView(message: e.toString(), onRetry: () => ref.invalidate(mapelListProvider)),
-          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada mapel', icon: Icons.book_outlined) : Container(
-            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
-            child: SingleChildScrollView(child: DataTable(
-              columns: const [DataColumn(label: Text('Code')), DataColumn(label: Text('Nama')), DataColumn(label: Text('Kategori')), DataColumn(label: Text('KKM')), DataColumn(label: Text('Durasi')), DataColumn(label: Text('Aktif')), DataColumn(label: Text('Actions'))],
-              rows: list.map((m) => DataRow(cells: [
-                DataCell(Text(m.code, style: const TextStyle(fontSize: 12, fontFamily: 'monospace'))),
-                DataCell(Text(m.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-                DataCell(StatusChip(label: m.category, color: AppColors.info, bg: AppColors.infoLight, compact: true)),
-                DataCell(Text(m.kkm.toStringAsFixed(0), style: const TextStyle(fontSize: 12))),
-                DataCell(Text('${m.durationMnt} mnt', style: const TextStyle(fontSize: 12))),
-                DataCell(Icon(m.isActive ? Icons.check_circle : Icons.cancel, size: 16, color: m.isActive ? AppColors.success : AppColors.danger)),
-                DataCell(Row(children: [IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, ref, mapel: m)), IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Mapel', message: 'Yakin hapus "${m.name}"?', destructive: true)) { try { await adminSoftDeleteMapel(ref, m.id); _toast(context, '✅ Mapel dihapus'); } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } } })])),
-              ])).toList(),
-              headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
-            )),
-          ),
+          error: (e, _) => ErrorView(message: friendlyError(e), onRetry: () => ref.invalidate(mapelListProvider)),
+          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada mapel', subtitle: 'Tambahkan mata pelajaran pertama Anda.', icon: Icons.book_outlined, onRefresh: null) : ModernDataTableContainer(child: SingleChildScrollView(child: DataTable(
+            columns: const [DataColumn(label: Text('Code')), DataColumn(label: Text('Nama')), DataColumn(label: Text('Kategori')), DataColumn(label: Text('KKM')), DataColumn(label: Text('Durasi')), DataColumn(label: Text('Aktif')), DataColumn(label: Text('Actions'))],
+            rows: list.map((m) => DataRow(cells: [
+              DataCell(Text(m.code, style: AppTextStyles.body3.copyWith(fontFamily: AppFonts.mono))),
+              DataCell(Text(m.name, style: AppTextStyles.label)),
+              DataCell(StatusChip(label: m.category, color: AppColors.info, bg: AppColors.infoLight, compact: true)),
+              DataCell(Text(m.kkm.toStringAsFixed(0), style: AppTextStyles.body3)),
+              DataCell(Text('${m.durationMnt} mnt', style: AppTextStyles.body3)),
+              DataCell(Icon(m.isActive ? Icons.check_circle : Icons.cancel, size: 18, color: m.isActive ? AppColors.success : AppColors.danger)),
+              DataCell(Row(children: [IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, ref, mapel: m)), IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Mapel', message: 'Yakin hapus "${m.name}"?', destructive: true)) { try { await adminSoftDeleteMapel(ref, m.id); _toast(context, '✅ Mapel dihapus'); } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } } })])),
+            ])).toList(),
+            headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
+          ))),
         )),
         const SizedBox(height: AppSpacing.md),
       ]),

@@ -18,32 +18,31 @@ class _BankSoalScreenState extends ConsumerState<BankSoalScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(children: [
-        Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Row(children: [
-          const Text('Bank Soal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const Spacer(),
-          FilledButton.icon(onPressed: () => _showCreateDialog(context), icon: const Icon(Icons.add), label: const Text('Tambah Soal')),
-          const SizedBox(width: 8),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(bankSoalListAdminProvider)),
-        ])),
+        AdminScreenHeader(
+          title: 'Bank Soal',
+          icon: Icons.question_answer_outlined,
+          subtitle: 'Kelola kumpulan soal',
+          actions: [
+            FilledButton.icon(onPressed: () => _showCreateDialog(context), icon: const Icon(Icons.add), label: const Text('Tambah Soal')),
+            const SizedBox(width: 8),
+            IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(bankSoalListAdminProvider)),
+          ],
+        ),
         Expanded(child: async.when(
           loading: () => const LoadingSkeleton(itemCount: 8),
-          error: (e, _) => ErrorView(message: e.toString(), onRetry: () => ref.invalidate(bankSoalListAdminProvider)),
-          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada soal', icon: Icons.question_answer_outlined) : Container(
-            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
-            child: SingleChildScrollView(child: DataTable(
+          error: (e, _) => ErrorView(message: friendlyError(e), onRetry: () => ref.invalidate(bankSoalListAdminProvider)),
+          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada soal', subtitle: 'Tambahkan soal pertama Anda dengan tombol di atas.', icon: Icons.question_answer_outlined, onRefresh: null) : ModernDataTableContainer(child: SingleChildScrollView(child: DataTable(
               columns: const [DataColumn(label: Text('Code')), DataColumn(label: Text('Type')), DataColumn(label: Text('Question')), DataColumn(label: Text('Bobot')), DataColumn(label: Text('Active')), DataColumn(label: Text('Actions'))],
               rows: list.map((s) => DataRow(cells: [
-                DataCell(Text(s.code, style: const TextStyle(fontSize: 12, fontFamily: 'monospace'))),
+                DataCell(Text(s.code, style: AppTextStyles.body3.copyWith(fontFamily: AppFonts.mono))),
                 DataCell(StatusChip(label: s.type, color: s.type == SoalType.pg ? AppColors.info : s.type == SoalType.isian ? AppColors.warning : AppColors.danger, bg: s.type == SoalType.pg ? AppColors.infoLight : s.type == SoalType.isian ? AppColors.warningLight : AppColors.dangerLight, compact: true)),
-                DataCell(Container(constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.4), child: Text(s.question, style: const TextStyle(fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis))),
-                DataCell(Text(s.bobot.toStringAsFixed(1), style: const TextStyle(fontSize: 12))),
+                DataCell(Container(constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.4), child: Text(s.question, style: AppTextStyles.body3, maxLines: 2, overflow: TextOverflow.ellipsis))),
+                DataCell(Text(s.bobot.toStringAsFixed(1), style: AppTextStyles.body3)),
                 DataCell(Icon(s.isActive ? Icons.check_circle : Icons.cancel, size: 16, color: s.isActive ? AppColors.success : AppColors.danger)),
                 DataCell(IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { await adminDeleteBankSoal(ref, s.id); })),
               ])).toList(),
               headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
-            )),
-          ),
+            ))),
         )),
         const SizedBox(height: AppSpacing.md),
       ]),

@@ -14,35 +14,34 @@ class TahunAjaranScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(children: [
-        Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Row(children: [
-          const Text('Tahun Ajaran', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const Spacer(),
-          FilledButton.icon(onPressed: () => _showDialog(context, ref), icon: const Icon(Icons.add), label: const Text('Tambah TA')),
-          const SizedBox(width: 8),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(tahunAjaranListProvider)),
-        ])),
+        AdminScreenHeader(
+          title: 'Tahun Ajaran',
+          icon: Icons.calendar_month_outlined,
+          subtitle: 'Kelola tahun ajaran & siklus',
+          actions: [
+            FilledButton.icon(onPressed: () => _showDialog(context, ref), icon: const Icon(Icons.add, size: 18), label: const Text('Tambah TA')),
+            const SizedBox(width: AppSpacing.sm),
+            IconButton(tooltip: 'Refresh', icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(tahunAjaranListProvider)),
+          ],
+        ),
         Expanded(child: async.when(
           loading: () => const LoadingSkeleton(itemCount: 4),
-          error: (e, _) => ErrorView(message: e.toString(), onRetry: () => ref.invalidate(tahunAjaranListProvider)),
-          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada tahun ajaran', icon: Icons.date_range) : Container(
-            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
-            child: SingleChildScrollView(child: DataTable(
-              columns: const [DataColumn(label: Text('Code')), DataColumn(label: Text('Nama')), DataColumn(label: Text('Mulai')), DataColumn(label: Text('Selesai')), DataColumn(label: Text('Status')), DataColumn(label: Text('Actions'))],
-              rows: list.map((ta) => DataRow(cells: [
-                DataCell(Text(ta.code, style: const TextStyle(fontSize: 12, fontFamily: 'monospace'))),
-                DataCell(Text(ta.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-                DataCell(Text(formatDate(ta.startDate), style: const TextStyle(fontSize: 12))),
-                DataCell(Text(formatDate(ta.endDate), style: const TextStyle(fontSize: 12))),
-                DataCell(ta.isActive ? const StatusChip(label: 'AKTIF', color: AppColors.success, bg: AppColors.successLight, compact: true) : const StatusChip(label: 'Nonaktif', color: AppColors.textMuted, bg: Color(0xFFF1F5F9), compact: true)),
-                DataCell(Row(children: [
-                  if (!ta.isActive) IconButton(icon: const Icon(Icons.check_circle, size: 18), color: AppColors.success, tooltip: 'Aktifkan', onPressed: () async { try { await adminActivateTahunAjaran(ref, ta.id); _toast(context, '✅ Tahun ajaran diaktifkan'); } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } }),
-                  IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, ref, ta: ta)),
-                ])),
-              ])).toList(),
-              headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
-            )),
-          ),
+          error: (e, _) => ErrorView(message: friendlyError(e), onRetry: () => ref.invalidate(tahunAjaranListProvider)),
+          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada tahun ajaran', subtitle: 'Tambahkan tahun ajaran pertama Anda dengan tombol di atas.', icon: Icons.date_range, onRefresh: null) : ModernDataTableContainer(child: SingleChildScrollView(child: DataTable(
+            columns: const [DataColumn(label: Text('Code')), DataColumn(label: Text('Nama')), DataColumn(label: Text('Mulai')), DataColumn(label: Text('Selesai')), DataColumn(label: Text('Status')), DataColumn(label: Text('Actions'))],
+            rows: list.map((ta) => DataRow(cells: [
+              DataCell(Text(ta.code, style: AppTextStyles.body3.copyWith(fontFamily: AppFonts.mono))),
+              DataCell(Text(ta.name, style: AppTextStyles.label)),
+              DataCell(Text(formatDate(ta.startDate), style: AppTextStyles.body3)),
+              DataCell(Text(formatDate(ta.endDate), style: AppTextStyles.body3)),
+              DataCell(ta.isActive ? const StatusChip(label: 'AKTIF', color: AppColors.success, bg: AppColors.successLight, icon: Icons.check_circle, compact: true) : const StatusChip(label: 'Nonaktif', color: AppColors.textMuted, bg: Color(0xFFF1F5F9), icon: Icons.cancel, compact: true)),
+              DataCell(Row(children: [
+                if (!ta.isActive) IconButton(icon: const Icon(Icons.check_circle, size: 18), color: AppColors.success, tooltip: 'Aktifkan', onPressed: () async { try { await adminActivateTahunAjaran(ref, ta.id); _toast(context, '✅ Tahun ajaran diaktifkan'); } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } }),
+                IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, ref, ta: ta)),
+              ])),
+            ])).toList(),
+            headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
+          ))),
         )),
         const SizedBox(height: AppSpacing.md),
       ]),

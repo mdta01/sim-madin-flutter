@@ -22,32 +22,45 @@ class _GuruScreenState extends ConsumerState<GuruScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(children: [
-        Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Row(children: [
-          SizedBox(width: 300, child: TextField(controller: _searchCtrl, decoration: const InputDecoration(hintText: 'Cari guru (nama, NIP)...', prefixIcon: Icon(Icons.search), isDense: true, border: OutlineInputBorder()), onChanged: (v) => setState(() => _search = v.trim()))),
-          const Spacer(),
-          FilledButton.icon(onPressed: () => _showDialog(context), icon: const Icon(Icons.person_add), label: const Text('Tambah Guru')),
-          const SizedBox(width: 8),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(guruListAdminProvider)),
-        ])),
+        AdminScreenHeader(
+          title: 'Daftar Guru',
+          icon: Icons.school_outlined,
+          subtitle: 'Kelola data guru pengajar',
+          actions: [
+            SizedBox(
+              width: 240,
+              child: TextField(
+                controller: _searchCtrl,
+                decoration: const InputDecoration(
+                  hintText: 'Cari guru (nama, NIP)...',
+                  prefixIcon: Icon(Icons.search, size: 18),
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (v) => setState(() => _search = v.trim()),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            FilledButton.icon(onPressed: () => _showDialog(context), icon: const Icon(Icons.person_add, size: 18), label: const Text('Tambah Guru')),
+            const SizedBox(width: AppSpacing.sm),
+            IconButton(tooltip: 'Refresh', icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(guruListAdminProvider)),
+          ],
+        ),
         Expanded(child: async.when(
           loading: () => const LoadingSkeleton(itemCount: 8),
-          error: (e, _) => ErrorView(message: e.toString(), onRetry: () => ref.invalidate(guruListAdminProvider)),
-          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada guru', icon: Icons.school_outlined) : Container(
-            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
-            child: SingleChildScrollView(child: DataTable(
-              columns: const [DataColumn(label: Text('Nama')), DataColumn(label: Text('NIP')), DataColumn(label: Text('Spesialisasi')), DataColumn(label: Text('Telepon')), DataColumn(label: Text('Status')), DataColumn(label: Text('Actions'))],
-              rows: list.map((g) => DataRow(cells: [
-                DataCell(Text(g.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-                DataCell(Text(g.nip ?? '-', style: const TextStyle(fontSize: 12))),
-                DataCell(Text(g.specialization ?? '-', style: const TextStyle(fontSize: 12))),
-                DataCell(Text(g.phone ?? '-', style: const TextStyle(fontSize: 12))),
-                DataCell(StatusChip(label: g.status, color: g.status == GuruStatus.aktif ? AppColors.success : AppColors.danger, bg: g.status == GuruStatus.aktif ? AppColors.successLight : AppColors.dangerLight, compact: true)),
-                DataCell(Row(children: [IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, guru: g)), IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Guru', message: 'Yakin hapus "${g.name}"?', destructive: true)) { try { await adminSoftDeleteGuru(ref, g.id); _toast('✅ Guru dihapus'); } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } } })])),
-              ])).toList(),
-              headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
-            )),
-          ),
+          error: (e, _) => ErrorView(message: friendlyError(e), onRetry: () => ref.invalidate(guruListAdminProvider)),
+          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada guru', subtitle: 'Tambahkan guru pertama Anda dengan tombol di atas.', icon: Icons.school_outlined, onRefresh: null) : ModernDataTableContainer(child: SingleChildScrollView(child: DataTable(
+            columns: const [DataColumn(label: Text('Nama')), DataColumn(label: Text('NIP')), DataColumn(label: Text('Spesialisasi')), DataColumn(label: Text('Telepon')), DataColumn(label: Text('Status')), DataColumn(label: Text('Actions'))],
+            rows: list.map((g) => DataRow(cells: [
+              DataCell(Text(g.name, style: AppTextStyles.label)),
+              DataCell(Text(g.nip ?? '-', style: AppTextStyles.body3.copyWith(fontFamily: AppFonts.mono))),
+              DataCell(Text(g.specialization ?? '-', style: AppTextStyles.body3)),
+              DataCell(Text(g.phone ?? '-', style: AppTextStyles.body3)),
+              DataCell(StatusChip(label: g.status, color: g.status == GuruStatus.aktif ? AppColors.success : AppColors.danger, bg: g.status == GuruStatus.aktif ? AppColors.successLight : AppColors.dangerLight, icon: g.status == GuruStatus.aktif ? Icons.check_circle : Icons.cancel, compact: true)),
+              DataCell(Row(children: [IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, guru: g)), IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Guru', message: 'Yakin hapus "${g.name}"?', destructive: true)) { try { await adminSoftDeleteGuru(ref, g.id); _toast('✅ Guru dihapus'); } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } } })])),
+            ])).toList(),
+            headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
+          ))),
         )),
         const SizedBox(height: AppSpacing.md),
       ]),

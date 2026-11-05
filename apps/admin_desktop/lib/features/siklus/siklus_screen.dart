@@ -12,13 +12,16 @@ class SiklusScreen extends ConsumerWidget {
     final async = ref.watch(siklusOverviewProvider);
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: ListView(padding: const EdgeInsets.all(AppSpacing.lg), children: [
-        const Text('Siklus Akademik', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        const SizedBox(height: AppSpacing.lg),
-        async.when(
+      body: Column(children: [
+        const AdminScreenHeader(
+          title: 'Siklus Akademik',
+          icon: Icons.loop_outlined,
+          subtitle: 'Pengaturan siklus semester',
+        ),
+        Expanded(child: async.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => ErrorView(message: e.toString(), onRetry: () => ref.invalidate(siklusOverviewProvider)),
-          data: (s) => Column(children: [
+          error: (e, _) => ErrorView(message: friendlyError(e), onRetry: () => ref.invalidate(siklusOverviewProvider)),
+          data: (s) => ListView(padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg), children: [
             Container(
               padding: const EdgeInsets.all(AppSpacing.xl),
               decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]), borderRadius: BorderRadius.circular(AppRadius.md)),
@@ -41,7 +44,7 @@ class SiklusScreen extends ConsumerWidget {
               child: const Text('Siklus fitur lanjutan (auto-tagihan generate, kenaikan kelas otomatis, payment-verify bulk) akan diimplementasikan di Phase 7 (Production). Saat ini admin dapat menggunakan modul Tagihan dan Pembayaran untuk manage manual.', style: TextStyle(fontSize: 13, color: AppColors.info)),
             ),
           ]),
-        ),
+        )),
       ]),
     );
   }

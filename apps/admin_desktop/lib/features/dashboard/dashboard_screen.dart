@@ -128,7 +128,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.xl),
           // Quick access tiles (modern)
-          SectionHeader(title: 'Quick Access', icon: Icons.grid_view_outlined),
+          const SectionHeader(title: 'Quick Access', icon: Icons.grid_view_outlined),
           const SizedBox(height: AppSpacing.md),
           ResponsiveGrid(
             phoneColumns: 2,
@@ -246,7 +246,7 @@ class _QuickTile extends StatelessWidget {
           Expanded(
             child: Text(label, style: AppTextStyles.h4),
           ),
-          Icon(Icons.chevron_right, color: AppColors.textMuted),
+          const Icon(Icons.chevron_right, color: AppColors.textMuted),
         ],
       ),
     );

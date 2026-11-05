@@ -10,7 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
-import '../../widgets/feedback_widgets.dart';
+import 'package:supabase_client/supabase_client.dart';
 import '../../widgets/form_widgets.dart';
 
 /// Build QR payload untuk santri.
@@ -418,7 +418,7 @@ class _QrScreenState extends ConsumerState<QrScreen> {
     final buf = StringBuffer();
     buf.writeln('QR Code Payloads - generated ${DateTime.now()}');
     buf.writeln('Total: ${_generated.length}');
-    buf.writeln('${'-' * 60}');
+    buf.writeln('-' * 60);
     for (final c in _generated) {
       buf.writeln('Name: ${c.name}');
       buf.writeln('NIS: ${c.nis}');
@@ -508,11 +508,11 @@ class _QrCard extends StatelessWidget {
                   gapless: true,
                   backgroundColor: AppColors.white,
                   eyeStyle: const QrEyeStyle(
-                    eyeShape: QrEyeShape.roundedOuter,
+                    eyeShape: QrEyeShape.square,
                     color: AppColors.text,
                   ),
                   dataModuleStyle: const QrDataModuleStyle(
-                    dataModuleShape: QrDataModuleShape.roundedOuter,
+                    dataModuleShape: QrDataModuleShape.square,
                     color: AppColors.text,
                   ),
                 ),

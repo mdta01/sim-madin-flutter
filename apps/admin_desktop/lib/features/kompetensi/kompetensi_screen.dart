@@ -18,32 +18,31 @@ class _KompetensiScreenState extends ConsumerState<KompetensiScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(children: [
-        Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Row(children: [
-          const Text('Kompetensi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const Spacer(),
-          FilledButton.icon(onPressed: () => _showCreateDialog(context), icon: const Icon(Icons.add), label: const Text('Tambah')),
-          const SizedBox(width: 8),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(kompetensiListAdminProvider)),
-        ])),
+        AdminScreenHeader(
+          title: 'Kompetensi',
+          icon: Icons.psychology_outlined,
+          subtitle: 'Daftar kompetensi & sub-kompetensi',
+          actions: [
+            FilledButton.icon(onPressed: () => _showCreateDialog(context), icon: const Icon(Icons.add), label: const Text('Tambah')),
+            const SizedBox(width: AppSpacing.sm),
+            IconButton(tooltip: 'Refresh', icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(kompetensiListAdminProvider)),
+          ],
+        ),
         Expanded(child: async.when(
           loading: () => const LoadingSkeleton(itemCount: 6),
-          error: (e, _) => ErrorView(message: e.toString(), onRetry: () => ref.invalidate(kompetensiListAdminProvider)),
-          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada kompetensi', icon: Icons.workspace_premium_outlined) : Container(
-            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
-            child: SingleChildScrollView(child: DataTable(
+          error: (e, _) => ErrorView(message: friendlyError(e), onRetry: () => ref.invalidate(kompetensiListAdminProvider)),
+          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada kompetensi', subtitle: 'Tambahkan kompetensi pertama Anda dengan tombol di atas.', icon: Icons.workspace_premium_outlined, onRefresh: null) : ModernDataTableContainer(child: SingleChildScrollView(child: DataTable(
               columns: const [DataColumn(label: Text('Code')), DataColumn(label: Text('Nama')), DataColumn(label: Text('Kategori')), DataColumn(label: Text('Sort')), DataColumn(label: Text('Active')), DataColumn(label: Text('Actions'))],
               rows: list.map((k) => DataRow(cells: [
-                DataCell(Text(k.code, style: const TextStyle(fontSize: 12, fontFamily: 'monospace'))),
-                DataCell(Text(k.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+                DataCell(Text(k.code, style: AppTextStyles.body3.copyWith(fontFamily: AppFonts.mono))),
+                DataCell(Text(k.name, style: AppTextStyles.label)),
                 DataCell(StatusChip(label: k.category, color: AppColors.info, bg: AppColors.infoLight, compact: true)),
-                DataCell(Text('${k.sortOrder}', style: const TextStyle(fontSize: 12))),
+                DataCell(Text('${k.sortOrder}', style: AppTextStyles.body3)),
                 DataCell(Icon(k.isActive ? Icons.check_circle : Icons.cancel, size: 16, color: k.isActive ? AppColors.success : AppColors.danger)),
                 DataCell(IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { await adminDeleteKompetensi(ref, k.id); })),
               ])).toList(),
               headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
-            )),
-          ),
+            ))),
         )),
         const SizedBox(height: AppSpacing.md),
       ]),

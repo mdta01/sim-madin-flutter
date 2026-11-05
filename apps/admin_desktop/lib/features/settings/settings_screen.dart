@@ -22,51 +22,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // Toolbar
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Row(
-              children: [
-                const Text('System Settings',
-                    style: TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed: () => _showCreateEditDialog(context),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Tambah Setting'),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  tooltip: 'Refresh',
-                  onPressed: () => ref.invalidate(systemSettingsProvider),
-                ),
-              ],
+        AdminScreenHeader(
+          title: 'Settings',
+          icon: Icons.settings_outlined,
+          subtitle: 'Konfigurasi sistem & preferensi',
+          actions: [
+            FilledButton.icon(
+              onPressed: () => _showCreateEditDialog(context),
+              icon: const Icon(Icons.add),
+              label: const Text('Tambah Setting'),
             ),
-          ),
+            const SizedBox(width: AppSpacing.sm),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Refresh',
+              onPressed: () => ref.invalidate(systemSettingsProvider),
+            ),
+          ],
+        ),
           // Table
           Expanded(
             child: asyncValue.when(
               loading: () => const LoadingSkeleton(itemCount: 6),
               error: (e, _) => ErrorView(
-                  message: e.toString(),
+                  message: friendlyError(e),
                   onRetry: () => ref.invalidate(systemSettingsProvider)),
               data: (list) {
                 if (list.isEmpty) {
                   return const EmptyState(
                       title: 'Belum ada setting',
                       subtitle: 'Klik "Tambah Setting" untuk membuat config',
-                      icon: Icons.settings_outlined);
+                      icon: Icons.settings_outlined,
+                      onRefresh: null);
                 }
-                return Container(
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: AppColors.border),
-                  ),
+                return ModernDataTableContainer(
                   child: SingleChildScrollView(
                     child: DataTable(
                       columns: const [
@@ -80,27 +69,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       rows: list.map((s) {
                         return DataRow(cells: [
                           DataCell(Text(s.key,
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  fontFamily: 'monospace',
-                                  fontWeight: FontWeight.w600))),
+                              style: AppTextStyles.label.copyWith(
+                                  fontFamily: AppFonts.mono))),
                           DataCell(Container(
                             constraints: BoxConstraints(
                                 maxWidth:
                                     MediaQuery.of(context).size.width * 0.3),
                             child: Text(s.value,
-                                style: const TextStyle(fontSize: 12),
+                                style: AppTextStyles.body3,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis),
                           )),
                           DataCell(StatusChip(
                             label: s.type,
                             color: _typeColor(s.type),
-                            bg: _typeColor(s.type).withOpacity(0.1),
+                            bg: _typeColor(s.type).withValues(alpha: 0.1),
                             compact: true,
                           )),
                           DataCell(Text(s.description ?? '-',
-                              style: const TextStyle(fontSize: 12))),
+                              style: AppTextStyles.body3)),
                           DataCell(Icon(
                             s.isPublic ? Icons.public : Icons.lock,
                             size: 16,

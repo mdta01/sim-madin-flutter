@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
+import 'package:supabase_client/supabase_client.dart';
 import '../../widgets/feedback_widgets.dart';
 import '../../widgets/form_widgets.dart';
 
@@ -100,7 +101,7 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
                           size: 20, color: AppColors.primary),
                     ),
                     const SizedBox(width: AppSpacing.sm),
-                    Text('Audit Log', style: AppTextStyles.h3),
+                    const Text('Audit Log', style: AppTextStyles.h3),
                     const SizedBox(width: AppSpacing.sm),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -350,7 +351,8 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
   /// (tab-separated values) supaya bisa di-paste ke Excel/Google Sheets.
   Future<void> _exportToClipboard() async {
     final async = ref.read(auditLogViewerProvider);
-    final list = async.maybeWhen(data: (d) => d, orElse: () => []);
+    final List<Map<String, dynamic>> list =
+        async.maybeWhen(data: (d) => d, orElse: () => []);
     final filtered = _applyFilters(list);
     if (filtered.isEmpty) {
       _toast('Tidak ada data untuk di-export', true);
@@ -371,7 +373,7 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
       final entity = (row['entity'] as String?) ?? '';
       final entityId = (row['entityId'] as String?) ?? '';
       final details = (row['details'] as String?) ?? '';
-      final sanitize = (String s) => s.replaceAll('\t', ' ').replaceAll('\n', ' ');
+      String sanitize(String s) => s.replaceAll('\t', ' ').replaceAll('\n', ' ');
       buf.writeln([
         createdAt,
         sanitize(userName),

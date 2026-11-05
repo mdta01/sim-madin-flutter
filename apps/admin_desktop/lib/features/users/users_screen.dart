@@ -25,74 +25,65 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final asyncValue =
-        ref.watch(userListProvider(UserListParams(search: _search.isEmpty ? null : _search)));
+    final asyncValue = ref.watch(userListProvider(
+        UserListParams(search: _search.isEmpty ? null : _search)));
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // Toolbar
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 300,
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: const InputDecoration(
-                      hintText: 'Cari user (email, name, username)...',
-                      prefixIcon: Icon(Icons.search),
-                      isDense: true,
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (v) => setState(() => _search = v.trim()),
+          AdminScreenHeader(
+            title: 'Users',
+            icon: Icons.manage_accounts_outlined,
+            subtitle: 'Akun login pengguna sistem',
+            actions: [
+              SizedBox(
+                width: 240,
+                child: TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    hintText: 'Cari user (email, name, username)...',
+                    prefixIcon: Icon(Icons.search, size: 18),
+                    isDense: true,
+                    border: OutlineInputBorder(),
                   ),
+                  onChanged: (v) => setState(() => _search = v.trim()),
                 ),
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed: () => _showCreateEditDialog(context),
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('Tambah User'),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  tooltip: 'Refresh',
-                  onPressed: () => ref.invalidate(userListProvider),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              FilledButton.icon(
+                onPressed: () => _showCreateEditDialog(context),
+                icon: const Icon(Icons.person_add, size: 18),
+                label: const Text('Tambah User'),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Refresh',
+                onPressed: () => ref.invalidate(userListProvider),
+              ),
+            ],
           ),
           // Table
           Expanded(
             child: asyncValue.when(
               loading: () => const LoadingSkeleton(itemCount: 10),
               error: (e, _) => ErrorView(
-                  message: e.toString(),
+                  message: friendlyError(e),
                   onRetry: () => ref.invalidate(userListProvider)),
               data: (list) {
                 if (list.isEmpty) {
                   return EmptyState(
-                    title: _search.isEmpty
-                        ? 'Belum ada user'
-                        : 'Tidak ditemukan',
+                    title:
+                        _search.isEmpty ? 'Belum ada user' : 'Tidak ditemukan',
                     subtitle: _search.isEmpty
                         ? 'Klik "Tambah User" untuk membuat user pertama'
                         : 'Coba kata kunci lain',
                     icon: Icons.people_outline,
-                    onRefresh: () => ref.invalidate(userListProvider),
+                    onRefresh: null,
                   );
                 }
-                return Container(
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: AppColors.border),
-                  ),
+                return ModernDataTableContainer(
                   child: SingleChildScrollView(
                     child: DataTable(
                       columns: const [
@@ -128,7 +119,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                               u.lastLoginAt != null
                                   ? formatDateTime(u.lastLoginAt)
                                   : '-',
-                              style: const TextStyle(fontSize: 12))),
+                              style: AppTextStyles.body3)),
                           DataCell(Row(
                             children: [
                               IconButton(
@@ -319,8 +310,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child:
-                          CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(strokeWidth: 2))
                   : Text(isEdit ? 'Update' : 'Create'),
             ),
           ],
@@ -401,8 +391,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Hapus User',
-      message:
-          'Yakin ingin menghapus user "${user.name}" (${user.email})?\n\n'
+      message: 'Yakin ingin menghapus user "${user.name}" (${user.email})?\n\n'
           'User akan di-soft delete (deletedAt set, isActive=false). '
           'Data historis tetap utuh.',
       confirmText: 'Hapus',

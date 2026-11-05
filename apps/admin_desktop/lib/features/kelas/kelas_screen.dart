@@ -15,33 +15,32 @@ class KelasScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(children: [
-        Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Row(children: [
-          const Text('Daftar Kelas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const Spacer(),
-          FilledButton.icon(onPressed: () => _showDialog(context, ref, guruAsync), icon: const Icon(Icons.add), label: const Text('Tambah Kelas')),
-          const SizedBox(width: 8),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(kelasListProvider)),
-        ])),
+        AdminScreenHeader(
+          title: 'Daftar Kelas',
+          icon: Icons.class_outlined,
+          subtitle: 'Kelola kelas & wali kelas',
+          actions: [
+            FilledButton.icon(onPressed: () => _showDialog(context, ref, guruAsync), icon: const Icon(Icons.add, size: 18), label: const Text('Tambah Kelas')),
+            const SizedBox(width: AppSpacing.sm),
+            IconButton(tooltip: 'Refresh', icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(kelasListProvider)),
+          ],
+        ),
         Expanded(child: async.when(
           loading: () => const LoadingSkeleton(itemCount: 6),
-          error: (e, _) => ErrorView(message: e.toString(), onRetry: () => ref.invalidate(kelasListProvider)),
-          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada kelas', icon: Icons.class_outlined) : Container(
-            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
-            child: SingleChildScrollView(child: DataTable(
-              columns: const [DataColumn(label: Text('Code')), DataColumn(label: Text('Nama')), DataColumn(label: Text('Level')), DataColumn(label: Text('Kapasitas')), DataColumn(label: Text('Wali Kelas')), DataColumn(label: Text('Aktif')), DataColumn(label: Text('Actions'))],
-              rows: list.map((k) => DataRow(cells: [
-                DataCell(Text(k.code, style: const TextStyle(fontSize: 12, fontFamily: 'monospace'))),
-                DataCell(Text(k.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-                DataCell(Text(k.level, style: const TextStyle(fontSize: 12))),
-                DataCell(Text('${k.capacity}', style: const TextStyle(fontSize: 12))),
-                DataCell(Text(k.waliKelasName ?? '-', style: const TextStyle(fontSize: 12))),
-                DataCell(Icon(k.isActive ? Icons.check_circle : Icons.cancel, size: 16, color: k.isActive ? AppColors.success : AppColors.danger)),
-                DataCell(Row(children: [IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, ref, guruAsync, kelas: k)), IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Kelas', message: 'Yakin hapus "${k.name}"?', destructive: true)) { try { await adminSoftDeleteKelas(ref, k.id); _toast(context, '✅ Kelas dihapus'); } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } } })])),
-              ])).toList(),
-              headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
-            )),
-          ),
+          error: (e, _) => ErrorView(message: friendlyError(e), onRetry: () => ref.invalidate(kelasListProvider)),
+          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada kelas', subtitle: 'Tambahkan kelas pertama Anda dengan tombol di atas.', icon: Icons.class_outlined, onRefresh: null) : ModernDataTableContainer(child: SingleChildScrollView(child: DataTable(
+            columns: const [DataColumn(label: Text('Code')), DataColumn(label: Text('Nama')), DataColumn(label: Text('Level')), DataColumn(label: Text('Kapasitas')), DataColumn(label: Text('Wali Kelas')), DataColumn(label: Text('Aktif')), DataColumn(label: Text('Actions'))],
+            rows: list.map((k) => DataRow(cells: [
+              DataCell(Text(k.code, style: AppTextStyles.body3.copyWith(fontFamily: AppFonts.mono))),
+              DataCell(Text(k.name, style: AppTextStyles.label)),
+              DataCell(Text(k.level, style: AppTextStyles.body3)),
+              DataCell(Text('${k.capacity}', style: AppTextStyles.body3)),
+              DataCell(Text(k.waliKelasName ?? '-', style: AppTextStyles.body3)),
+              DataCell(Icon(k.isActive ? Icons.check_circle : Icons.cancel, size: 16, color: k.isActive ? AppColors.success : AppColors.danger)),
+              DataCell(Row(children: [IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, ref, guruAsync, kelas: k)), IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Kelas', message: 'Yakin hapus "${k.name}"?', destructive: true)) { try { await adminSoftDeleteKelas(ref, k.id); _toast(context, '✅ Kelas dihapus'); } catch (e) { _toast(context, 'Gagal: ${friendlyError(e)}', true); } } })])),
+            ])).toList(),
+            headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,
+          ))),
         )),
         const SizedBox(height: AppSpacing.md),
       ]),
@@ -68,7 +67,7 @@ class KelasScreen extends ConsumerWidget {
         const SizedBox(height: 8),
         Row(children: [Expanded(child: FormFieldLabel(label: 'Kapasitas', child: TextField(controller: capCtrl, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), keyboardType: TextInputType.number))), const SizedBox(width: 8), Expanded(child: FormFieldLabel(label: 'Sort Order', child: TextField(controller: sortCtrl, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), keyboardType: TextInputType.number)))]),
         const SizedBox(height: 8),
-        FormFieldLabel(label: 'Wali Kelas', child: DropdownButtonFormField<String>(value: waliKelasId, hint: const Text('Pilih Guru'), decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), items: guruList.map((g) => DropdownMenuItem(value: g.id, child: Text(g.name))).toList(), onChanged: (v) => setInner(() => waliKelasId = v))),
+        FormFieldLabel(label: 'Wali Kelas', child: DropdownButtonFormField<String>(value: waliKelasId, hint: const Text('Pilih Guru'), decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), items: guruList.map((g) => DropdownMenuItem<String>(value: g.id, child: Text(g.name))).toList(), onChanged: (v) => setInner(() => waliKelasId = v))),
         const SizedBox(height: 8),
         FormFieldLabel(label: 'Deskripsi (opsional)', child: TextField(controller: descCtrl, decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true), maxLines: 2)),
         const SizedBox(height: 8),

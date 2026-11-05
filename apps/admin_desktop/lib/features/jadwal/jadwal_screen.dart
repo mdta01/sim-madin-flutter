@@ -18,37 +18,38 @@ class _JadwalScreenState extends ConsumerState<JadwalScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(children: [
-        _toolbar(context, 'Jadwal Mengajar', () => _showCreateDialog(context), () => ref.invalidate(jadwalListAdminProvider)),
+        _toolbar(context, 'Jadwal Pelajaran', () => _showCreateDialog(context), () => ref.invalidate(jadwalListAdminProvider)),
         Expanded(child: async.when(
           loading: () => const LoadingSkeleton(itemCount: 8),
-          error: (e, _) => ErrorView(message: e.toString(), onRetry: () => ref.invalidate(jadwalListAdminProvider)),
-          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada jadwal', icon: Icons.calendar_month_outlined) : _table(list),
+          error: (e, _) => ErrorView(message: friendlyError(e), onRetry: () => ref.invalidate(jadwalListAdminProvider)),
+          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada jadwal', subtitle: 'Tambahkan jadwal pertama Anda dengan tombol di atas.', icon: Icons.calendar_month_outlined, onRefresh: null) : _table(list),
         )),
         const SizedBox(height: AppSpacing.md),
       ]),
     );
   }
   Widget _toolbar(BuildContext context, String title, VoidCallback onAdd, VoidCallback onRefresh) {
-    return Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Row(children: [
-      Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-      const Spacer(),
-      FilledButton.icon(onPressed: onAdd, icon: const Icon(Icons.add), label: const Text('Tambah')),
-      const SizedBox(width: 8),
-      IconButton(icon: const Icon(Icons.refresh), onPressed: onRefresh),
-    ]));
+    return AdminScreenHeader(
+      title: title,
+      icon: Icons.calendar_view_week_outlined,
+      subtitle: 'Atur jadwal kelas & mapel',
+      actions: [
+        FilledButton.icon(onPressed: onAdd, icon: const Icon(Icons.add, size: 18), label: const Text('Tambah')),
+        const SizedBox(width: AppSpacing.sm),
+        IconButton(icon: const Icon(Icons.refresh), onPressed: onRefresh),
+      ],
+    );
   }
   Widget _table(List<JadwalModel> list) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
+    return ModernDataTableContainer(
       child: SingleChildScrollView(child: DataTable(
         columns: const [DataColumn(label: Text('Hari')), DataColumn(label: Text('Jam')), DataColumn(label: Text('Mapel')), DataColumn(label: Text('Kelas')), DataColumn(label: Text('Guru')), DataColumn(label: Text('Actions'))],
         rows: list.map((j) => DataRow(cells: [
-          DataCell(Text(dayOfWeekLabel(j.dayOfWeek), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-          DataCell(Text('${j.startTime} - ${j.endTime}', style: const TextStyle(fontSize: 12))),
-          DataCell(Text(j.mapelName ?? '-', style: const TextStyle(fontSize: 12))),
-          DataCell(Text(j.kelasName ?? '-', style: const TextStyle(fontSize: 12))),
-          DataCell(Text(j.guruName ?? '-', style: const TextStyle(fontSize: 12))),
+          DataCell(Text(dayOfWeekLabel(j.dayOfWeek), style: AppTextStyles.label)),
+          DataCell(Text('${j.startTime} - ${j.endTime}', style: AppTextStyles.body3)),
+          DataCell(Text(j.mapelName ?? '-', style: AppTextStyles.body3)),
+          DataCell(Text(j.kelasName ?? '-', style: AppTextStyles.body3)),
+          DataCell(Text(j.guruName ?? '-', style: AppTextStyles.body3)),
           DataCell(IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Jadwal', message: 'Yakin hapus jadwal ${j.mapelName} - ${j.kelasName}?', destructive: true)) { try { await adminDeleteJadwal(ref, j.id); _toast('✅ Jadwal dihapus'); } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } } })),
         ])).toList(),
         headingRowHeight: 48, dataRowMinHeight: 48, dataRowMaxHeight: 56, columnSpacing: 24,

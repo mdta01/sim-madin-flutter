@@ -18,28 +18,29 @@ class _UjianScreenState extends ConsumerState<UjianScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(children: [
-        Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Row(children: [
-          const Text('Ujian', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const Spacer(),
-          FilledButton.icon(onPressed: () => _showCreateDialog(context), icon: const Icon(Icons.add), label: const Text('Tambah Ujian')),
-          const SizedBox(width: 8),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(ujianListAdminProvider)),
-        ])),
+        AdminScreenHeader(
+          title: 'Bank Ujian',
+          icon: Icons.quiz_outlined,
+          subtitle: 'Kelola ujian & soal',
+          actions: [
+            FilledButton.icon(onPressed: () => _showCreateDialog(context), icon: const Icon(Icons.add, size: 18), label: const Text('Tambah Ujian')),
+            const SizedBox(width: AppSpacing.sm),
+            IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(ujianListAdminProvider)),
+          ],
+        ),
         Expanded(child: async.when(
           loading: () => const LoadingSkeleton(itemCount: 6),
-          error: (e, _) => ErrorView(message: e.toString(), onRetry: () => ref.invalidate(ujianListAdminProvider)),
-          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada ujian', icon: Icons.quiz_outlined) : Container(
-            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
+          error: (e, _) => ErrorView(message: friendlyError(e), onRetry: () => ref.invalidate(ujianListAdminProvider)),
+          data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada ujian', subtitle: 'Tambahkan ujian pertama Anda dengan tombol di atas.', icon: Icons.quiz_outlined, onRefresh: null) : ModernDataTableContainer(
             child: SingleChildScrollView(child: DataTable(
               columns: const [DataColumn(label: Text('Judul')), DataColumn(label: Text('Type')), DataColumn(label: Text('Mapel')), DataColumn(label: Text('Kelas')), DataColumn(label: Text('Guru')), DataColumn(label: Text('Mulai')), DataColumn(label: Text('Published')), DataColumn(label: Text('Actions'))],
               rows: list.map((u) => DataRow(cells: [
-                DataCell(Text(u.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+                DataCell(Text(u.title, style: AppTextStyles.label)),
                 DataCell(StatusChip(label: u.type, color: u.type == UjianType.uas ? AppColors.danger : u.type == UjianType.uts ? AppColors.warning : AppColors.info, bg: u.type == UjianType.uas ? AppColors.dangerLight : u.type == UjianType.uts ? AppColors.warningLight : AppColors.infoLight, compact: true)),
-                DataCell(Text(u.mapelName ?? '-', style: const TextStyle(fontSize: 12))),
-                DataCell(Text(u.kelasName ?? '-', style: const TextStyle(fontSize: 12))),
-                DataCell(Text(u.guruName ?? '-', style: const TextStyle(fontSize: 12))),
-                DataCell(Text(u.startTime != null ? formatDateTime(u.startTime) : '-', style: const TextStyle(fontSize: 12))),
+                DataCell(Text(u.mapelName ?? '-', style: AppTextStyles.body3)),
+                DataCell(Text(u.kelasName ?? '-', style: AppTextStyles.body3)),
+                DataCell(Text(u.guruName ?? '-', style: AppTextStyles.body3)),
+                DataCell(Text(u.startTime != null ? formatDateTime(u.startTime) : '-', style: AppTextStyles.body3)),
                 DataCell(Icon(u.isPublished ? Icons.check_circle : Icons.drafts, size: 16, color: u.isPublished ? AppColors.success : AppColors.textMuted)),
                 DataCell(IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Ujian', message: 'Yakin hapus "${u.title}"?', destructive: true)) { await adminDeleteUjian(ref, u.id); _toast('✅ Ujian dihapus'); } })),
               ])).toList(),
