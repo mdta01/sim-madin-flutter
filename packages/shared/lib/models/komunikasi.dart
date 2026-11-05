@@ -20,6 +20,8 @@ class AnnouncementModel {
     required this.content,
     this.priority = AnnouncementPriority.normal,
     this.audience = AnnouncementAudience.all,
+    this.fileUrl,
+    this.filePath,
     this.publishedAt,
     this.createdById,
     required this.createdAt,
@@ -32,6 +34,10 @@ class AnnouncementModel {
   final String content;
   final String priority;
   final String audience;
+  /// Public URL lampiran pengumuman (PDF/image, di Supabase Storage bucket pengumuman).
+  final String? fileUrl;
+  /// Path object lampiran di Storage (untuk delete).
+  final String? filePath;
   final DateTime? publishedAt;
   final String? createdById;
   final DateTime createdAt;
@@ -45,6 +51,8 @@ class AnnouncementModel {
         content: j['content'] as String,
         priority: (j['priority'] as String?) ?? AnnouncementPriority.normal,
         audience: (j['audience'] as String?) ?? AnnouncementAudience.all,
+        fileUrl: j['fileUrl'] as String?,
+        filePath: j['filePath'] as String?,
         publishedAt: j['publishedAt'] is String
             ? DateTime.parse(j['publishedAt'] as String)
             : null,
@@ -72,6 +80,7 @@ class WaliModel {
     this.email,
     this.occupation,
     this.address,
+    this.photoUrl,
     this.relationship = 'WALI',
     this.activationStatus = WaliActivationStatus.pending,
     // Auth & OTP
@@ -97,6 +106,8 @@ class WaliModel {
   final String? email;
   final String? occupation;
   final String? address;
+  /// Public URL foto profil wali (di Supabase Storage bucket photos).
+  final String? photoUrl;
   final String relationship;
   final String activationStatus;
 
@@ -124,6 +135,7 @@ class WaliModel {
         email: j['email'] as String?,
         occupation: j['occupation'] as String?,
         address: j['address'] as String?,
+        photoUrl: j['photoUrl'] as String?,
         relationship: (j['relationship'] as String?) ?? 'WALI',
         activationStatus:
             (j['activationStatus'] as String?) ?? WaliActivationStatus.pending,

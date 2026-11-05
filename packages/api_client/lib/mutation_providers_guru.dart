@@ -29,6 +29,8 @@ import 'query_providers.dart';
 // Import all guru query providers (materiGuruProvider, tugasGuruProvider,
 // ujianGuruProvider, perkembanganQuranProvider, chatRoomsGuruProvider, dll).
 import 'query_providers_guru.dart';
+// Import storage service (for delete operations on materi/tugas/ujian files).
+import 'storage_service.dart';
 
 /// Helper untuk dapatkan guruId dari user yang login (via Wali.userId
 /// match). Return null kalau user bukan guru.
@@ -191,6 +193,7 @@ Future<MateriModel> createMateri(
   String? description,
   required String type, // MateriType.*
   String? fileUrl,
+  String? filePath,
   String? externalUrl,
   int? pertemuan,
   bool isPublished = false,
@@ -211,6 +214,7 @@ Future<MateriModel> createMateri(
     if (description != null) 'description': description,
     'type': type,
     if (fileUrl != null) 'fileUrl': fileUrl,
+    if (filePath != null) 'filePath': filePath,
     if (externalUrl != null) 'externalUrl': externalUrl,
     if (pertemuan != null) 'pertemuan': pertemuan,
     'isPublished': isPublished,
@@ -234,7 +238,22 @@ Future<MateriModel> createMateri(
 }
 
 Future<void> deleteMateri(WidgetRef ref, String materiId) async {
+  // Hapus object di Storage sebelum soft-delete
   final client = ref.read(supabaseClientProvider);
+  final res = await client
+      .from('Materi')
+      .select('filePath')
+      .eq('id', materiId)
+      .maybeSingle();
+  final filePath = res?['filePath'] as String?;
+  if (filePath != null && filePath.isNotEmpty) {
+    try {
+      await ref.read(storageServiceProvider).delete(
+            bucket: StorageBucket.materi,
+            path: filePath,
+          );
+    } catch (_) {}
+  }
   await client
       .from('Materi')
       .update({'deletedAt': DateTime.now().toIso8601String()})
@@ -254,6 +273,7 @@ Future<TugasModel> createTugas(
   String? description,
   String type = TugasType.individu,
   String? fileUrl,
+  String? filePath,
   double maxScore = 100,
   DateTime? dueDate,
   bool isPublished = false,
@@ -274,6 +294,7 @@ Future<TugasModel> createTugas(
     if (description != null) 'description': description,
     'type': type,
     if (fileUrl != null) 'fileUrl': fileUrl,
+    if (filePath != null) 'filePath': filePath,
     'maxScore': maxScore,
     if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
     'isPublished': isPublished,
@@ -297,7 +318,22 @@ Future<TugasModel> createTugas(
 }
 
 Future<void> deleteTugas(WidgetRef ref, String tugasId) async {
+  // Hapus object di Storage sebelum soft-delete
   final client = ref.read(supabaseClientProvider);
+  final res = await client
+      .from('Tugas')
+      .select('filePath')
+      .eq('id', tugasId)
+      .maybeSingle();
+  final filePath = res?['filePath'] as String?;
+  if (filePath != null && filePath.isNotEmpty) {
+    try {
+      await ref.read(storageServiceProvider).delete(
+            bucket: StorageBucket.tugas,
+            path: filePath,
+          );
+    } catch (_) {}
+  }
   await client
       .from('Tugas')
       .update({'deletedAt': DateTime.now().toIso8601String()})
@@ -409,6 +445,8 @@ Future<UjianModel> createUjian(
   String? pengawas,
   double maxScore = 100,
   double passingScore = 70,
+  String? fileUrl,
+  String? filePath,
   bool isPublished = false,
 }) async {
   final client = ref.read(supabaseClientProvider);
@@ -434,6 +472,8 @@ Future<UjianModel> createUjian(
     'isPublished': isPublished,
     'maxScore': maxScore,
     'passingScore': passingScore,
+    if (fileUrl != null) 'fileUrl': fileUrl,
+    if (filePath != null) 'filePath': filePath,
   };
 
   final res = await client

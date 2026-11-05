@@ -13,6 +13,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'query_providers.dart';
 import 'query_providers_admin.dart';
+import 'storage_service.dart';
 
 // ===========================================================================
 // JADWAL
@@ -152,9 +153,80 @@ final materiListAdminProvider = FutureProvider<List<MateriModel>>((ref) async {
 });
 
 Future<void> adminDeleteMateri(WidgetRef ref, String id) async {
+  // Ambil filePath sebelum soft-delete untuk hapus object di Storage
   final client = ref.read(supabaseClientProvider);
-  await client.from('Materi').update({'deletedAt': DateTime.now().toIso8601String()}).eq('id', id);
+  final res = await client
+      .from('Materi')
+      .select('filePath')
+      .eq('id', id)
+      .maybeSingle();
+  final filePath = res?['filePath'] as String?;
+  if (filePath != null && filePath.isNotEmpty) {
+    try {
+      await ref.read(storageServiceProvider).delete(
+            bucket: StorageBucket.materi,
+            path: filePath,
+          );
+    } catch (_) {
+      // Best-effort: tetap hapus DB row meski storage delete gagal
+    }
+  }
+  await client
+      .from('Materi')
+      .update({'deletedAt': DateTime.now().toIso8601String()})
+      .eq('id', id);
   ref.invalidate(materiListAdminProvider);
+}
+
+/// Create materi (admin side). Admin does not have a Guru profile, so
+/// `guruId` is set to null. Active TahunAjaran + Semester are resolved
+/// automatically. `fileUrl` & `filePath` come from StorageService upload
+/// result (fileUrl=publicUrl for public materi bucket, filePath=path object).
+Future<MateriModel> adminCreateMateri(
+  WidgetRef ref, {
+  required String mapelId,
+  required String kelasId,
+  required String title,
+  String? description,
+  required String type,
+  String? fileUrl,
+  String? filePath,
+  String? externalUrl,
+  int? pertemuan,
+  bool isPublished = false,
+}) async {
+  final client = ref.read(supabaseClientProvider);
+  final taId = await client
+      .from('TahunAjaran')
+      .select('id')
+      .eq('isActive', true)
+      .limit(1)
+      .maybeSingle();
+  final semId = await client
+      .from('Semester')
+      .select('id')
+      .eq('isActive', true)
+      .limit(1)
+      .maybeSingle();
+  final body = <String, dynamic>{
+    'tahunAjaranId': taId?['id'] ?? '',
+    'semesterId': semId?['id'] ?? '',
+    'mapelId': mapelId,
+    'kelasId': kelasId,
+    'guruId': null, // admin doesn't have guru profile
+    'title': title,
+    if (description != null) 'description': description,
+    'type': type,
+    if (fileUrl != null) 'fileUrl': fileUrl,
+    if (filePath != null) 'filePath': filePath,
+    if (externalUrl != null) 'externalUrl': externalUrl,
+    if (pertemuan != null) 'pertemuan': pertemuan,
+    'isPublished': isPublished,
+    if (isPublished) 'publishedAt': DateTime.now().toIso8601String(),
+  };
+  final res = await client.from('Materi').insert(body).select().single();
+  ref.invalidate(materiListAdminProvider);
+  return MateriModel.fromJson(res);
 }
 
 // ===========================================================================
@@ -172,8 +244,26 @@ final tugasListAdminProvider = FutureProvider<List<TugasModel>>((ref) async {
 });
 
 Future<void> adminDeleteTugas(WidgetRef ref, String id) async {
+  // Ambil filePath sebelum soft-delete untuk hapus object di Storage
   final client = ref.read(supabaseClientProvider);
-  await client.from('Tugas').update({'deletedAt': DateTime.now().toIso8601String()}).eq('id', id);
+  final res = await client
+      .from('Tugas')
+      .select('filePath')
+      .eq('id', id)
+      .maybeSingle();
+  final filePath = res?['filePath'] as String?;
+  if (filePath != null && filePath.isNotEmpty) {
+    try {
+      await ref.read(storageServiceProvider).delete(
+            bucket: StorageBucket.tugas,
+            path: filePath,
+          );
+    } catch (_) {}
+  }
+  await client
+      .from('Tugas')
+      .update({'deletedAt': DateTime.now().toIso8601String()})
+      .eq('id', id);
   ref.invalidate(tugasListAdminProvider);
 }
 
@@ -199,8 +289,26 @@ Future<UjianModel> adminCreateUjian(WidgetRef ref, {required String tahunAjaranI
 }
 
 Future<void> adminDeleteUjian(WidgetRef ref, String id) async {
+  // Ambil filePath sebelum soft-delete untuk hapus object di Storage
   final client = ref.read(supabaseClientProvider);
-  await client.from('Ujian').update({'deletedAt': DateTime.now().toIso8601String()}).eq('id', id);
+  final res = await client
+      .from('Ujian')
+      .select('filePath')
+      .eq('id', id)
+      .maybeSingle();
+  final filePath = res?['filePath'] as String?;
+  if (filePath != null && filePath.isNotEmpty) {
+    try {
+      await ref.read(storageServiceProvider).delete(
+            bucket: StorageBucket.ujian,
+            path: filePath,
+          );
+    } catch (_) {}
+  }
+  await client
+      .from('Ujian')
+      .update({'deletedAt': DateTime.now().toIso8601String()})
+      .eq('id', id);
   ref.invalidate(ujianListAdminProvider);
 }
 
@@ -268,11 +376,11 @@ final raporListAdminProvider = FutureProvider<List<RaporAdminModel>>((ref) async
     final sem = row['Semester'] as Map<String, dynamic>?;
     return RaporAdminModel(
       id: row['id'] as String,
-      santriName: santri?['name'] ?? '-',
-      santriNis: santri?['nis'] ?? '-',
-      kelasName: kelas?['name'] ?? '-',
-      tahunAjaranCode: ta?['code'] ?? '-',
-      semesterName: sem?['name'] ?? '-',
+      santriName: (santri?['name'] as String?) ?? '-',
+      santriNis: (santri?['nis'] as String?) ?? '-',
+      kelasName: (kelas?['name'] as String?) ?? '-',
+      tahunAjaranCode: (ta?['code'] as String?) ?? '-',
+      semesterName: (sem?['name'] as String?) ?? '-',
       published: (row['published'] as bool?) ?? false,
       publishedAt: row['publishedAt'] is String ? DateTime.parse(row['publishedAt'] as String) : null,
       createdAt: DateTime.parse(row['createdAt'] as String),

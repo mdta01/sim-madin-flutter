@@ -7,6 +7,7 @@
 //   - santriDetailProvider.family<String> — profil + kelas + wali info per santri
 //   - absensiAnakProvider.family<String> — absensi anak tertentu (recent)
 //   - nilaiAnakProvider.family<String> — nilai anak tertentu
+//   - materiAnakProvider.family<String> — materi published untuk kelas anak
 //   - tagihanAnakProvider.family<String> — tagihan anak (filter status)
 //   - paymentAnakProvider.family<String> — payment history anak
 //   - ujianPesertaAnakProvider.family<String> — ujian yang diikuti anak
@@ -145,6 +146,49 @@ NilaiModel _nilaiFromRow(Map<String, dynamic> row) {
     if (mapel != null) 'mapelKkm': mapel['kkm'],
   });
 }
+
+// ---------------------------------------------------------------------------
+// Materi anak (recent published materi untuk kelas santri)
+// ---------------------------------------------------------------------------
+
+/// Materi yang dipublikasikan untuk kelas santri tertentu.
+/// Join ke MataPelajaran + Kelas + Guru untuk info display.
+/// Filter: published + tidak di-soft-delete + urut by createdAt desc, limit 30.
+final materiAnakProvider =
+    FutureProvider.family<List<MateriModel>, String>((ref, santriId) async {
+  ref.watch(realtimeRefreshTick);
+  final client = ref.watch(supabaseClientProvider);
+
+  // Ambil kelasId dari santri
+  final santriRes = await client
+      .from('Santri')
+      .select('kelasId')
+      .eq('id', santriId)
+      .maybeSingle();
+  final kelasId = santriRes?['kelasId'] as String?;
+  if (kelasId == null) return [];
+
+  final res = await client
+      .from('Materi')
+      .select('*, MataPelajaran(*), Kelas(*), Guru(*, User(*))')
+      .eq('kelasId', kelasId)
+      .eq('isPublished', true)
+      .filter('deletedAt', 'is', null)
+      .order('createdAt', ascending: false)
+      .limit(30);
+  return (res as List).map((r) {
+    final row = r as Map<String, dynamic>;
+    final mapel = (row['MataPelajaran'] ?? row['mapel']) as Map<String, dynamic>?;
+    final kelas = (row['Kelas'] ?? row['kelas']) as Map<String, dynamic>?;
+    final guru = (row['Guru'] ?? row['guru']) as Map<String, dynamic>?;
+    return MateriModel.fromJson({
+      ...row,
+      if (mapel != null) 'mapelName': mapel['name'],
+      if (kelas != null) 'kelasName': kelas['name'],
+      if (guru != null) 'guruName': guru['User']?['name'] ?? guru['name'],
+    });
+  }).toList();
+});
 
 // ---------------------------------------------------------------------------
 // Tagihan anak (filter status, default all)

@@ -1,4 +1,7 @@
-// Surat — list + delete + create.
+// Surat — list + delete + create (with PDF upload to private bucket).
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
@@ -51,6 +54,7 @@ class SuratScreen extends ConsumerWidget {
                       DataColumn(label: Text('Santri')),
                       DataColumn(label: Text('Status')),
                       DataColumn(label: Text('Tanggal')),
+                      DataColumn(label: Text('File')),
                       DataColumn(label: Text('Actions'))
                     ],
                     rows: list
@@ -81,6 +85,20 @@ class SuratScreen extends ConsumerWidget {
                                       ? formatDate(s.tanggalSurat)
                                       : '-',
                                   style: AppTextStyles.body3)),
+                              DataCell(Icon(
+                                  (s.filePath != null &&
+                                          s.filePath!.isNotEmpty) ||
+                                          (s.fileUrl != null &&
+                                              s.fileUrl!.isNotEmpty)
+                                      ? Icons.attach_file
+                                      : Icons.insert_drive_file_outlined,
+                                  size: 16,
+                                  color: (s.filePath != null &&
+                                              s.filePath!.isNotEmpty) ||
+                                          (s.fileUrl != null &&
+                                              s.fileUrl!.isNotEmpty)
+                                      ? AppColors.success
+                                      : AppColors.textMuted)),
                               DataCell(IconButton(
                                   icon: const Icon(Icons.delete, size: 18),
                                   color: AppColors.danger,
@@ -116,6 +134,8 @@ class SuratScreen extends ConsumerWidget {
     String status = 'DRAFT';
     DateTime? tanggalSurat = DateTime.now();
     bool saving = false;
+    PlatformFile? pickedFile;
+    Uint8List? fileBytes;
 
     await showDialog(
       context: context,
@@ -222,6 +242,40 @@ class SuratScreen extends ConsumerWidget {
                               decoration: const InputDecoration(
                                   border: OutlineInputBorder(), isDense: true),
                               maxLines: 6)),
+                      const SizedBox(height: 8),
+                      FormFieldLabel(
+                          label: 'Lampiran PDF (opsional, max 10MB)',
+                          hint: pickedFile?.name ?? 'Belum ada file dipilih',
+                          child: OutlinedButton.icon(
+                              onPressed: saving
+                                  ? null
+                                  : () async {
+                                      final result = await FilePicker.platform
+                                          .pickFiles(
+                                        type: FileType.custom,
+                                        allowedExtensions: ['pdf'],
+                                        withData: true,
+                                      );
+                                      if (!context.mounted) return;
+                                      if (result != null &&
+                                          result.files.isNotEmpty) {
+                                        final f = result.files.first;
+                                        final bytes = f.bytes;
+                                        if (bytes == null) {
+                                          _toast(context,
+                                              'Gagal membaca file. Coba lagi.', true);
+                                          return;
+                                        }
+                                        setInner(() {
+                                          pickedFile = f;
+                                          fileBytes = bytes;
+                                        });
+                                      }
+                                    },
+                              icon: const Icon(Icons.attach_file, size: 16),
+                              label: Text(pickedFile != null
+                                  ? 'Ganti File'
+                                  : 'Pilih File'))),
                     ]))),
                 actions: [
                   TextButton(
@@ -241,6 +295,28 @@ class SuratScreen extends ConsumerWidget {
                               }
                               setInner(() => saving = true);
                               try {
+                                String? fileUrl;
+                                String? filePath;
+                                if (fileBytes != null && pickedFile != null) {
+                                  // surat ID belum diketahui sebelum insert,
+                                  // jadi generate tempId unik untuk path Storage.
+                                  final tempId = DateTime.now()
+                                      .millisecondsSinceEpoch
+                                      .toString();
+                                  final path = StorageService.suratPath(
+                                      tempId, pickedFile!.name);
+                                  final res = await ref
+                                      .read(storageServiceProvider)
+                                      .upload(
+                                        bucket: StorageBucket.surat,
+                                        path: path,
+                                        fileBytes: fileBytes!,
+                                        mimeType: 'application/pdf',
+                                      );
+                                  // surat bucket is private — pakai signedUrl.
+                                  fileUrl = res.signedUrl;
+                                  filePath = res.path;
+                                }
                                 await adminCreateSurat(ref,
                                     santriId: santriId!,
                                     type: type,
@@ -252,7 +328,9 @@ class SuratScreen extends ConsumerWidget {
                                         ? null
                                         : contentCtrl.text.trim(),
                                     status: status,
-                                    tanggalSurat: tanggalSurat);
+                                    tanggalSurat: tanggalSurat,
+                                    fileUrl: fileUrl,
+                                    filePath: filePath);
                                 if (!context.mounted) return;
                                 Navigator.of(ctx).pop();
                                 _toast(context, '✅ Surat dibuat');

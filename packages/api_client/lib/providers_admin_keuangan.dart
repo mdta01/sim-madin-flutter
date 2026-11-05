@@ -12,6 +12,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'query_providers.dart';
 import 'query_providers_admin.dart';
+import 'storage_service.dart';
 
 // ===========================================================================
 // TAGIHAN
@@ -326,7 +327,7 @@ final notifikasiListAdminProvider = FutureProvider<List<NotifikasiAdminModel>>((
   final res = await client.from('Notifikasi').select('*, Wali(name)').order('createdAt', ascending: false).limit(100);
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
-    return NotifikasiAdminModel(id: row['id'].toString(), waliName: (row['Wali'] ?? row['wali'])?['name'] ?? '-', title: row['title'].toString(), message: row['message'].toString(), type: row['type'].toString(), priority: row['priority']?.toString() ?? 'NORMAL', isRead: (row['isRead'] as bool?) ?? false, createdAt: DateTime.parse(row['createdAt'].toString()));
+    return NotifikasiAdminModel(id: row['id'].toString(), waliName: ((row['Wali'] ?? row['wali'])?['name'] as String?) ?? '-', title: row['title'].toString(), message: row['message'].toString(), type: row['type'].toString(), priority: row['priority']?.toString() ?? 'NORMAL', isRead: (row['isRead'] as bool?) ?? false, createdAt: DateTime.parse(row['createdAt'].toString()));
   }).toList();
 });
 
@@ -416,12 +417,32 @@ final suratListAdminProvider = FutureProvider<List<SuratAdminModel>>((ref) async
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
     final santri = row['Santri'] as Map<String, dynamic>?;
-    return SuratAdminModel(id: row['id'].toString(), nomorSurat: row['nomorSurat'] as String? ?? '-', type: row['type']?.toString() ?? '-', title: row['title'].toString(), santriName: santri?['name'] ?? '-', status: row['status'] as String? ?? '-', tanggalSurat: row['tanggalSurat'] is String ? DateTime.parse(row['tanggalSurat'] as String) : null);
+    return SuratAdminModel(
+      id: row['id'].toString(),
+      nomorSurat: row['nomorSurat'] as String? ?? '-',
+      type: row['type']?.toString() ?? '-',
+      title: row['title'].toString(),
+      santriName: (santri?['name'] as String?) ?? '-',
+      status: row['status'] as String? ?? '-',
+      tanggalSurat: row['tanggalSurat'] is String ? DateTime.parse(row['tanggalSurat'] as String) : null,
+      fileUrl: row['fileUrl'] as String?,
+      filePath: row['filePath'] as String?,
+    );
   }).toList();
 });
 
 class SuratAdminModel {
-  const SuratAdminModel({required this.id, required this.nomorSurat, required this.type, required this.title, required this.santriName, required this.status, this.tanggalSurat});
+  const SuratAdminModel({
+    required this.id,
+    required this.nomorSurat,
+    required this.type,
+    required this.title,
+    required this.santriName,
+    required this.status,
+    this.tanggalSurat,
+    this.fileUrl,
+    this.filePath,
+  });
   final String id;
   final String nomorSurat;
   final String type;
@@ -429,10 +450,31 @@ class SuratAdminModel {
   final String santriName;
   final String status;
   final DateTime? tanggalSurat;
+  /// Public/signed URL untuk PDF surat (di Supabase Storage bucket surat).
+  final String? fileUrl;
+  /// Path object PDF di Storage (untuk delete).
+  final String? filePath;
 }
 
 Future<void> adminDeleteSurat(WidgetRef ref, String id) async {
+  // Ambil filePath sebelum delete untuk hapus object di Storage
   final client = ref.read(supabaseClientProvider);
+  final res = await client
+      .from('Surat')
+      .select('filePath')
+      .eq('id', id)
+      .maybeSingle();
+  final filePath = res?['filePath'] as String?;
+  if (filePath != null && filePath.isNotEmpty) {
+    try {
+      await ref.read(storageServiceProvider).delete(
+            bucket: StorageBucket.surat,
+            path: filePath,
+          );
+    } catch (_) {
+      // Best-effort: tetap hapus DB row meski storage delete gagal
+    }
+  }
   await client.from('Surat').delete().eq('id', id);
   ref.invalidate(suratListAdminProvider);
 }
@@ -447,6 +489,8 @@ Future<void> adminCreateSurat(
   String? content,
   String status = 'DRAFT',
   DateTime? tanggalSurat,
+  String? fileUrl,
+  String? filePath,
 }) async {
   final client = ref.read(supabaseClientProvider);
   await client.from('Surat').insert({
@@ -457,6 +501,8 @@ Future<void> adminCreateSurat(
     if (content != null) 'content': content,
     'status': status,
     'tanggalSurat': (tanggalSurat ?? DateTime.now()).toIso8601String(),
+    if (fileUrl != null) 'fileUrl': fileUrl,
+    if (filePath != null) 'filePath': filePath,
   });
   ref.invalidate(suratListAdminProvider);
 }
@@ -472,7 +518,7 @@ final alumniListAdminProvider = FutureProvider<List<AlumniAdminModel>>((ref) asy
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
     final santri = row['Santri'] as Map<String, dynamic>?;
-    return AlumniAdminModel(id: row['id'].toString(), santriName: santri?['name'] ?? '-', santriNis: santri?['nis'] ?? '-', tahunLulus: (row['tahunLulus'] as num?)?.toInt() ?? 0, statusKelulusan: (row['statusKelulusan'] as String?) ?? '-', pekerjaan: (row['pekerjaan'] as String?) ?? '-', domisiliKota: (row['domisiliKota'] as String?) ?? '-');
+    return AlumniAdminModel(id: row['id'].toString(), santriName: (santri?['name'] as String?) ?? '-', santriNis: (santri?['nis'] as String?) ?? '-', tahunLulus: (row['tahunLulus'] as num?)?.toInt() ?? 0, statusKelulusan: (row['statusKelulusan'] as String?) ?? '-', pekerjaan: (row['pekerjaan'] as String?) ?? '-', domisiliKota: (row['domisiliKota'] as String?) ?? '-');
   }).toList();
 });
 
@@ -503,7 +549,7 @@ final chatRoomsListAdminProvider = FutureProvider<List<ChatRoomAdminModel>>((ref
   final res = await client.from('ChatRoom').select('*, Wali(name), Guru(name), Santri(name)').eq('isActive', true).order('lastMessageAt', ascending: false).limit(100);
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
-    return ChatRoomAdminModel(id: row['id'].toString(), type: row['type'].toString(), waliName: (row['Wali'] ?? row['wali'])?['name'] ?? '-', guruName: (row['Guru'] ?? row['guru'])?['name'] ?? '-', santriName: (row['Santri'] ?? row['santri'])?['name'] ?? '-', lastMessage: row['lastMessage'] as String?, lastMessageAt: row['lastMessageAt'] is String ? DateTime.parse(row['lastMessageAt'] as String) : null);
+    return ChatRoomAdminModel(id: row['id'].toString(), type: row['type'].toString(), waliName: ((row['Wali'] ?? row['wali'])?['name'] as String?) ?? '-', guruName: ((row['Guru'] ?? row['guru'])?['name'] as String?) ?? '-', santriName: ((row['Santri'] ?? row['santri'])?['name'] as String?) ?? '-', lastMessage: row['lastMessage'] as String?, lastMessageAt: row['lastMessageAt'] is String ? DateTime.parse(row['lastMessageAt'] as String) : null);
   }).toList();
 });
 

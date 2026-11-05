@@ -1,4 +1,7 @@
 // Tugas create — form input tugas baru.
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,6 +26,9 @@ class _TugasCreateScreenState extends ConsumerState<TugasCreateScreen> {
   String _type = TugasType.individu;
   bool _isPublished = false;
   bool _saving = false;
+  PlatformFile? _pickedFile;
+  Uint8List? _fileBytes;
+  String? _fileMimeType;
 
   @override
   void dispose() {
@@ -77,6 +83,25 @@ class _TugasCreateScreenState extends ConsumerState<TugasCreateScreen> {
     }
     setState(() => _saving = true);
     try {
+      String? fileUrl, filePath;
+      if (_pickedFile != null && _fileBytes != null) {
+        try {
+          final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+          final uploadPath =
+              StorageService.tugasPath(tempId, _pickedFile!.name);
+          final result = await ref.read(storageServiceProvider).upload(
+                bucket: StorageBucket.tugas,
+                path: uploadPath,
+                fileBytes: _fileBytes!,
+                mimeType: _fileMimeType!,
+              );
+          fileUrl = result.signedUrl; // tugas bucket is private
+          filePath = result.path;
+        } catch (e) {
+          _toast('Gagal upload file: ${friendlyError(e)}', isError: true);
+          return;
+        }
+      }
       await createTugas(
         ref,
         mapelId: _mapelId!,
@@ -86,6 +111,8 @@ class _TugasCreateScreenState extends ConsumerState<TugasCreateScreen> {
             ? null
             : _descController.text.trim(),
         type: _type,
+        fileUrl: fileUrl,
+        filePath: filePath,
         maxScore: maxScore,
         dueDate: _dueDate,
         isPublished: _isPublished,
@@ -107,6 +134,35 @@ class _TugasCreateScreenState extends ConsumerState<TugasCreateScreen> {
           content: Text(msg),
           backgroundColor: isError ? AppColors.danger : AppColors.success),
     );
+  }
+
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    setState(() {
+      _pickedFile = file;
+      _fileBytes = file.bytes;
+      _fileMimeType = _mimeType(file.extension ?? 'pdf');
+    });
+  }
+
+  String _mimeType(String ext) {
+    switch (ext.toLowerCase()) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      default:
+        return 'application/octet-stream';
+    }
   }
 
   @override
@@ -141,6 +197,42 @@ class _TugasCreateScreenState extends ConsumerState<TugasCreateScreen> {
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 4,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            FormFieldLabel(
+              label: 'Upload File (opsional)',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _pickFile,
+                    icon: const Icon(Icons.upload_file),
+                    label: Text(_pickedFile?.name ??
+                        'Pilih File (PDF/JPG/PNG, max 10MB)'),
+                  ),
+                  if (_pickedFile != null) ...[
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      const Icon(Icons.check_circle,
+                          color: AppColors.success, size: 16),
+                      const SizedBox(width: 4),
+                      Expanded(
+                          child: Text(
+                              'File dipilih: ${_pickedFile!.name}',
+                              style: AppTextStyles.caption
+                                  .copyWith(color: AppColors.success))),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 16),
+                        onPressed: () => setState(() {
+                          _pickedFile = null;
+                          _fileBytes = null;
+                          _fileMimeType = null;
+                        }),
+                      ),
+                    ]),
+                  ],
+                ],
               ),
             ),
             const SizedBox(height: AppSpacing.md),

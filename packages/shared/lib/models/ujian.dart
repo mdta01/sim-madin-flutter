@@ -28,6 +28,8 @@ class UjianModel {
     this.isPublished = false,
     this.maxScore = 100,
     this.passingScore = 70,
+    this.fileUrl,
+    this.filePath,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -55,6 +57,10 @@ class UjianModel {
   final bool isPublished;
   final double maxScore;
   final double passingScore;
+  /// Public/signed URL untuk lampiran soal ujian (PDF/gambar).
+  final String? fileUrl;
+  /// Path object di Supabase Storage bucket `ujian`.
+  final String? filePath;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -86,6 +92,8 @@ class UjianModel {
         isPublished: (j['isPublished'] as bool?) ?? false,
         maxScore: (j['maxScore'] as num?)?.toDouble() ?? 100,
         passingScore: (j['passingScore'] as num?)?.toDouble() ?? 70,
+        fileUrl: j['fileUrl'] as String?,
+        filePath: j['filePath'] as String?,
         createdAt: DateTime.parse(j['createdAt'] as String),
         updatedAt: DateTime.parse(j['updatedAt'] as String),
         deletedAt: j['deletedAt'] is String

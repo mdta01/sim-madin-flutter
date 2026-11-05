@@ -21,11 +21,14 @@
 // createSignedUrl() dengan expiry pendek (default 1 jam).
 // ============================================================================
 
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared/shared.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:supabase_client/supabase_client.dart';
+
+import 'query_providers.dart' show realtimeRefreshTick;
 
 /// Nama bucket Supabase Storage. Diset konstan supaya tidak salah ketik.
 class StorageBucket {
@@ -189,7 +192,7 @@ class StorageService {
   Future<StorageUploadResult> upload({
     required String bucket,
     required String path,
-    required List<int> fileBytes,
+    required Uint8List fileBytes,
     required String mimeType,
     bool upsert = false,
   }) async {
@@ -234,7 +237,7 @@ class StorageService {
   // --------------------------------------------------------------------------
 
   /// Download file sebagai bytes.
-  Future<List<int>> download({
+  Future<Uint8List> download({
     required String bucket,
     required String path,
   }) async {
@@ -270,14 +273,10 @@ class StorageService {
           paths,
           expiresAt.inSeconds,
         );
-    // Response: List of {path, signedURL}
+    // Response: List<SignedUrl> with fields {path, signedUrl}
     final result = <String, String>{};
     for (final item in urls) {
-      final p = item['path'] as String?;
-      final u = item['signedURL'] as String? ?? item['signedUrl'] as String?;
-      if (p != null && u != null) {
-        result[p] = u;
-      }
+      result[item.path] = item.signedUrl;
     }
     return result;
   }
@@ -332,10 +331,12 @@ class StorageService {
   }) async {
     final res = await _client.storage.from(bucket).list(
           path: folder,
-          limit: limit,
-          sortBy: StorageSortBy(
-            column: sortByColumn,
-            order: ascending ? 'asc' : 'desc',
+          searchOptions: SearchOptions(
+            limit: limit,
+            sortBy: SortBy(
+              column: sortByColumn,
+              order: ascending ? 'asc' : 'desc',
+            ),
           ),
         );
     return res

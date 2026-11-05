@@ -1,4 +1,7 @@
 // Materi create — form input materi baru.
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,6 +26,9 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
   String _type = MateriType.dokumen;
   bool _isPublished = false;
   bool _saving = false;
+  PlatformFile? _pickedFile;
+  Uint8List? _fileBytes;
+  String? _fileMimeType;
 
   @override
   void dispose() {
@@ -44,6 +50,24 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
     }
     setState(() => _saving = true);
     try {
+      String? fileUrl, filePath;
+      if (_pickedFile != null && _fileBytes != null) {
+        try {
+          final uploadPath =
+              StorageService.materiPath(_mapelId!, _pickedFile!.name);
+          final result = await ref.read(storageServiceProvider).upload(
+                bucket: StorageBucket.materi,
+                path: uploadPath,
+                fileBytes: _fileBytes!,
+                mimeType: _fileMimeType!,
+              );
+          fileUrl = result.publicUrl; // materi bucket is public
+          filePath = result.path;
+        } catch (e) {
+          _toast('Gagal upload file: ${friendlyError(e)}', isError: true);
+          return;
+        }
+      }
       await createMateri(
         ref,
         mapelId: _mapelId!,
@@ -53,6 +77,8 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
             ? null
             : _descController.text.trim(),
         type: _type,
+        fileUrl: fileUrl,
+        filePath: filePath,
         externalUrl: _externalUrlController.text.trim().isEmpty
             ? null
             : _externalUrlController.text.trim(),
@@ -76,6 +102,38 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
           content: Text(msg),
           backgroundColor: isError ? AppColors.danger : AppColors.success),
     );
+  }
+
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'ppt', 'pptx', 'doc', 'docx'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    setState(() {
+      _pickedFile = file;
+      _fileBytes = file.bytes;
+      _fileMimeType = _mimeType(file.extension ?? 'pdf');
+    });
+  }
+
+  String _mimeType(String ext) {
+    switch (ext.toLowerCase()) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'ppt':
+        return 'application/vnd.ms-powerpoint';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      default:
+        return 'application/octet-stream';
+    }
   }
 
   @override
@@ -191,6 +249,42 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             FormFieldLabel(
+              label: 'Upload File (opsional, untuk type=DOKUMEN/PRESENTATION)',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _pickFile,
+                    icon: const Icon(Icons.upload_file),
+                    label: Text(_pickedFile?.name ??
+                        'Pilih File (PDF/PPT/DOC, max 50MB)'),
+                  ),
+                  if (_pickedFile != null) ...[
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      const Icon(Icons.check_circle,
+                          color: AppColors.success, size: 16),
+                      const SizedBox(width: 4),
+                      Expanded(
+                          child: Text(
+                              'File dipilih: ${_pickedFile!.name}',
+                              style: AppTextStyles.caption
+                                  .copyWith(color: AppColors.success))),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 16),
+                        onPressed: () => setState(() {
+                          _pickedFile = null;
+                          _fileBytes = null;
+                          _fileMimeType = null;
+                        }),
+                      ),
+                    ]),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            FormFieldLabel(
               label: 'Pertemuan ke- (opsional)',
               child: TextField(
                 controller: _pertemuanController,
@@ -222,11 +316,6 @@ class _MateriCreateScreenState extends ConsumerState<MateriCreateScreen> {
                     : const Icon(Icons.save),
                 label: Text(_saving ? 'Menyimpan...' : 'Simpan Materi'),
               ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            const Text(
-              'Catatan: Upload file (PDF, gambar) akan ditambahkan di Phase selanjutnya. Untuk sekarang, gunakan URL eksternal untuk file di cloud (Google Drive, dll).',
-              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
             ),
           ],
         ),

@@ -34,6 +34,7 @@ class MateriModel {
     this.description,
     required this.type,
     this.fileUrl,
+    this.filePath,
     this.externalUrl,
     this.pertemuan,
     this.sortOrder = 0,
@@ -58,6 +59,9 @@ class MateriModel {
   final String? description;
   final String type;
   final String? fileUrl;
+  /// Path object di Supabase Storage bucket `materi` (cth: 'mapelId/file.pdf').
+  /// Dipakai untuk delete object storage saat row di-delete.
+  final String? filePath;
   final String? externalUrl;
   final int? pertemuan;
   final int sortOrder;
@@ -82,6 +86,7 @@ class MateriModel {
         description: j['description'] as String?,
         type: j['type'] as String,
         fileUrl: j['fileUrl'] as String?,
+        filePath: j['filePath'] as String?,
         externalUrl: j['externalUrl'] as String?,
         pertemuan: (j['pertemuan'] as num?)?.toInt(),
         sortOrder: (j['sortOrder'] as num?)?.toInt() ?? 0,

@@ -25,13 +25,14 @@ class TugasScreen extends ConsumerWidget {
           loading: () => const LoadingSkeleton(itemCount: 8),
           error: (e, _) => ErrorView(message: friendlyError(e), onRetry: () => ref.invalidate(tugasListAdminProvider)),
           data: (list) => list.isEmpty ? const EmptyState(title: 'Belum ada tugas', subtitle: 'Belum ada tugas tersedia.', icon: Icons.assignment_outlined) : ModernDataTableContainer(child: SingleChildScrollView(child: DataTable(
-              columns: const [DataColumn(label: Text('Judul')), DataColumn(label: Text('Mapel')), DataColumn(label: Text('Kelas')), DataColumn(label: Text('Guru')), DataColumn(label: Text('Tenggat')), DataColumn(label: Text('Published')), DataColumn(label: Text('Actions'))],
+              columns: const [DataColumn(label: Text('Judul')), DataColumn(label: Text('Mapel')), DataColumn(label: Text('Kelas')), DataColumn(label: Text('Guru')), DataColumn(label: Text('Tenggat')), DataColumn(label: Text('File')), DataColumn(label: Text('Published')), DataColumn(label: Text('Actions'))],
               rows: list.map((t) => DataRow(cells: [
                 DataCell(Text(t.title, style: AppTextStyles.label)),
                 DataCell(Text(t.mapelName ?? '-', style: AppTextStyles.body3)),
                 DataCell(Text(t.kelasName ?? '-', style: AppTextStyles.body3)),
                 DataCell(Text(t.guruName ?? '-', style: AppTextStyles.body3)),
                 DataCell(Text(t.dueDate != null ? formatDate(t.dueDate) : '-', style: AppTextStyles.body3.copyWith(color: t.dueDate != null && t.dueDate!.isBefore(DateTime.now()) ? AppColors.danger : AppColors.textMuted))),
+                DataCell(Icon((t.filePath != null && t.filePath!.isNotEmpty) || (t.fileUrl != null && t.fileUrl!.isNotEmpty) ? Icons.attach_file : Icons.insert_drive_file_outlined, size: 16, color: (t.filePath != null && t.filePath!.isNotEmpty) || (t.fileUrl != null && t.fileUrl!.isNotEmpty) ? AppColors.success : AppColors.textMuted)),
                 DataCell(Icon(t.isPublished ? Icons.check_circle : Icons.drafts, size: 16, color: t.isPublished ? AppColors.success : AppColors.textMuted)),
                 DataCell(IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { await adminDeleteTugas(ref, t.id); })),
               ])).toList(),

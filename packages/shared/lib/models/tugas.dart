@@ -25,6 +25,7 @@ class TugasModel {
     this.description,
     required this.type,
     this.fileUrl,
+    this.filePath,
     this.maxScore = 100,
     this.dueDate,
     this.isPublished = false,
@@ -51,6 +52,8 @@ class TugasModel {
   final String? description;
   final String type;
   final String? fileUrl;
+  /// Path object di Supabase Storage bucket `tugas` (cth: 'tugasId/file.pdf').
+  final String? filePath;
   final double maxScore;
   final DateTime? dueDate;
   final bool isPublished;
@@ -77,6 +80,7 @@ class TugasModel {
         description: j['description'] as String?,
         type: j['type'] as String,
         fileUrl: j['fileUrl'] as String?,
+        filePath: j['filePath'] as String?,
         maxScore: (j['maxScore'] as num?)?.toDouble() ?? 100,
         dueDate: j['dueDate'] is String
             ? DateTime.parse(j['dueDate'] as String)

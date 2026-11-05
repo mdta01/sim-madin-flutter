@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../widgets/feedback_widgets.dart';
 
@@ -254,6 +255,7 @@ class _AkademikTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final absensiAsync = ref.watch(absensiAnakProvider(santriId));
     final nilaiAsync = ref.watch(nilaiAnakProvider(santriId));
+    final materiAsync = ref.watch(materiAnakProvider(santriId));
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -362,6 +364,71 @@ class _AkademikTab extends ConsumerWidget {
             );
           },
         ),
+        const SizedBox(height: AppSpacing.md),
+        // Materi section
+        const Text('Materi Pelajaran',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+        const SizedBox(height: AppSpacing.sm),
+        materiAsync.when(
+          loading: () => const SizedBox(
+              height: 60,
+              child: Center(
+                  child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2)))),
+          error: (e, _) => Text('Error: $e',
+              style: const TextStyle(color: AppColors.danger, fontSize: 12)),
+          data: (list) {
+            if (list.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: const Text('Belum ada materi',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              );
+            }
+            return Column(
+              children: list.map((m) {
+                final hasFile = (m.fileUrl != null && m.fileUrl!.isNotEmpty) ||
+                    (m.externalUrl != null && m.externalUrl!.isNotEmpty);
+                return Card(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  child: ListTile(
+                    dense: true,
+                    leading: Icon(
+                        MateriType.label(m.type) == 'Video'
+                            ? Icons.video_library_outlined
+                            : MateriType.label(m.type) == 'Link'
+                                ? Icons.link
+                                : Icons.picture_as_pdf_outlined,
+                        size: 22,
+                        color: AppColors.primary),
+                    title: Text(m.title,
+                        style: const TextStyle(fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    subtitle: Text(
+                        '${m.mapelName ?? '-'} • ${formatDate(m.createdAt)}',
+                        style: const TextStyle(fontSize: 11)),
+                    trailing: hasFile
+                        ? IconButton(
+                            icon: const Icon(Icons.download, size: 20),
+                            color: AppColors.primary,
+                            tooltip: 'Buka file',
+                            onPressed: () => _openMateriFile(
+                                context, ref, m),
+                          )
+                        : null,
+                  ),
+                );
+              }).toList(),
+            );
+          },
+        ),
       ],
     );
   }
@@ -385,6 +452,57 @@ class _AkademikTab extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Buka file materi (PDF/image) atau URL eksternal.
+  /// Untuk materi dengan externalUrl, langsung buka URL tersebut.
+  /// Untuk materi dengan fileUrl di bucket public (materi), URL sudah public.
+  /// Untuk file di bucket private (jarang di wali), perlu signed URL — tidak
+  /// terjadi di materi karena bucket materi adalah public.
+  Future<void> _openMateriFile(
+      BuildContext context, WidgetRef ref, MateriModel m) async {
+    String? url;
+    if (m.externalUrl != null && m.externalUrl!.isNotEmpty) {
+      url = m.externalUrl;
+    } else if (m.fileUrl != null && m.fileUrl!.isNotEmpty) {
+      url = m.fileUrl;
+    }
+    if (url == null || url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Tidak ada file untuk materi ini'),
+            backgroundColor: AppColors.warning),
+      );
+      return;
+    }
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('URL tidak valid: $url'),
+            backgroundColor: AppColors.danger),
+      );
+      return;
+    }
+    try {
+      final launched = await launchUrl(uri,
+          mode: LaunchMode.externalApplication);
+      if (!launched && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Tidak bisa membuka: $url'),
+              backgroundColor: AppColors.warning),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Error: ${friendlyError(e)}'),
+            backgroundColor: AppColors.danger),
+      );
+    }
   }
 }
 
@@ -442,7 +560,7 @@ class _UjianTab extends ConsumerWidget {
                   }
                   // Navigasi ke UjianTakeScreen (fullscreen, anti-cheat).
                   context.push(
-                      '/dashboard/home/santri/${widget.santriId}/ujian/${p.ujianId}/take');
+                      '/dashboard/home/santri/$santriId/ujian/${p.ujianId}/take');
                 },
               ),
             );
