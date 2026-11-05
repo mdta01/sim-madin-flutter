@@ -1,0 +1,99 @@
+name: Build APK (Release)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      apps:
+        description: 'Apps to build (comma-separated: mobile_wali,mobile_bendahara,mobile_guru,mobile_kepala)'
+        required: false
+        default: 'mobile_wali,mobile_bendahara,mobile_guru,mobile_kepala'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [mobile_wali, mobile_bendahara, mobile_guru, mobile_kepala]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.0'
+          channel: 'stable'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+
+      - name: Install melos
+        run: dart pub global activate melos
+
+      - name: Bootstrap workspace
+        run: |
+          export PATH="$PATH:$HOME/.pub-cache/bin"
+          melos bootstrap
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.APP_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.APP_KEYSTORE_PASS }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > apps/${{ matrix.app }}/android/app/key.jks
+            echo "storePassword=$KEYSTORE_PASS" > apps/${{ matrix.app }}/android/key.properties
+            echo "keyPassword=$KEYSTORE_PASS" >> apps/${{ matrix.app }}/android/key.properties
+            echo "keyAlias=${{ matrix.app }}-key" >> apps/${{ matrix.app }}/android/key.properties
+            echo "storeFile=key.jks" >> apps/${{ matrix.app }}/android/key.properties
+            echo "✓ Keystore decoded"
+          else
+            echo "⚠ No keystore secret — using debug signing"
+          fi
+
+      - name: Build APK
+        run: |
+          cd apps/${{ matrix.app }}
+          flutter build apk --release
+
+      - name: Rename APK
+        run: |
+          mv apps/${{ matrix.app }}/build/app/outputs/flutter-apk/app-release.apk \
+             ${{ matrix.app }}.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-apk
+          path: ${{ matrix.app }}.apk
+          retention-days: 30
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Download all APKs
+        uses: actions/download-artifact@v4
+        with:
+          path: apks
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apks/**/*.apk
+          generate_release_notes: true
+          draft: false
+          prerelease: false

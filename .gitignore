@@ -63,3 +63,8 @@ backend/sim_madin_server/.dart_tool/
 *.dump
 *.sql.gz
 tmp/
+
+# Android signing keys (DO NOT COMMIT)
+**/android/key.properties
+**/android/app/key.jks
+android-keys/

@@ -96,113 +96,49 @@ Future<TypedWaliSession> loginWali(
   final client = ref.read(supabaseClientProvider);
   final normalizedPhone = normalizeWhatsApp(phone) ?? phone;
 
-  // Query wali by phone
-  final waliRes = await client
-      .from('Wali')
-      .select()
-      .eq('phone', normalizedPhone)
-      .filter('deletedAt', 'is', null)
-      .maybeSingle();
+  // === Production: call wali_login RPC (bcrypt PIN verify server-side) ===
+  // RPC returns: { success, wali: {...}, santriList: [...] }
+  // atau { success: false, message: "..." }
+  final rpcResult = await client.rpc('wali_login', params: {
+    'p_phone': normalizedPhone,
+    'p_pin': pin,
+  });
 
-  if (waliRes == null) {
-    throw Exception('Nomor WhatsApp tidak terdaftar');
+  if (rpcResult == null) {
+    throw Exception('Login gagal: response null dari server');
   }
 
-  final wali = WaliModel.fromJson(waliRes);
-
-  // Check auto-lock
-  if (wali.activationStatus == WaliActivationStatus.suspended) {
-    throw Exception('Akun Anda dinonaktifkan. Hubungi admin madrasah.');
-  }
-  // Hanya wali dengan status ACTIVE yang boleh login.
-  // PENDING / PENDING_NO_PHONE harus di-approve admin dulu.
-  if (wali.activationStatus != WaliActivationStatus.active) {
-    throw Exception(
-        'Akun belum aktif (status: ${wali.activationStatus}). Hubungi admin madrasah untuk aktivasi.');
-  }
-  if (wali.lockedUntil != null &&
-      wali.lockedUntil!.isAfter(DateTime.now())) {
-    final remaining = wali.lockedUntil!.difference(DateTime.now()).inMinutes;
-    throw Exception(
-        'Akun terkunci. Coba lagi dalam $remaining menit.');
+  final result = rpcResult as Map<String, dynamic>;
+  if (result['success'] != true) {
+    throw Exception(result['message'] ?? 'Login gagal');
   }
 
-  // Phase 5 DEV: PIN plain text comparison.
-  // Production: ganti dengan bcrypt-verify via RPC function.
-  // Untuk testing, admin dapat set PIN manual di DB: UPDATE "Wali" SET "pinHash" = '123456' WHERE phone = '...'
-  if (wali.pinHash != pin) {
-    // Increment failed attempts
-    final newAttempts = (wali.failedLoginAttempts ?? 0) + 1;
-    final shouldLock = newAttempts >= 5;
-    await client.from('Wali').update({
-      'failedLoginAttempts': newAttempts,
-      if (shouldLock)
-        'lockedUntil': DateTime.now()
-            .add(const Duration(minutes: 15))
-            .toIso8601String(),
-    }).eq('id', wali.id);
+  final waliData = result['wali'] as Map<String, dynamic>;
+  final santriData = result['santriList'] as List<dynamic>;
 
-    if (shouldLock) {
-      throw Exception(
-          'Akun terkunci 15 menit karena 5x salah PIN. Coba lagi nanti.');
-    }
-    throw Exception(
-        'PIN salah. Sisa percobaan: ${5 - newAttempts}');
-  }
+  final wali = WaliModel.fromJson(waliData);
+  final santriList = santriData
+      .map((s) => SantriModel.fromJson(s as Map<String, dynamic>))
+      .toList();
 
-  // Login berhasil — reset failed attempts + update lastLoginAt
-  await client.from('Wali').update({
-    'failedLoginAttempts': 0,
-    'lockedUntil': null,
-    'lastLoginAt': DateTime.now().toIso8601String(),
-  }).eq('id', wali.id);
-
-  // CRITICAL: Sign in to Supabase Auth with linked User's email
-  // so that auth.uid() is available for RLS policies.
-  // Phase dev: password is 'admin123' for all seed users.
-  // Production: use RPC function with service_role to create proper JWT.
+  // Sign in to Supabase Auth (for RLS) if wali has linked email.
+  // Password is still 'admin123' for seed users — TODO production: generate
+  // per-wali random password during admin_createWali and store encrypted.
   String? authToken;
   if (wali.email != null && wali.email!.isNotEmpty) {
     try {
       final authRes = await client.auth.signInWithPassword(
         email: wali.email!,
-        password: 'admin123', // Phase dev — production: use proper auth
+        password: 'admin123',
       );
       authToken = authRes.session?.accessToken;
     } catch (e) {
-      // If Supabase Auth sign-in fails, continue with anon session
-      // (wali can still see basic data via anon, but RLS will block
-      // wali-specific queries).
       debugPrint('Wali Supabase Auth sign-in failed: $e');
     }
   }
 
-  // Get santri list via SantriWali join.
-  // Client is authenticated after signInWithPassword (if email existed).
-  final santriRes = await client
-      .from('SantriWali')
-      .select('*, Santri(*, Kelas(*))')
-      .eq('waliId', wali.id)
-      .eq('canAccess', true);
-  final santriList = (santriRes as List)
-      .map((r) {
-        final santri = (r as Map<String, dynamic>)['Santri']
-            as Map<String, dynamic>?;
-        if (santri == null) return null;
-        final kelas = santri['Kelas'] as Map<String, dynamic>?;
-        return SantriModel.fromJson({
-          ...santri,
-          if (kelas != null) 'kelasName': kelas['name'],
-          if (kelas != null) 'kelasCode': kelas['code'],
-        });
-      })
-      .where((s) => s != null)
-      .cast<SantriModel>()
-      .toList();
-
-  // Use Supabase Auth access token (proper JWT) if available.
-  // Fall back to pseudo-token if Supabase Auth sign-in failed.
-  final token = authToken ?? '${wali.id}:${DateTime.now().millisecondsSinceEpoch}';
+  final token = authToken ??
+      '${wali.id}:${DateTime.now().millisecondsSinceEpoch}';
 
   final session = TypedWaliSession(
     token: token,
@@ -210,42 +146,19 @@ Future<TypedWaliSession> loginWali(
     santriList: santriList,
   );
 
-  // Save ke secure storage + set provider.
-  // CRITICAL: Simpan flattened Santri map (dengan nested Kelas di-merge ke
-  // top-level), BUKAN raw SantriWali row. Kalau tidak, splash_screen gagal
-  // parse SantriModel.fromJson (yang butuh 'name','nis','gender','entryDate'
-  // di top-level) → catch block redirect ke /login setiap app restart.
-  final santriMapsForStorage = (santriRes as List)
-      .map((r) {
-        final santri =
-            (r as Map<String, dynamic>)['Santri'] as Map<String, dynamic>?;
-        if (santri == null) return null;
-        final kelas = santri['Kelas'] as Map<String, dynamic>?;
-        return <String, dynamic>{
-          ...santri,
-          if (kelas != null) 'kelasName': kelas['name'],
-          if (kelas != null) 'kelasCode': kelas['code'],
-        };
-      })
-      .whereType<Map<String, dynamic>>()
-      .toList();
-
+  // Save ke secure storage
   await ref.read(authStorageProvider).saveWaliSession(
         token: token,
-        wali: waliRes,
-        santriList: santriMapsForStorage,
+        wali: waliData,
+        santriList: santriData.cast<Map<String, dynamic>>().toList(),
       );
   ref.read(waliSessionProvider.notifier).state = session;
 
-  // Save FCM token untuk push notification (kalau wali punya userId link)
-  // Wali yang login via WA+PIN belum tentu punya Supabase Auth user.
-  // Kalau ada (via admin link), simpan FCM token ke User.fcmToken.
+  // Save FCM token
   if (wali.userId != null && wali.userId!.isNotEmpty) {
     try {
       await _saveFcmTokenForWali(ref, wali.userId!);
-    } catch (_) {
-      // Best-effort — jangan fail login kalau FCM token gagal disimpan.
-    }
+    } catch (_) {}
   }
 
   return session;
@@ -309,7 +222,7 @@ Future<String> requestOtp(
   if (waliRes == null) {
     throw Exception('Nomor WhatsApp tidak terdaftar');
   }
-  final wali = WaliModel.fromJson(waliRes);
+  final wali = WaliModel.fromJson(waliRes as Map<String, dynamic>);
 
   // Check rate limit (5 per jam)
   final now = DateTime.now();
@@ -369,7 +282,7 @@ Future<String> verifyOtp(
   if (waliRes == null) {
     throw Exception('Nomor WhatsApp tidak terdaftar');
   }
-  final wali = WaliModel.fromJson(waliRes);
+  final wali = WaliModel.fromJson(waliRes as Map<String, dynamic>);
 
   // Check OTP expiry
   if (wali.otpExpiresAt == null ||
@@ -431,11 +344,15 @@ Future<void> setNewPin(
   }
 
   final client = ref.read(supabaseClientProvider);
-  // Phase 5 DEV: simpan PIN plain text di kolom pinHash.
-  // Production: hash dengan bcrypt sebelum simpan.
-  await client.from('Wali').update({
-    'pinHash': newPin, // TODO production: bcrypt.hash(newPin)
-  }).eq('id', stored.waliId);
+  // Production: hash PIN dengan bcrypt via RPC wali_set_pin (server-side)
+  final success = await client.rpc('wali_set_pin', params: {
+    'p_wali_id': stored.waliId,
+    'p_new_pin': newPin,
+  });
+
+  if (success != true) {
+    throw Exception('Gagal mengubah PIN. Coba lagi.');
+  }
 
   // Clear verifyToken
   ref.read(otpVerifyTokenProvider.notifier).state = null;
@@ -543,7 +460,7 @@ Future<UjianSesiData> startUjianSesi(
 
   if (existingRes != null) {
     // Resume existing sesi
-    return UjianSesiData.fromJson(existingRes);
+    return UjianSesiData.fromJson(existingRes as Map<String, dynamic>);
   }
 
   // Get soal list untuk shuffle
@@ -575,7 +492,7 @@ Future<UjianSesiData> startUjianSesi(
       .insert(body)
       .select()
       .single();
-  return UjianSesiData.fromJson(res);
+  return UjianSesiData.fromJson(res as Map<String, dynamic>);
 }
 
 /// Submit jawaban ujian + compute score (auto-correct untuk PG).
