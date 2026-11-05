@@ -15,8 +15,10 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_client/supabase_client.dart';
 
 /// Provider untuk NotificationService singleton.
@@ -179,16 +181,15 @@ class NotificationService {
     );
   }
 
+  /// Global navigator key untuk navigate dari notification tap.
+  /// Set dari main.dart: notificationServiceProvider.navigatorKey = navigatorKey;
+  GlobalKey<NavigatorState>? navigatorKey;
+
   /// Handle notification tap — navigate ke screen terkait.
   void _handleMessageTap(RemoteMessage message) {
     final data = message.data;
     debugPrint('🔔 Notification tap: $data');
-
-    // TODO: Navigate ke screen terkait berdasarkan data['type']
-    // Mis. type=nilai → /dashboard/home/santri/{santriId}
-    // Mis. type=chat → /dashboard/chat/{roomId}
-    // Mis. type=tagihan → /dashboard/home (tab keuangan)
-    // Untuk sekarang, hanya log.
+    _navigateFromData(data);
   }
 
   /// Handle local notification tap.
@@ -197,8 +198,46 @@ class NotificationService {
     try {
       final data = jsonDecode(response.payload!) as Map<String, dynamic>;
       debugPrint('🔔 Local notification tap: $data');
-      // Sama dengan _handleMessageTap
+      _navigateFromData(data);
     } catch (_) {}
+  }
+
+  /// Navigate ke screen berdasarkan notification data.
+  void _navigateFromData(Map<String, dynamic> data) {
+    if (navigatorKey?.currentContext == null) return;
+    final context = navigatorKey!.currentContext!;
+    final type = data['type'] as String?;
+    final santriId = data['santriId'] as String?;
+    final entityId = data['entityId'] as String?;
+
+    switch (type) {
+      case 'NILAI':
+      case 'ABSENSI':
+      case 'PERKEMBANGAN':
+      case 'TAGIHAN':
+      case 'PAYMENT':
+        // Navigate ke santri detail (kalau ada santriId)
+        if (santriId != null && santriId.isNotEmpty) {
+          GoRouter.of(context)
+              .push('/dashboard/home/santri/$santriId');
+        } else {
+          GoRouter.of(context).go('/dashboard/home');
+        }
+        break;
+      case 'CHAT':
+        // Navigate ke chat room (kalau ada entityId = roomId)
+        if (entityId != null && entityId.isNotEmpty) {
+          GoRouter.of(context).push('/dashboard/chat/$entityId');
+        } else {
+          GoRouter.of(context).go('/dashboard/chat');
+        }
+        break;
+      case 'PENGUMUMAN':
+        GoRouter.of(context).go('/dashboard/home');
+        break;
+      default:
+        GoRouter.of(context).go('/dashboard/home');
+    }
   }
 
   /// Unsubscribe dari topic (mis. saat logout).

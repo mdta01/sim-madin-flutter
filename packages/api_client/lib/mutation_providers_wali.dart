@@ -23,6 +23,7 @@
 
 import 'dart:convert';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
@@ -236,7 +237,45 @@ Future<TypedWaliSession> loginWali(
       );
   ref.read(waliSessionProvider.notifier).state = session;
 
+  // Save FCM token untuk push notification (kalau wali punya userId link)
+  // Wali yang login via WA+PIN belum tentu punya Supabase Auth user.
+  // Kalau ada (via admin link), simpan FCM token ke User.fcmToken.
+  if (wali.userId != null && wali.userId!.isNotEmpty) {
+    try {
+      await _saveFcmTokenForWali(ref, wali.userId!);
+    } catch (_) {
+      // Best-effort — jangan fail login kalau FCM token gagal disimpan.
+    }
+  }
+
   return session;
+}
+
+/// Helper: save FCM token ke User table untuk wali.
+/// Pakai SupabaseClient langsung (bukan NotificationService) karena
+/// wali auth berbeda dari Supabase Auth.
+Future<void> _saveFcmTokenForWali(WidgetRef ref, String userId) async {
+  try {
+    final messaging = FirebaseMessaging.instance;
+    final token = await messaging.getToken();
+    if (token == null) return;
+
+    final client = ref.read(supabaseClientProvider);
+    await client.from('User').update({
+      'fcmToken': token,
+      'updatedAt': DateTime.now().toIso8601String(),
+    }).eq('id', userId);
+
+    // Listen token refresh
+    messaging.onTokenRefresh.listen((newToken) async {
+      await client.from('User').update({
+        'fcmToken': newToken,
+        'updatedAt': DateTime.now().toIso8601String(),
+      }).eq('id', userId);
+    });
+  } catch (_) {
+    // Best-effort.
+  }
 }
 
 // ---------------------------------------------------------------------------
