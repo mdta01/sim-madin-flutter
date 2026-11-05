@@ -854,7 +854,7 @@ class _QuickMenuSection extends StatelessWidget {
       children: [
         SectionHeader(
           title: 'Monitoring',
-          icon: Icons.monitoring_outlined,
+          icon: Icons.insights_outlined,
         ),
         const SizedBox(height: AppSpacing.md),
         ResponsiveGrid(
