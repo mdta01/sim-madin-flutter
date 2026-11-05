@@ -317,6 +317,11 @@ Future<void> logoutWaliAndNavigate(
   );
   if (confirmed != true) return;
 
+  // Clear FCM token dari device + DB sebelum session wali dihapus.
+  // (Wali tidak pakai Supabase Auth — pakai WA+PIN; clearToken aman no-op
+  // jika tidak ada currentUser Supabase, tapi deleteToken() FCM tetap jalan.)
+  await ref.read(notificationServiceProvider).clearToken();
+
   await logoutWali(ref);
   if (!context.mounted) return;
   context.go('/login');

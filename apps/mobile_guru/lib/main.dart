@@ -5,6 +5,8 @@
 // Backend: Serverpod (Dart) — pakai api_client package.
 // ============================================================================
 
+import 'package:api_client/api_client.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,8 +19,22 @@ import 'app/router.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final supabase = await initSupabase();
-  runApp(ProviderScope(
+
+  // Initialize Firebase untuk FCM push notification.
+  await Firebase.initializeApp();
+
+  // Buat ProviderContainer lebih awal supaya bisa init NotificationService
+  // (butuh Ref untuk akses supabaseClientProvider) sebelum runApp.
+  final container = ProviderContainer(
     overrides: [supabaseClientProvider.overrideWithValue(supabase)],
+  );
+
+  // Init notification service (Firebase + FCM + local notifications).
+  // Token FCM user akan di-save saat login (getAndSaveToken).
+  await container.read(notificationServiceProvider).initialize();
+
+  runApp(UncontrolledProviderScope(
+    container: container,
     child: const Mobile_guruApp(),
   ));
 }

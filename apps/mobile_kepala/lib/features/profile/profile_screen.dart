@@ -594,6 +594,10 @@ Future<void> logoutAndNavigate(BuildContext context, WidgetRef ref) async {
   // Unsubscribe realtime channels (prevent leak + double-trigger).
   await disposeAppRealtime(ref);
 
+  // Clear FCM token dari DB + device sebelum signOut (butuh currentUser
+  // masih ada untuk hapus row User.fcmToken by firebaseUid).
+  await ref.read(notificationServiceProvider).clearToken();
+
   // Clear Supabase Auth session
   final client = ref.read(supabaseClientProvider);
   await client.auth.signOut();

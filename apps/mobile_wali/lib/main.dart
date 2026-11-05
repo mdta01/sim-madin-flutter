@@ -7,6 +7,8 @@
 // Realtime: Supabase Realtime untuk Notifikasi, Nilai, Absensi, Tagihan.
 // ============================================================================
 
+import 'package:api_client/api_client.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,8 +20,24 @@ import 'app/router.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final supabase = await initSupabase();
-  runApp(ProviderScope(
+
+  // Initialize Firebase untuk FCM push notification.
+  await Firebase.initializeApp();
+
+  // Buat ProviderContainer lebih awal supaya bisa init NotificationService
+  // (butuh Ref untuk akses supabaseClientProvider) sebelum runApp.
+  final container = ProviderContainer(
     overrides: [supabaseClientProvider.overrideWithValue(supabase)],
+  );
+
+  // Init notification service (Firebase + FCM + local notifications).
+  // Catatan: untuk mobile_wali, getAndSaveToken() tidak dipanggil di sini —
+  // wali tidak pakai Supabase Auth (pakai WA+PIN). Token FCM akan
+  // didaftarkan ke DB setelah loginWali berhasil (di mutation_providers_wali.dart).
+  await container.read(notificationServiceProvider).initialize();
+
+  runApp(UncontrolledProviderScope(
+    container: container,
     child: const SimMadinWaliApp(),
   ));
 }
