@@ -33,18 +33,27 @@ class _AppShellState extends ConsumerState<AppShell> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Konfirmasi Keluar'),
-        content: const Text('Apakah Anda yakin ingin keluar?'),
+        title: Text('Konfirmasi Keluar', style: AppTextStyles.h3),
+        content: Text(
+          'Apakah Anda yakin ingin keluar?',
+          style: AppTextStyles.body1.copyWith(color: AppColors.textMuted),
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Batal')),
-          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton.icon(
             onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.danger,
-                foregroundColor: AppColors.white),
-            child: const Text('Keluar'),
+            icon: const Icon(Icons.logout, size: 18),
+            label: const Text('Keluar'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: AppColors.white,
+            ),
           ),
         ],
       ),
@@ -71,14 +80,14 @@ class _AppShellState extends ConsumerState<AppShell> {
     return Scaffold(
       body: Row(
         children: [
-          // === Sidebar ===
+          // === Sidebar (gradient + modern styling) ===
           Container(
             width: 240,
-            color: AppColors.primary,
+            decoration: const BoxDecoration(gradient: AppColors.brandGradient),
             child: Column(
               children: [
-                // Logo + app name
-                Container(
+                // Logo + app name (header card)
+                Padding(
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   child: Row(
                     children: [
@@ -87,32 +96,43 @@ class _AppShellState extends ConsumerState<AppShell> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: AppColors.white,
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          boxShadow: AppColors.cardShadow,
                         ),
                         child: const Icon(Icons.mosque,
-                            color: AppColors.primary, size: 24),
+                            color: AppColors.primary, size: 22),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text('SIM MADIN',
-                                style: TextStyle(
-                                    color: AppColors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold)),
-                            Text('Admin Desktop',
-                                style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 10)),
+                          children: [
+                            Text(
+                              'SIM MADIN',
+                              style: AppTextStyles.label.copyWith(
+                                color: AppColors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            Text(
+                              'Admin Desktop',
+                              style: AppTextStyles.caption.copyWith(
+                                color:
+                                    AppColors.white.withValues(alpha: 0.7),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Divider(color: Colors.white24, height: 1),
+                Divider(
+                  color: AppColors.white.withValues(alpha: 0.15),
+                  height: 1,
+                ),
                 // Menu items (scrollable)
                 Expanded(
                   child: ListView.builder(
@@ -138,12 +158,18 @@ class _AppShellState extends ConsumerState<AppShell> {
                 // Footer: version
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: const BoxDecoration(
-                    border: Border(top: BorderSide(color: Colors.white24)),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        color: AppColors.white.withValues(alpha: 0.15),
+                      ),
+                    ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'v1.0.0+1 • Phase 6a',
-                    style: TextStyle(color: Colors.white54, fontSize: 10),
+                    style: AppTextStyles.overline.copyWith(
+                      color: AppColors.white.withValues(alpha: 0.6),
+                    ),
                   ),
                 ),
               ],
@@ -153,22 +179,20 @@ class _AppShellState extends ConsumerState<AppShell> {
           Expanded(
             child: Column(
               children: [
-                // Top bar
-                Container(
+                // Top bar (ModernCard style)
+                ModernCard(
+                  elevation: CardElevation.none,
+                  backgroundColor: AppColors.white,
+                  borderRadius: 0,
                   padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    border: Border(bottom: BorderSide(color: AppColors.border)),
-                  ),
+                      horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                   child: Row(
                     children: [
                       // Current page title
                       Expanded(
                         child: Text(
                           _pageTitle(location),
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w600),
+                          style: AppTextStyles.h3,
                         ),
                       ),
                       // Refresh button
@@ -183,13 +207,16 @@ class _AppShellState extends ConsumerState<AppShell> {
                         radius: 16,
                         backgroundColor: AppColors.primaryLight,
                         foregroundColor: AppColors.primary,
-                        child: Text(userInitial,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 13)),
+                        child: Text(
+                          userInitial,
+                          style: AppTextStyles.label.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: AppSpacing.xs),
-                      Text(userEmail,
-                          style: const TextStyle(fontSize: 13)),
+                      Text(userEmail, style: AppTextStyles.body2),
                       const SizedBox(width: AppSpacing.sm),
                       IconButton(
                         icon: const Icon(Icons.logout, size: 20),
@@ -204,24 +231,28 @@ class _AppShellState extends ConsumerState<AppShell> {
                 // Status bar (bottom)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md, vertical: 4),
+                      horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
                   decoration: BoxDecoration(
                     color: AppColors.background,
-                    border: Border(top: BorderSide(color: AppColors.border)),
+                    border: Border(
+                        top: BorderSide(color: AppColors.border)),
                   ),
                   child: Row(
                     children: [
                       Icon(Icons.circle,
                           size: 8, color: AppColors.success),
-                      const SizedBox(width: 6),
-                      const Text('Realtime aktif',
-                          style: TextStyle(
-                              fontSize: 11, color: AppColors.textMuted)),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        'Realtime aktif',
+                        style: AppTextStyles.caption
+                            .copyWith(color: AppColors.textMuted),
+                      ),
                       const Spacer(),
                       Text(
-                          'Server: ${SupabaseConfig.url.replaceAll("https://", "").split(".").first}',
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.textMuted)),
+                        'Server: ${SupabaseConfig.url.replaceAll("https://", "").split(".").first}',
+                        style: AppTextStyles.caption
+                            .copyWith(color: AppColors.textMuted),
+                      ),
                     ],
                   ),
                 ),
@@ -271,13 +302,17 @@ class _SidebarItem extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+              horizontal: AppSpacing.lg, vertical: 10),
           decoration: BoxDecoration(
-            color: isActive ? Colors.white.withOpacity(0.15) : null,
+            color: isActive
+                ? AppColors.white.withValues(alpha: 0.18)
+                : null,
             border: Border(
-                left: BorderSide(
-                    color: isActive ? AppColors.gold : Colors.transparent,
-                    width: 3)),
+              left: BorderSide(
+                color: isActive ? AppColors.gold : Colors.transparent,
+                width: 3,
+              ),
+            ),
           ),
           child: Row(
             children: [
@@ -286,18 +321,18 @@ class _SidebarItem extends StatelessWidget {
                 size: 18,
                 color: isActive
                     ? AppColors.white
-                    : Colors.white70,
+                    : AppColors.white.withValues(alpha: 0.75),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   item.label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                  style: AppTextStyles.body2.copyWith(
                     color: isActive
                         ? AppColors.white
-                        : Colors.white70,
+                        : AppColors.white.withValues(alpha: 0.75),
+                    fontWeight:
+                        isActive ? FontWeight.w600 : FontWeight.w400,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),

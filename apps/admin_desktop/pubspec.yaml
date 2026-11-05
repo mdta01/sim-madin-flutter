@@ -38,6 +38,9 @@ dependencies:
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.10+1
 
+  # QR code generation (untuk QR absensi management)
+  qr_flutter: ^4.1.0
+
   # Charts (dashboard)
   fl_chart: ^0.69.2
 

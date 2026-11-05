@@ -57,136 +57,142 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(48),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 900),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Left: logo + branding
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.brandGradient),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.xxxl),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 960),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Image.asset(
-                        'assets/logo-madrasah.png',
-                        width: 180,
-                        height: 180,
-                        fit: BoxFit.contain,
-                      ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'SIM MADIN',
-                        style: TextStyle(
-                          color: AppColors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2,
+                      // === Left: logo + branding ===
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Logo dalam Container putih modern
+                            Container(
+                              width: 160,
+                              height: 160,
+                              decoration: BoxDecoration(
+                                color: AppColors.white,
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.xxl),
+                                boxShadow: AppColors.elevatedShadow,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(AppSpacing.lg),
+                                child: Image.asset(
+                                  'assets/logo-madrasah.png',
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.xl),
+                            Text(
+                              'SIM MADIN',
+                              style: AppTextStyles.display2
+                                  .copyWith(color: AppColors.white),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              'Sistem Informasi Madrasah Diniyah',
+                              style: AppTextStyles.body1.copyWith(
+                                color: AppColors.white
+                                    .withValues(alpha: 0.85),
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            ModernChip(
+                              label: 'Admin Desktop',
+                              color: AppColors.white,
+                              bg: AppColors.gold,
+                              icon: Icons.shield_outlined,
+                            ),
+                            const SizedBox(height: AppSpacing.xl),
+                            Text(
+                              'Madrasah Diniyah Miftahul Ulum\nTawangsari, Pujon, Malang',
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.body3.copyWith(
+                                color:
+                                    AppColors.white.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Sistem Informasi Madrasah Diniyah',
-                        style: TextStyle(
-                          color: AppColors.white.withOpacity(0.8),
-                          fontSize: 15,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.gold,
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        child: const Text(
-                          'Admin Desktop',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
+                      const SizedBox(width: AppSpacing.xxxl),
+                      // === Right: login form dalam ModernCard ===
+                      SizedBox(
+                        width: 380,
+                        child: ModernCard(
+                          elevation: CardElevation.level2,
+                          padding: const EdgeInsets.all(AppSpacing.xl),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text('Masuk ke Akun', style: AppTextStyles.h2),
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                'Gunakan email dan password admin',
+                                style: AppTextStyles.body2
+                                    .copyWith(color: AppColors.textMuted),
+                              ),
+                              const SizedBox(height: AppSpacing.xl),
+                              TextField(
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                decoration: const InputDecoration(
+                                  labelText: 'Email',
+                                  hintText: 'admin@madrasah.id',
+                                  prefixIcon: Icon(Icons.email_outlined),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+                              TextField(
+                                controller: _passwordController,
+                                obscureText: !_showPassword,
+                                decoration: InputDecoration(
+                                  labelText: 'Password',
+                                  prefixIcon:
+                                      const Icon(Icons.lock_outline),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(_showPassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility),
+                                    onPressed: () => setState(
+                                        () => _showPassword = !_showPassword),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.xl),
+                              FilledButton.icon(
+                                onPressed: _loading ? null : _handleLogin,
+                                icon: _loading
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: AppColors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.login, size: 18),
+                                label: Text(_loading ? 'Memproses…' : 'Masuk'),
+                              ),
+                            ],
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'Madrasah Diniyah Miftahul Ulum\nTawangsari, Pujon, Malang',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.white.withOpacity(0.5),
-                          fontSize: 12,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 48),
-                // Right: login form
-                SizedBox(
-                  width: 360,
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text('Masuk ke Akun',
-                              style: TextStyle(
-                                  fontSize: 22, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Gunakan email dan password admin',
-                            style: TextStyle(
-                                fontSize: 13, color: AppColors.textMuted),
-                          ),
-                          const SizedBox(height: 24),
-                          TextField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                              hintText: 'admin@madrasah.id',
-                              prefixIcon: Icon(Icons.email),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: _passwordController,
-                            obscureText: !_showPassword,
-                            decoration: InputDecoration(
-                              labelText: 'Password',
-                              prefixIcon: const Icon(Icons.lock_outline),
-                              suffixIcon: IconButton(
-                                icon: Icon(_showPassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility),
-                                onPressed: () => setState(
-                                    () => _showPassword = !_showPassword),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton(
-                            onPressed: _loading ? null : _handleLogin,
-                            child: _loading
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2))
-                                : const Text('Masuk'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

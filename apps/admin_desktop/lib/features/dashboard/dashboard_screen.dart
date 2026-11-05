@@ -1,11 +1,9 @@
-// Dashboard admin — KPI cards + recent activity + quick stats.
+// Dashboard admin — KPI cards + recent activity + quick stats (modern UI).
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
-
-import '../../widgets/feedback_widgets.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -19,42 +17,44 @@ class DashboardScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          // Welcome banner
+          // Welcome banner (modern gradient)
           Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: const EdgeInsets.all(AppSpacing.xl),
             margin: const EdgeInsets.only(bottom: AppSpacing.lg),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.primary, AppColors.primaryDark],
-              ),
-              borderRadius: BorderRadius.circular(AppRadius.md),
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(AppRadius.xl),
+              boxShadow: AppColors.cardShadow,
             ),
             child: Row(
               children: [
-                const Icon(Icons.dashboard, color: AppColors.white, size: 40),
-                const SizedBox(width: AppSpacing.md),
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: AppColors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                  child: const Icon(Icons.dashboard, color: AppColors.white, size: 32),
+                ),
+                const SizedBox(width: AppSpacing.lg),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text('Dashboard Admin',
-                          style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.white)),
-                      Text(
-                          'Selamat datang di SIM MADIN Admin Desktop — Phase 6a',
-                          style:
-                              TextStyle(color: AppColors.white, fontSize: 13)),
+                          style: AppTextStyles.h2.copyWith(color: AppColors.white)),
+                      const SizedBox(height: 4),
+                      Text('Selamat datang di SIM MADIN Admin Desktop',
+                          style: AppTextStyles.body2
+                              .copyWith(color: AppColors.white.withValues(alpha: 0.85))),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          // KPI cards
+          // KPI cards (modern)
           statsAsync.when(
             loading: () => const SizedBox(
               height: 120,
@@ -64,19 +64,17 @@ class DashboardScreen extends ConsumerWidget {
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2))),
             ),
-            error: (e, _) => ErrorView(
-                message: e.toString(),
+            error: (e, _) => ModernErrorView(
+                message: friendlyError(e),
                 onRetry: () =>
                     ref.invalidate(adminDashboardStatsProvider)),
-            data: (stats) => GridView.count(
-              crossAxisCount: 3,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: AppSpacing.md,
-              mainAxisSpacing: AppSpacing.md,
-              childAspectRatio: 3.5,
+            data: (stats) => ResponsiveGrid(
+              phoneColumns: 2,
+              tabletColumns: 3,
+              desktopColumns: 3,
+              childAspectRatio: 3.0,
               children: [
-                StatCard(
+                ModernStatCard(
                   label: 'Total Santri Aktif',
                   value: '${stats.totalSantri}',
                   icon: Icons.people,
@@ -84,7 +82,7 @@ class DashboardScreen extends ConsumerWidget {
                   bgColor: AppColors.successLight,
                   subtitle: 'Santri terdaftar',
                 ),
-                StatCard(
+                ModernStatCard(
                   label: 'Total Guru Aktif',
                   value: '${stats.totalGuru}',
                   icon: Icons.school,
@@ -92,7 +90,7 @@ class DashboardScreen extends ConsumerWidget {
                   bgColor: AppColors.primaryLight,
                   subtitle: 'Guru mengajar',
                 ),
-                StatCard(
+                ModernStatCard(
                   label: 'Total Kelas',
                   value: '${stats.totalKelas}',
                   icon: Icons.class_,
@@ -100,7 +98,7 @@ class DashboardScreen extends ConsumerWidget {
                   bgColor: const Color(0xFFEDE9FE),
                   subtitle: 'Kelas aktif',
                 ),
-                StatCard(
+                ModernStatCard(
                   label: 'Pemasukan Bulan Ini',
                   value: formatRupiah(stats.totalIncomeThisMonth),
                   icon: Icons.trending_up,
@@ -108,7 +106,7 @@ class DashboardScreen extends ConsumerWidget {
                   bgColor: AppColors.successLight,
                   subtitle: '${stats.totalPayments} transaksi verified',
                 ),
-                StatCard(
+                ModernStatCard(
                   label: 'Total Tunggakan',
                   value: formatRupiah(stats.totalOutstanding),
                   icon: Icons.warning,
@@ -116,29 +114,26 @@ class DashboardScreen extends ConsumerWidget {
                   bgColor: AppColors.dangerLight,
                   subtitle: 'Tagihan belum lunas',
                 ),
-                StatCard(
+                ModernStatCard(
                   label: 'Quick Actions',
                   value: 'Kelola',
                   icon: Icons.admin_panel_settings,
                   color: AppColors.info,
                   bgColor: AppColors.infoLight,
                   subtitle: 'Users • Roles • Settings',
+                  onTap: () => context.go('/settings'),
                 ),
               ],
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
-          // Quick access tiles
-          const Text('Quick Access',
-              style:
-                  TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          // Quick access tiles (modern)
+          SectionHeader(title: 'Quick Access', icon: Icons.grid_view_outlined),
           const SizedBox(height: AppSpacing.md),
-          GridView.count(
-            crossAxisCount: 4,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: AppSpacing.md,
-            mainAxisSpacing: AppSpacing.md,
+          ResponsiveGrid(
+            phoneColumns: 2,
+            tabletColumns: 4,
+            desktopColumns: 4,
             childAspectRatio: 2.5,
             children: [
               _QuickTile(
@@ -172,42 +167,40 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xl),
-          // Phase 6a status info
-          Container(
+          // System status info (modern)
+          ModernCard(
+            backgroundColor: AppColors.infoLight,
+            border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
             padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              color: AppColors.infoLight,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: AppColors.info.withOpacity(0.3)),
-            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Row(
                   children: [
-                    Icon(Icons.info_outline, color: AppColors.info),
-                    SizedBox(width: AppSpacing.sm),
-                    Text('Phase 6a — Active Modules',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.info)),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.info.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: const Icon(Icons.info_outline, color: AppColors.info, size: 20),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text('Status Sistem',
+                        style: AppTextStyles.h4.copyWith(color: AppColors.info)),
                   ],
                 ),
-                SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'Modul yang sudah aktif di Phase 6a:\n'
-                  '• Dashboard (KPI + stats)\n'
-                  '• Users (CRUD + role assignment)\n'
-                  '• Roles (CRUD + permission matrix)\n'
-                  '• Permissions (matrix editor — 60 codes)\n'
-                  '• Settings (key-value pairs CRUD)\n\n'
-                  'Modul lainnya (Santri, Wali, Guru, Kelas, Absensi, Nilai, '
-                  'Tagihan, Pembayaran, Kas, Honor Guru, Materi, Tugas, '
-                  'Pertemuan, Ujian, Bank Soal, Rapor, Kompetensi, '
-                  'Pengumuman, Notifikasi, Surat, Perkembangan, Alumni, '
-                  'Chat, QR, Audit Log) akan diimplementasikan di Phase 6b/c/d.',
-                  style: TextStyle(fontSize: 13, color: AppColors.info),
+                  'Semua modul admin sudah aktif:\n'
+                  '• Master Data (Santri, Wali, Guru, Kelas, Mapel)\n'
+                  '• Akademik (Jadwal, Absensi, Nilai, Ujian, Bank Soal)\n'
+                  '• Keuangan (Tagihan, Pembayaran, Kas, Honor Guru)\n'
+                  '• Komunikasi (Notifikasi, Pengumuman, Surat, Chat)\n'
+                  '• Administrasi (Users, Roles, Permissions, Settings)\n'
+                  '• Monitoring (Dashboard, Audit Log, Alumni)',
+                  style: AppTextStyles.body2.copyWith(color: AppColors.info),
                 ),
               ],
             ),
@@ -235,36 +228,26 @@ class _QuickTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return ModernCard(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
-              child: Icon(icon, color: color, size: 24),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Text(label,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600)),
-            ),
-            Icon(Icons.chevron_right, color: AppColors.textMuted),
-          ],
-        ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(label, style: AppTextStyles.h4),
+          ),
+          Icon(Icons.chevron_right, color: AppColors.textMuted),
+        ],
       ),
     );
   }
