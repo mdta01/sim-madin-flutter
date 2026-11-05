@@ -121,15 +121,16 @@ Future<TypedWaliSession> loginWali(
       .map((s) => SantriModel.fromJson(s as Map<String, dynamic>))
       .toList();
 
-  // Sign in to Supabase Auth (for RLS) if wali has linked email.
-  // Password is still 'admin123' for seed users — TODO production: generate
-  // per-wali random password during admin_createWali and store encrypted.
+  // Sign in to Supabase Auth using per-wali random authPassword returned
+  // by wali_login RPC (after PIN verify). This password is unique per wali
+  // and stored in Wali.authPassword column (only accessible after PIN verify).
   String? authToken;
-  if (wali.email != null && wali.email!.isNotEmpty) {
+  final authPassword = waliData['authPassword'] as String?;
+  if (wali.email != null && wali.email!.isNotEmpty && authPassword != null) {
     try {
       final authRes = await client.auth.signInWithPassword(
         email: wali.email!,
-        password: 'admin123',
+        password: authPassword,
       );
       authToken = authRes.session?.accessToken;
     } catch (e) {

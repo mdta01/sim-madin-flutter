@@ -45,5 +45,20 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+        <key>NSCameraUsageDescription</key>
+        <string>SIM Wali Santri memerlukan akses kamera untuk mengambil foto profil dan dokumen.</string>
+        <key>NSPhotoLibraryUsageDescription</key>
+        <string>SIM Wali Santri memerlukan akses galeri foto untuk memilih foto profil dan dokumen.</string>
+        <key>NSPhotoLibraryAddUsageDescription</key>
+        <string>SIM Wali Santri dapat menyimpan foto dan dokumen ke galeri Anda.</string>
+        <key>NSMicrophoneUsageDescription</key>
+        <string>SIM Wali Santri memerlukan akses mikrofon untuk fitur rekaman tugas hafalan.</string>
+        <key>UIBackgroundModes</key>
+        <array>
+                <string>remote-notification</string>
+                <string>fetch</string>
+        </array>
+        <key>FirebaseAppDelegateProxyEnabled</key>
+        <false/>
 </dict>
 </plist>

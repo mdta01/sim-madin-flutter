@@ -1,0 +1,28 @@
+{
+  "app_name": "SIM Kepala Madrasah",
+  "bundle_id": "id.madrasah.madin.mobile_kepala",
+  "sku": "ID_MADRASAH_MADIN_MOBILE_KEPALA",
+  "version": "1.0.0",
+  "build_number": 1,
+  "primary_locale": "id-ID",
+  "metadata": {
+    "name": "SIM Kepala Madrasah",
+    "subtitle": "Aplikasi Kepala Madrasah Diniyah",
+    "description": "SIM Kepala Madrasah — Sistem Informasi Madrasah Diniyah untuk Kepala.\n\nFitur:\n• Dashboard KPI — total santri, guru, pemasukan, tunggakan\n• Monitor santri — data + statistik kehadiran\n• Monitor keuangan — pemasukan, tagihan, pembayaran, honor guru\n• Monitor akademik — nilai, absensi, ujian\n• Laporan keuangan — transaksi kas per periode\n• Real-time monitoring — auto-refresh data\n\nLogin dengan email + password (akun kepala madrasah).\n\nMadrasah Diniyah Miftahul Ulum 01.",
+    "keywords": "madrasah, kepala, monitoring, keuangan, akademik, islam, laporan",
+    "primary_category": "EDUCATION",
+    "secondary_category": "REFERENCE",
+    "content_rating": "4+",
+    "privacy_policy_url": "https://sim-madin.id/privacy-policy",
+    "support_url": "https://sim-madin.id/support",
+    "marketing_url": "https://sim-madin.id"
+  },
+  "app_review_info": {
+    "demo_account": "wali@madrasah.test / WA: 6281234511001 PIN: 258041",
+    "review_notes": "This app is for madrasah (Islamic school) management. Login as wali using WhatsApp number 6281234511001 and PIN 258041."
+  },
+  "pricing": {
+    "price_tier": 0,
+    "availability": "ID"
+  }
+}

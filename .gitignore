@@ -68,3 +68,8 @@ tmp/
 **/android/key.properties
 **/android/app/key.jks
 android-keys/
+
+# Firebase config (DO NOT COMMIT — contains API key + project ID)
+**/android/app/google-services.json
+**/ios/Runner/GoogleService-Info.plist
+**/firebase_options.dart

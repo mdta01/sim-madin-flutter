@@ -1,0 +1,28 @@
+{
+  "app_name": "SIM Guru",
+  "bundle_id": "id.madrasah.madin.mobile_guru",
+  "sku": "ID_MADRASAH_MADIN_MOBILE_GURU",
+  "version": "1.0.0",
+  "build_number": 1,
+  "primary_locale": "id-ID",
+  "metadata": {
+    "name": "SIM Guru",
+    "subtitle": "Aplikasi Guru/Ustadz Madrasah Diniyah",
+    "description": "SIM Guru — Sistem Informasi Madrasah Diniyah untuk Guru/Ustadz.\n\nFitur:\n• Jadwal mengajar — jadwal harian + notifikasi\n• Input absensi — tandai kehadiran santri per kelas\n• Input nilai — nilai harian + ujian\n• Upload materi — PDF, PPT, dokumen pembelajaran\n• Buat tugas — tugas individu + deadline\n• Buat ujian — soal pilihan ganda + essay + timer\n• Chat wali — komunikasi dengan wali santri\n• Perkembangan Quran — catat hafalan + tajwid\n\nLogin dengan email + password (akun guru).\n\nMadrasah Diniyah Miftahul Ulum 01.",
+    "keywords": "madrasah, guru, ustadz, pendidikan, islam, absensi, nilai, ujian",
+    "primary_category": "EDUCATION",
+    "secondary_category": "REFERENCE",
+    "content_rating": "4+",
+    "privacy_policy_url": "https://sim-madin.id/privacy-policy",
+    "support_url": "https://sim-madin.id/support",
+    "marketing_url": "https://sim-madin.id"
+  },
+  "app_review_info": {
+    "demo_account": "wali@madrasah.test / WA: 6281234511001 PIN: 258041",
+    "review_notes": "This app is for madrasah (Islamic school) management. Login as wali using WhatsApp number 6281234511001 and PIN 258041."
+  },
+  "pricing": {
+    "price_tier": 0,
+    "availability": "ID"
+  }
+}

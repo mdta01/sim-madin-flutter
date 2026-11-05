@@ -1,0 +1,28 @@
+{
+  "app_name": "SIM Wali Santri",
+  "bundle_id": "id.madrasah.madin.mobile_wali",
+  "sku": "ID_MADRASAH_MADIN_MOBILE_WALI",
+  "version": "1.0.0",
+  "build_number": 1,
+  "primary_locale": "id-ID",
+  "metadata": {
+    "name": "SIM Wali Santri",
+    "subtitle": "Aplikasi Wali Santri Madrasah Diniyah",
+    "description": "SIM Wali Santri — Sistem Informasi Madrasah Diniyah untuk Wali Santri.\n\nFitur:\n• Dashboard multi-anak — pantau semua anak dalam satu app\n• Pembayaran SPP online — cek tagihan + upload bukti bayar\n• Ujian online — kerjakan ujian dengan timer + anti-cheat\n• Chat guru — komunikasi langsung dengan ustadz/ustadzah\n• Notifikasi real-time — nilai, absensi, pengumuman otomatis\n• Perkembangan Quran — pantau hafalan + tajwid anak\n\nLogin dengan Nomor WhatsApp + PIN 6 digit.\n\nMadrasah Diniyah Miftahul Ulum 01.",
+    "keywords": "madrasah, santri, pendidikan, islam, wali santri, spp, ujian",
+    "primary_category": "EDUCATION",
+    "secondary_category": "REFERENCE",
+    "content_rating": "4+",
+    "privacy_policy_url": "https://sim-madin.id/privacy-policy",
+    "support_url": "https://sim-madin.id/support",
+    "marketing_url": "https://sim-madin.id"
+  },
+  "app_review_info": {
+    "demo_account": "wali@madrasah.test / WA: 6281234511001 PIN: 258041",
+    "review_notes": "This app is for madrasah (Islamic school) management. Login as wali using WhatsApp number 6281234511001 and PIN 258041."
+  },
+  "pricing": {
+    "price_tier": 0,
+    "availability": "ID"
+  }
+}
