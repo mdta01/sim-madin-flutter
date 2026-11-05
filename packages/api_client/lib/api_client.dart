@@ -45,6 +45,7 @@ export 'providers_admin_keuangan.dart';
 export 'chat_pagination.dart';
 export 'supabase_rpc.dart';
 export 'notification_service.dart';
+export 'storage_service.dart';
 
 import 'dart:convert';
 
