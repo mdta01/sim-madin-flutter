@@ -35,7 +35,7 @@ final userListProvider =
     q = q.eq('isActive', true);
   }
   final res = await q
-      .order('createdAt', ascending: false)
+      .order('createdAt', ascending: false).limit(100)
       .range(params.offset, params.offset + params.limit - 1);
   return (res as List)
       .map((r) => _userFromRow(r as Map<String, dynamic>))
@@ -93,7 +93,7 @@ final userCountProvider = FutureProvider.family<int, String?>((ref, search) asyn
 final roleListProvider = FutureProvider<List<RoleModel>>((ref) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
-  final res = await client.from('Role').select().order('sortOrder');
+  final res = await client.from('Role').select().limit(100).order('sortOrder');
   return (res as List)
       .map((r) => RoleModel.fromJson(r as Map<String, dynamic>))
       .toList();
@@ -119,7 +119,7 @@ final permissionListProvider = FutureProvider<List<PermissionModel>>(
     (ref) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
-  final res = await client.from('Permission').select().order('code');
+  final res = await client.from('Permission').select().limit(200).order('code');
   return (res as List)
       .map((r) => PermissionModel.fromJson(r as Map<String, dynamic>))
       .toList();
@@ -186,7 +186,7 @@ final systemSettingsProvider =
     FutureProvider<List<SystemSettingModel>>((ref) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
-  final res = await client.from('SystemSetting').select().order('key');
+  final res = await client.from('SystemSetting').select().limit(100).order('key');
   return (res as List)
       .map((r) => SystemSettingModel.fromJson(r as Map<String, dynamic>))
       .toList();

@@ -98,7 +98,7 @@ class _UjianDetailScreenState extends ConsumerState<UjianDetailScreen>
             // Info tab
             ujianAsync.when(
               loading: () => const LoadingSkeleton(itemCount: 3),
-              error: (e, _) => ErrorView(message: e.toString()),
+              error: (e, _) => ErrorView(message: friendlyError(e)),
               data: (u) {
                 if (u == null) return const EmptyState(title: 'Ujian tidak ditemukan');
                 return ListView(
@@ -142,7 +142,7 @@ class _UjianDetailScreenState extends ConsumerState<UjianDetailScreen>
             // Soal tab
             soalAsync.when(
               loading: () => const LoadingSkeleton(),
-              error: (e, _) => ErrorView(message: e.toString()),
+              error: (e, _) => ErrorView(message: friendlyError(e)),
               data: (list) {
                 if (list.isEmpty) {
                   return const EmptyState(
@@ -178,7 +178,7 @@ class _UjianDetailScreenState extends ConsumerState<UjianDetailScreen>
             // Peserta + Nilai tab
             pesertaAsync.when(
               loading: () => const LoadingSkeleton(),
-              error: (e, _) => ErrorView(message: e.toString()),
+              error: (e, _) => ErrorView(message: friendlyError(e)),
               data: (peserta) {
                 if (peserta.isEmpty) {
                   return const EmptyState(

@@ -19,7 +19,7 @@ class ChatListScreen extends ConsumerWidget {
       body: asyncValue.when(
         loading: () => const LoadingSkeleton(),
         error: (e, _) => ErrorView(
-            message: e.toString(),
+            message: friendlyError(e),
             onRetry: () => ref.invalidate(chatRoomsWaliProvider)),
         data: (list) {
           if (list.isEmpty) {

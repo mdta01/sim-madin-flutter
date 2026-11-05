@@ -112,7 +112,7 @@ final kelasListProvider = FutureProvider<List<KelasModel>>((ref) async {
       .from('Kelas')
       .select()
       .filter('deletedAt', 'is', null)
-      .order('sortOrder');
+      .limit(100).order('sortOrder');
   return (res as List).map((r) => KelasModel.fromJson(r as Map<String, dynamic>)).toList();
 });
 
@@ -122,7 +122,7 @@ final mapelListProvider = FutureProvider<List<MataPelajaranModel>>((ref) async {
       .from('MataPelajaran')
       .select()
       .filter('deletedAt', 'is', null)
-      .order('sortOrder');
+      .limit(100).order('sortOrder');
   return (res as List)
       .map((r) => MataPelajaranModel.fromJson(r as Map<String, dynamic>))
       .toList();
@@ -137,7 +137,7 @@ final guruListProvider = FutureProvider<List<GuruModel>>((ref) async {
       .from('Guru')
       .select('*, User(*)')
       .filter('deletedAt', 'is', null)
-      .order('createdAt');
+      .limit(100).order('createdAt');
   return (res as List)
       .map((r) {
         final row = r as Map<String, dynamic>;
@@ -409,7 +409,7 @@ final transaksiKasByPeriodProvider =
       .select('*, Kas(*)')
       .gte('transaksiDate', range.start.toIso8601String())
       .lt('transaksiDate', range.end.toIso8601String())
-      .order('transaksiDate', ascending: false);
+      .limit(100).order('transaksiDate', ascending: false);
   return (res as List)
       .map((r) => TransaksiKasModel.fromJson(r as Map<String, dynamic>))
       .toList();
@@ -422,7 +422,7 @@ final kasListProvider = FutureProvider<List<KasModel>>((ref) async {
       .from('Kas')
       .select()
       .eq('isActive', true)
-      .order('createdAt');
+      .limit(100).order('createdAt');
   return (res as List)
       .map((r) => KasModel.fromJson(r as Map<String, dynamic>))
       .toList();

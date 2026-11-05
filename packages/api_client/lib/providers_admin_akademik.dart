@@ -21,7 +21,7 @@ final jadwalListAdminProvider =
     FutureProvider.family<List<JadwalModel>, String?>((ref, taId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
-  var q = client.from('Jadwal').select('*, Kelas(*), MataPelajaran(*), Guru(*)');
+  var q = client.from('Jadwal').select('*, Kelas(*), MataPelajaran(*), Guru(*)').limit(200);
   if (taId != null) q = q.eq('tahunAjaranId', taId);
   final res = await q.order('dayOfWeek').order('startTime');
   return (res as List).map((r) {

@@ -37,7 +37,7 @@ final tagihanBySantriProvider =
       .select('*, Santri(*), Kelas(*), JenisTagihan(*)')
       .eq('santriId', santriId)
       .neq('status', TagihanStatus.lunas)
-      .order('dueDate', ascending: true);
+      .limit(100).order('dueDate', ascending: true);
   return (res as List)
       .map((r) => _tagihanFromRowPublic(r as Map<String, dynamic>))
       .toList();
@@ -266,7 +266,7 @@ final laporanKeuanganProvider =
       .select('*, Kas(*)')
       .gte('transaksiDate', start.toIso8601String())
       .lt('transaksiDate', end.toIso8601String())
-      .order('transaksiDate', ascending: false);
+      .limit(100).order('transaksiDate', ascending: false);
 
   final list = (res as List)
       .map((r) => _transaksiFromRowPublic(r as Map<String, dynamic>))

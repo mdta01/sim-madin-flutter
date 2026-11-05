@@ -136,7 +136,7 @@ class _NilaiInputScreenState extends ConsumerState<NilaiInputScreen> {
           Expanded(
             child: santriAsync.when(
               loading: () => const LoadingSkeleton(),
-              error: (e, _) => ErrorView(message: e.toString()),
+              error: (e, _) => ErrorView(message: friendlyError(e)),
               data: (list) {
                 if (list.isEmpty) {
                   return const EmptyState(

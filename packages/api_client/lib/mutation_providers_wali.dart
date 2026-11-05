@@ -469,7 +469,7 @@ Future<UjianSesiData> startUjianSesi(
       .from('UjianSoal')
       .select('id')
       .eq('ujianId', ujianId)
-      .order('urutan');
+      .limit(100).order('urutan');
   final soalIds = (soalRes as List)
       .map((r) => (r as Map<String, dynamic>)['id'] as String)
       .toList();

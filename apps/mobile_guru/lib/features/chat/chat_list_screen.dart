@@ -18,7 +18,7 @@ class ChatListScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Chat Wali')),
       body: asyncValue.when(
         loading: () => const LoadingSkeleton(),
-        error: (e, _) => ErrorView(message: e.toString()),
+        error: (e, _) => ErrorView(message: friendlyError(e)),
         data: (list) {
           if (list.isEmpty) {
             return EmptyState(

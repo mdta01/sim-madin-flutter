@@ -94,6 +94,7 @@ final absensiAnakProvider =
       .from('Absensi')
       .select('*, Santri(*), Kelas(*)')
       .eq('santriId', santriId)
+      .limit(50)
       .order('date', ascending: false)
       .limit(30);
   return (res as List)
@@ -124,6 +125,7 @@ final nilaiAnakProvider =
       .from('Nilai')
       .select('*, Santri(*), Kelas(*), MataPelajaran(*)')
       .eq('santriId', santriId)
+      .limit(50)
       .order('assessmentDate', ascending: false)
       .limit(50);
   return (res as List)
@@ -201,6 +203,7 @@ final tagihanAnakProvider =
       .from('Tagihan')
       .select('*, Santri(*), Kelas(*), JenisTagihan(*)')
       .eq('santriId', santriId)
+      .limit(50)
       .order('createdAt', ascending: false);
   return (res as List)
       .map((r) => _tagihanFromRow(r as Map<String, dynamic>))
@@ -234,6 +237,7 @@ final paymentAnakProvider =
       .from('Payment')
       .select('*, Santri(*), Tagihan(*, JenisTagihan(*))')
       .eq('santriId', santriId)
+      .limit(50)
       .order('paymentDate', ascending: false)
       .limit(30);
   return (res as List)
@@ -267,6 +271,7 @@ final ujianPesertaAnakProvider =
       .from('UjianPeserta')
       .select('*, Santri(*)')
       .eq('santriId', santriId)
+      .limit(50)
       .order('createdAt', ascending: false);
   return (res as List)
       .map((r) => UjianPesertaModel.fromJson({
@@ -303,6 +308,7 @@ final ujianDetailForWaliProvider =
       .from('UjianSoal')
       .select('*, BankSoal(*)')
       .eq('ujianId', p.ujianId)
+      .limit(50)
       .order('urutan');
   final soalList = (soalRes as List).map((r) {
     final bankSoal = r['BankSoal'] as Map<String, dynamic>?;
@@ -320,6 +326,7 @@ final ujianDetailForWaliProvider =
       .select()
       .eq('ujianId', p.ujianId)
       .eq('santriId', p.santriId)
+      .limit(50)
       .order('createdAt', ascending: false)
       .limit(1)
       .maybeSingle();
@@ -364,6 +371,7 @@ final notifikasiWaliProvider = FutureProvider<List<NotifikasiWaliModel>>(
       .from('Notifikasi')
       .select()
       .eq('waliId', session.wali.id)
+      .limit(50)
       .order('createdAt', ascending: false)
       .limit(50);
   return (res as List)
@@ -387,6 +395,7 @@ final notifikasiAnakProvider =
       .select()
       .eq('waliId', session.wali.id)
       .eq('santriId', santriId)
+      .limit(50)
       .order('createdAt', ascending: false)
       .limit(30);
   return (res as List)
@@ -409,6 +418,7 @@ final chatRoomsWaliProvider = FutureProvider<List<ChatRoomModel>>((ref) async {
       .select('*, Wali(*), Guru(*, User(*)), Santri(*)')
       .eq('waliId', session.wali.id)
       .eq('isActive', true)
+      .limit(50)
       .order('lastMessageAt', ascending: false);
   return (res as List)
       .map((r) => ChatRoomModel.fromJson({
@@ -465,6 +475,7 @@ final chatMessagesWaliProvider =
       .from('ChatMessage')
       .select()
       .eq('chatRoomId', roomId)
+      .limit(50)
       .order('createdAt', ascending: false)
       .limit(100);
   final list = (res as List)
@@ -505,6 +516,7 @@ final perkembanganQuranAnakProvider =
       .from('PerkembanganQuran')
       .select('*, Santri(*), Guru(*, User(*))')
       .eq('santriId', santriId)
+      .limit(50)
       .order('pertemuanDate', ascending: false)
       .limit(30);
   return (res as List)
@@ -526,6 +538,7 @@ final hafalanKitabAnakProvider =
       .from('HafalanKitab')
       .select('*, Santri(*), Guru(*, User(*))')
       .eq('santriId', santriId)
+      .limit(50)
       .order('pertemuanDate', ascending: false)
       .limit(30);
   return (res as List)
@@ -547,6 +560,7 @@ final akhlakAnakProvider =
       .from('AkhlakPenilaian')
       .select('*, Santri(*), Guru(*, User(*))')
       .eq('santriId', santriId)
+      .limit(50)
       .order('periodeDate', ascending: false)
       .limit(20);
   return (res as List)
@@ -568,6 +582,7 @@ final pembinaanAnakProvider =
       .from('Pembinaan')
       .select('*, Santri(*), Guru(*, User(*))')
       .eq('santriId', santriId)
+      .limit(50)
       .order('createdAt', ascending: false)
       .limit(30);
   return (res as List)

@@ -144,7 +144,7 @@ class _UjianTakeScreenState extends ConsumerState<UjianTakeScreen>
       setState(() => _loading = false);
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = friendlyError(e);
         _loading = false;
       });
     }

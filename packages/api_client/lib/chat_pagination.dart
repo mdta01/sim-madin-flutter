@@ -85,7 +85,7 @@ class ChatMessagesNotifier extends StateNotifier<ChatMessagesState> {
           .from('ChatMessage')
           .select()
           .eq('chatRoomId', _roomId)
-          .order('createdAt', ascending: false)
+          .limit(100).order('createdAt', ascending: false)
           .limit(_pageSize);
       final list = (res as List)
           .map((r) => ChatMessageModel.fromJson(r as Map<String, dynamic>))
@@ -119,7 +119,7 @@ class ChatMessagesNotifier extends StateNotifier<ChatMessagesState> {
           .select()
           .eq('chatRoomId', _roomId)
           .lt('createdAt', oldest.toIso8601String())
-          .order('createdAt', ascending: false)
+          .limit(100).order('createdAt', ascending: false)
           .limit(_pageSize);
       final olderList = (res as List)
           .map((r) => ChatMessageModel.fromJson(r as Map<String, dynamic>))
@@ -151,7 +151,7 @@ class ChatMessagesNotifier extends StateNotifier<ChatMessagesState> {
           .select()
           .eq('chatRoomId', _roomId)
           .gt('createdAt', newest.toIso8601String())
-          .order('createdAt', ascending: true);
+          .limit(100).order('createdAt', ascending: true);
       final newList = (res as List)
           .map((r) => ChatMessageModel.fromJson(r as Map<String, dynamic>))
           .toList();

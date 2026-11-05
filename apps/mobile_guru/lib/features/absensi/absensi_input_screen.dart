@@ -184,7 +184,7 @@ class _AbsensiInputScreenState extends ConsumerState<AbsensiInputScreen> {
                               child:
                                   CircularProgressIndicator(strokeWidth: 2)))),
                   error: (e, _) =>
-                      Text('Error: $e', style: const TextStyle(color: AppColors.danger)),
+                      Text('Error: \${friendlyError(e)}', style: const TextStyle(color: AppColors.danger)),
                   data: (list) => PillSelector<String>(
                     items: list.map((k) => k.id).toList(),
                     selected: _selectedKelasId,
@@ -217,7 +217,7 @@ class _AbsensiInputScreenState extends ConsumerState<AbsensiInputScreen> {
           Expanded(
             child: santriAsync.when(
               loading: () => const LoadingSkeleton(),
-              error: (e, _) => ErrorView(message: e.toString()),
+              error: (e, _) => ErrorView(message: friendlyError(e)),
               data: (list) {
                 if (list.isEmpty) {
                   return const EmptyState(

@@ -47,7 +47,7 @@ class _SantriDetailScreenState extends ConsumerState<SantriDetailScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2)))),
             error: (e, _) => SizedBox(
                 height: 100,
-                child: Center(child: Text('Error: $e',
+                child: Center(child: Text('Error: \${friendlyError(e)}',
                     style: const TextStyle(color: AppColors.danger)))),
             data: (santri) {
               if (santri == null) {
@@ -193,7 +193,7 @@ class _ProfilTab extends ConsumerWidget {
     final santriAsync = ref.watch(santriDetailProvider(santriId));
     return santriAsync.when(
       loading: () => const LoadingSkeleton(itemCount: 4),
-      error: (e, _) => ErrorView(message: e.toString()),
+      error: (e, _) => ErrorView(message: friendlyError(e)),
       data: (s) {
         if (s == null) return const EmptyState(title: 'Santri tidak ditemukan');
         return ListView(
@@ -272,7 +272,7 @@ class _AkademikTab extends ConsumerWidget {
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2)))),
-          error: (e, _) => Text('Error: $e',
+          error: (e, _) => Text('Error: \${friendlyError(e)}',
               style: const TextStyle(color: AppColors.danger, fontSize: 12)),
           data: (list) {
             if (list.isEmpty) {
@@ -326,7 +326,7 @@ class _AkademikTab extends ConsumerWidget {
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2)))),
-          error: (e, _) => Text('Error: $e',
+          error: (e, _) => Text('Error: \${friendlyError(e)}',
               style: const TextStyle(color: AppColors.danger, fontSize: 12)),
           data: (list) {
             if (list.isEmpty) {
@@ -377,7 +377,7 @@ class _AkademikTab extends ConsumerWidget {
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2)))),
-          error: (e, _) => Text('Error: $e',
+          error: (e, _) => Text('Error: \${friendlyError(e)}',
               style: const TextStyle(color: AppColors.danger, fontSize: 12)),
           data: (list) {
             if (list.isEmpty) {
@@ -515,7 +515,7 @@ class _UjianTab extends ConsumerWidget {
     final asyncValue = ref.watch(ujianPesertaAnakProvider(santriId));
     return asyncValue.when(
       loading: () => const LoadingSkeleton(itemCount: 4),
-      error: (e, _) => ErrorView(message: e.toString()),
+      error: (e, _) => ErrorView(message: friendlyError(e)),
       data: (list) {
         if (list.isEmpty) {
           return const EmptyState(
@@ -594,7 +594,7 @@ class _KeuanganTab extends ConsumerWidget {
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2)))),
-          error: (e, _) => Text('Error: $e',
+          error: (e, _) => Text('Error: \${friendlyError(e)}',
               style: const TextStyle(color: AppColors.danger, fontSize: 12)),
           data: (list) {
             if (list.isEmpty) {
@@ -688,7 +688,7 @@ class _KeuanganTab extends ConsumerWidget {
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2)))),
-          error: (e, _) => Text('Error: $e',
+          error: (e, _) => Text('Error: \${friendlyError(e)}',
               style: const TextStyle(color: AppColors.danger, fontSize: 12)),
           data: (list) {
             if (list.isEmpty) {
@@ -762,7 +762,7 @@ class _NotifTab extends ConsumerWidget {
     final asyncValue = ref.watch(notifikasiAnakProvider(santriId));
     return asyncValue.when(
       loading: () => const LoadingSkeleton(),
-      error: (e, _) => ErrorView(message: e.toString()),
+      error: (e, _) => ErrorView(message: friendlyError(e)),
       data: (list) {
         if (list.isEmpty) {
           return const EmptyState(
@@ -839,7 +839,7 @@ class _InfoTab extends ConsumerWidget {
     final asyncValue = ref.watch(pengumumanWaliProvider);
     return asyncValue.when(
       loading: () => const LoadingSkeleton(),
-      error: (e, _) => ErrorView(message: e.toString()),
+      error: (e, _) => ErrorView(message: friendlyError(e)),
       data: (list) {
         if (list.isEmpty) {
           return const EmptyState(

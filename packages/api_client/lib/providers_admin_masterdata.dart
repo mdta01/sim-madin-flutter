@@ -27,7 +27,7 @@ final guruListAdminProvider =
   if (search != null && search.isNotEmpty) {
     q = q.or('name.ilike.%$search%,nip.ilike.%$search%,specialization.ilike.%$search%');
   }
-  final res = await q.order('name');
+  final res = await q.limit(100).order('name');
   return (res as List)
       .map((r) => _guruFromRow(r as Map<String, dynamic>))
       .toList();
@@ -50,7 +50,7 @@ final waliListAdminProvider =
   if (search != null && search.isNotEmpty) {
     q = q.or('name.ilike.%$search%,phone.ilike.%$search%,nik.ilike.%$search%');
   }
-  final res = await q.order('name');
+  final res = await q.limit(100).order('name');
   return (res as List)
       .map((r) => WaliModel.fromJson(r as Map<String, dynamic>))
       .toList();
@@ -61,7 +61,7 @@ final tahunAjaranListProvider = FutureProvider<List<TahunAjaranModel>>(
     (ref) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
-  final res = await client.from('TahunAjaran').select().order('startDate', ascending: false);
+  final res = await client.from('TahunAjaran').select().limit(100).order('startDate', ascending: false);
   return (res as List)
       .map((r) => TahunAjaranModel.fromJson(r as Map<String, dynamic>))
       .toList();
@@ -72,9 +72,9 @@ final semesterListProvider =
     FutureProvider.family<List<SemesterModel>, String?>((ref, taId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
-  var q = client.from('Semester').select();
+  var q = client.from('Semester').select().limit(100);
   if (taId != null) q = q.eq('tahunAjaranId', taId);
-  final res = await q.order('startDate', ascending: false);
+  final res = await q.limit(100).order('startDate', ascending: false);
   return (res as List)
       .map((r) => SemesterModel.fromJson(r as Map<String, dynamic>))
       .toList();

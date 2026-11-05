@@ -160,7 +160,7 @@ class _TugasDetailScreenState extends ConsumerState<TugasDetailScreen> {
           Expanded(
             child: asyncValue.when(
               loading: () => const LoadingSkeleton(),
-              error: (e, _) => ErrorView(message: e.toString()),
+              error: (e, _) => ErrorView(message: friendlyError(e)),
               data: (list) {
                 if (list.isEmpty) {
                   return const EmptyState(

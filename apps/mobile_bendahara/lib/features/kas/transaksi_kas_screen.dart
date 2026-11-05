@@ -403,7 +403,7 @@ class _TransaksiFormState extends ConsumerState<_TransaksiForm> {
                 height: 40,
                 child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
               ),
-              error: (e, _) => Text('Error: $e',
+              error: (e, _) => Text('Error: \${friendlyError(e)}',
                   style: AppTextStyles.body2
                       .copyWith(color: AppColors.danger)),
               data: (list) {
