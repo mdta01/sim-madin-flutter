@@ -61,12 +61,16 @@ jobs:
         env:
           GOOGLE_SERVICES_BASE64: ${{ secrets.GOOGLE_SERVICES_BASE64 }}
         run: |
+          APP_DIR="apps/${{ matrix.app }}/android/app"
           if [ -n "$GOOGLE_SERVICES_BASE64" ]; then
-            echo "$GOOGLE_SERVICES_BASE64" | base64 -d > apps/${{ matrix.app }}/android/app/google-services.json
+            echo "$GOOGLE_SERVICES_BASE64" | base64 -d > "$APP_DIR/google-services.json"
             echo "✓ google-services.json restored from secret"
+          elif [ -f "$APP_DIR/google-services.json" ]; then
+            echo "✓ google-services.json already exists"
           else
-            echo '{"project_info":{"project_number":"000000000000","project_id":"dummy","storage_bucket":"dummy.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000","android_client_info":{"package_name":"id.madrasah.madin.dummy"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyDummy"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > apps/${{ matrix.app }}/android/app/google-services.json
-            echo "✓ Dummy google-services.json created"
+            PKG_NAME="id.madrasah.madin.${{ matrix.app }}"
+            echo "{\"project_info\":{\"project_number\":\"1028976413563\",\"project_id\":\"sim-madin-app\",\"storage_bucket\":\"sim-madin-app.firebasestorage.app\"},\"client\":[{\"client_info\":{\"mobilesdk_app_id\":\"1:1028976413563:android:0000000000000000\",\"android_client_info\":{\"package_name\":\"$PKG_NAME\"}},\"oauth_client\":[],\"api_key\":[{\"current_key\":\"AIzaSyATu_nkhYCVbLkSfgr1Rs1UHw\"}],\"services\":{\"appinvite_service\":{\"other_platform_oauth_client\":[]}}}],\"configuration_version\":\"1\"}" > "$APP_DIR/google-services.json"
+            echo "✓ Dummy google-services.json created for $PKG_NAME"
           fi
 
       - name: Build APK
