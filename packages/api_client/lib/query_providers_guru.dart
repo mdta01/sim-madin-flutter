@@ -153,7 +153,7 @@ final jadwalGuruProvider = FutureProvider<List<JadwalModel>>((ref) async {
   final res = await client
       .from('Jadwal')
       .select('*, Kelas(*), MataPelajaran(*), Guru(*, User(*))')
-      .order('dayOfWeek').limit(100)
+      .order('dayOfWeek')
       .limit(100).order('startTime');
   return (res as List)
       .map((r) => _jadwalFromRow(r as Map<String, dynamic>))
@@ -317,7 +317,7 @@ final pertemuanGuruProvider = FutureProvider<List<PertemuanModel>>((ref) async {
   final res = await client
       .from('Pertemuan')
       .select('*, Kelas(*), MataPelajaran(*), Guru(*, User(*))')
-      .limit(100).order('date', ascending: false)
+      .order('date', ascending: false)
       .limit(100);
   return (res as List)
       .map((r) => _pertemuanFromRow(r as Map<String, dynamic>))
@@ -434,7 +434,7 @@ final perkembanganQuranProvider =
   final res = await client
       .from('PerkembanganQuran')
       .select('*, Santri(*), Guru(*, User(*))')
-      .limit(100).order('pertemuanDate', ascending: false)
+      .order('pertemuanDate', ascending: false)
       .limit(100);
   return (res as List)
       .map((r) => _quranFromRow(r as Map<String, dynamic>))
@@ -448,7 +448,7 @@ final hafalanKitabProvider =
   final res = await client
       .from('HafalanKitab')
       .select('*, Santri(*), Guru(*, User(*))')
-      .limit(100).order('pertemuanDate', ascending: false)
+      .order('pertemuanDate', ascending: false)
       .limit(100);
   return (res as List)
       .map((r) => _kitabFromRow(r as Map<String, dynamic>))
@@ -462,7 +462,7 @@ final akhlakPenilaianProvider =
   final res = await client
       .from('AkhlakPenilaian')
       .select('*, Santri(*), Guru(*, User(*))')
-      .limit(100).order('periodeDate', ascending: false)
+      .order('periodeDate', ascending: false)
       .limit(100);
   return (res as List)
       .map((r) => _akhlakFromRow(r as Map<String, dynamic>))
@@ -475,7 +475,7 @@ final pembinaanProvider = FutureProvider<List<PembinaanModel>>((ref) async {
   final res = await client
       .from('Pembinaan')
       .select('*, Santri(*), Guru(*, User(*))')
-      .limit(100).order('createdAt', ascending: false)
+      .order('createdAt', ascending: false)
       .limit(100);
   return (res as List)
       .map((r) => _pembinaanFromRow(r as Map<String, dynamic>))
@@ -493,7 +493,7 @@ final pengumumanListProvider =
   final res = await client
       .from('Announcement')
       .select()
-      .limit(100).order('publishedAt', ascending: false)
+      .order('publishedAt', ascending: false)
       .limit(20);
   return (res as List)
       .map((r) => AnnouncementModel.fromJson(r as Map<String, dynamic>))
@@ -511,7 +511,7 @@ final chatRoomsGuruProvider = FutureProvider<List<ChatRoomModel>>((ref) async {
       .from('ChatRoom')
       .select('*, Wali(*), Guru(*, User(*)), Santri(*)')
       .eq('isActive', true)
-      .limit(100).order('lastMessageAt', ascending: false)
+      .order('lastMessageAt', ascending: false)
       .limit(50);
   return (res as List)
       .map((r) => _chatRoomFromRow(r as Map<String, dynamic>))
@@ -558,7 +558,7 @@ final chatMessagesProvider =
       .from('ChatMessage')
       .select()
       .eq('chatRoomId', roomId)
-      .limit(100).order('createdAt', ascending: false)
+      .order('createdAt', ascending: false)
       .limit(100);
   final list = (res as List)
       .map((r) => ChatMessageModel.fromJson(r as Map<String, dynamic>))

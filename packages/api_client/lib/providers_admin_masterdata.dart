@@ -72,7 +72,7 @@ final semesterListProvider =
     FutureProvider.autoDispose.family<List<SemesterModel>, String?>((ref, taId) async {
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
-  var q = client.from('Semester').select().limit(100);
+  var q = client.from('Semester').select();
   if (taId != null) q = q.eq('tahunAjaranId', taId);
   final res = await q.limit(100).order('startDate', ascending: false);
   return (res as List)
