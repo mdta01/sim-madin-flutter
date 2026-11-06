@@ -5,16 +5,12 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      apps:
-        description: 'Apps to build (comma-separated: mobile_wali,mobile_bendahara,mobile_guru,mobile_kepala)'
-        required: false
-        default: 'mobile_wali,mobile_bendahara,mobile_guru,mobile_kepala'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         app: [mobile_wali, mobile_bendahara, mobile_guru, mobile_kepala]
     steps:
