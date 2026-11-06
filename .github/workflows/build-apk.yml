@@ -63,18 +63,10 @@ jobs:
         run: |
           if [ -n "$GOOGLE_SERVICES_BASE64" ]; then
             echo "$GOOGLE_SERVICES_BASE64" | base64 -d > apps/${{ matrix.app }}/android/app/google-services.json
-            echo "✓ google-services.json restored"
+            echo "✓ google-services.json restored from secret"
           else
-            echo "⚠ No GOOGLE_SERVICES_BASE64 secret — creating dummy file"
-            # Create a minimal dummy google-services.json so the build doesn't fail
-            cat > apps/${{ matrix.app }}/android/app/google-services.json << 'DUMMY'
-            {
-              "project_info": {"project_number": "000000000000", "project_id": "dummy", "storage_bucket": "dummy.appspot.com"},
-              "client": [{"client_info": {"mobilesdk_app_id": "1:000000000000:android:0000000000000000", "android_client_info": {"package_name": "id.madrasah.madin.dummy"}}, "oauth_client": [], "api_key": [{"current_key": "AIzaSyDummy"}], "services": {"appinvite_service": {"other_platform_oauth_client": []}}}],
-              "configuration_version": "1"
-            }
-            DUMMY
-            echo "✓ Dummy google-services.json created (FCM won't work in CI without real secret)"
+            echo '{"project_info":{"project_number":"000000000000","project_id":"dummy","storage_bucket":"dummy.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000","android_client_info":{"package_name":"id.madrasah.madin.dummy"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyDummy"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > apps/${{ matrix.app }}/android/app/google-services.json
+            echo "✓ Dummy google-services.json created"
           fi
 
       - name: Build APK
