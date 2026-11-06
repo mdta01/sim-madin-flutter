@@ -46,6 +46,9 @@ dependencies:
   printing: ^5.13.3
   path_provider: ^2.1.5
 
+  # File picker (untuk upload bukti pembayaran)
+  file_picker: ^8.1.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
