@@ -142,25 +142,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/splash',
 
-    redirect: (context, state) {
-      final isLoggedIn = ref.read(supabaseClientProvider).auth.currentUser != null;
-      final isAuthRoute = state.matchedLocation == '/splash' ||
-          state.matchedLocation == '/login' ||
-          state.matchedLocation == '/forgot-pin';
-      final isProtectedRoute = state.matchedLocation.startsWith('/dashboard') ||
-          state.matchedLocation.startsWith('/admin');
-
-      // Not logged in + trying to access protected route → redirect to /login
-      if (!isLoggedIn && isProtectedRoute) {
-        return '/login';
-      }
-      // Logged in + trying to access /login → redirect to /dashboard/home (or /admin)
-      if (isLoggedIn && state.matchedLocation == '/login') {
-        return '/dashboard/home';
-      }
-      // All other cases — no redirect
-      return null;
-    },
     routes: [
       GoRoute(
         path: '/splash',
