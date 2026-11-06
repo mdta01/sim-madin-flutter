@@ -47,6 +47,9 @@ dependencies:
   # File picker (untuk import data / upload photo santri)
   file_picker: ^8.1.6
 
+  # Desktop window manager (min/max size, title bar)
+  window_manager: ^0.4.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

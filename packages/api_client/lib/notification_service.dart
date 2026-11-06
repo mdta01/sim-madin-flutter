@@ -28,11 +28,49 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
   return NotificationService(ref.read(supabaseClientProvider));
 });
 
-/// Callback untuk background message handler (harus top-level function).
+/// Callback untuk background message handler (harus top-level + PUBLIC function).
+/// Harus top-level karena Android background isolate spin-up membutuhkan akses
+/// ke function ini tanpa instance class. @pragma('vm:entry-point') mencegah
+/// tree-shaking oleh Dart compiler.
 @pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint('🔔 Background message: ${message.notification?.title}');
+
+  // Show local notification untuk background messages (saat app di background
+  // atau killed). FCM foreground messages sudah di-handle oleh onMessage stream
+  // di NotificationService.initialize(), tapi background messages TIDAK.
+  // Tanpa ini, notifikasi hanya muncul di system tray tanpa custom handling.
+  try {
+    final flutterLocalNotifications = FlutterLocalNotificationsPlugin();
+    const androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      'sim_madin_notifications',
+      'SIM MADIN Notifications',
+      channelDescription: 'Notifikasi SIM MADIN: nilai, tagihan, chat, pengumuman',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+    );
+    const iosPlatformChannelSpecifics = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+      iOS: iosPlatformChannelSpecifics,
+    );
+
+    await flutterLocalNotifications.show(
+      message.hashCode,
+      message.notification?.title ?? 'SIM MADIN',
+      message.notification?.body ?? '',
+      platformChannelSpecifics,
+      payload: jsonEncode(message.data),
+    );
+  } catch (e) {
+    debugPrint('⚠ Background notification show failed: $e');
+  }
 }
 
 class NotificationService {
@@ -58,8 +96,8 @@ class NotificationService {
       // 1. Initialize Firebase
       await Firebase.initializeApp();
 
-      // 2. Set background message handler
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      // 2. Set background message handler (public function for isolate access)
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
       // 3. Setup local notifications (untuk foreground messages)
       const androidSettings =

@@ -6,9 +6,11 @@
 // 5. Submit → createPembayaran() mutation
 // 6. Optional: cetak kwitansi PDF setelah sukses
 
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
 
@@ -35,10 +37,40 @@ class _PembayaranCreateScreenState
   String _note = '';
   bool _saving = false;
 
+  // Bukti pembayaran (optional — upload ke Storage bucket 'tugas')
+  PlatformFile? _pickedFile;
+  Uint8List? _fileBytes;
+  String? _proofUrl;
+
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickProofFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    if (!mounted) return;
+    setState(() {
+      _pickedFile = file;
+      _fileBytes = file.bytes;
+    });
+  }
+
+  String _mimeType(String ext) {
+    switch (ext.toLowerCase()) {
+      case 'pdf': return 'application/pdf';
+      case 'jpg':
+      case 'jpeg': return 'image/jpeg';
+      case 'png': return 'image/png';
+      default: return 'application/octet-stream';
+    }
   }
 
   Future<void> _submit() async {
@@ -51,6 +83,28 @@ class _PembayaranCreateScreenState
       return;
     }
     setState(() => _saving = true);
+
+    // Upload bukti pembayaran jika ada (ke bucket 'tugas' — private, signed URL)
+    String? proofUrl;
+    if (_pickedFile != null && _fileBytes != null) {
+      try {
+        final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+        final ext = _pickedFile!.extension ?? 'pdf';
+        final uploadPath = 'pembayaran/$tempId.${ext}';
+        final result = await ref.read(storageServiceProvider).upload(
+              bucket: StorageBucket.tugas,
+              path: uploadPath,
+              fileBytes: _fileBytes!,
+              mimeType: _mimeType(ext),
+            );
+        proofUrl = result.signedUrl;
+      } catch (e) {
+        if (mounted) _toast('Gagal upload bukti: ${friendlyError(e)}', isError: true);
+        if (mounted) setState(() => _saving = false);
+        return;
+      }
+    }
+
     try {
       final result = await createPembayaran(
         ref,
@@ -397,6 +451,44 @@ class _PembayaranCreateScreenState
               maxLines: 2,
               onChanged: (v) => _note = v,
             ),
+            const SizedBox(height: AppSpacing.md),
+
+            // === Step 5b: Bukti Pembayaran (optional upload) ===
+            const Text(
+              'Bukti Pembayaran (opsional)',
+              style:
+                  TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            OutlinedButton.icon(
+              onPressed: _pickProofFile,
+              icon: const Icon(Icons.upload_file, size: 18),
+              label: Text(_pickedFile?.name ?? 'Pilih File (PDF/JPG/PNG, max 10MB)'),
+            ),
+            if (_pickedFile != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.check_circle, color: AppColors.success, size: 16),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'File dipilih: ${_pickedFile!.name}',
+                      style: const TextStyle(fontSize: 11, color: AppColors.success),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 16),
+                    onPressed: () => setState(() {
+                      _pickedFile = null;
+                      _fileBytes = null;
+                    }),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: AppSpacing.xl),
 
             // === Submit ===

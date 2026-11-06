@@ -11,12 +11,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show AuthChangeEvent, AuthState;
+import 'package:window_manager/window_manager.dart';
 
 import 'app/router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final supabase = await initSupabase();
+
+  // Desktop window setup — set minimum size + title
+  if (!kIsWeb) {
+    await windowManager.ensureInitialized();
+    await windowManager.waitUntilReadyToShow(
+      const WindowOptions(
+        size: Size(1280, 800),
+        minimumSize: Size(1024, 600),
+        title: 'SIM MADIN — Admin Desktop',
+        center: true,
+        titleBarStyle: TitleBarStyle.normal,
+      ),
+      () async {
+        await windowManager.show();
+        await windowManager.focus();
+      },
+    );
+  }
+
   runApp(ProviderScope(
     overrides: [supabaseClientProvider.overrideWithValue(supabase)],
     child: const Admin_desktopApp(),
