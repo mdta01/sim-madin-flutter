@@ -57,6 +57,26 @@ jobs:
             echo "⚠ No keystore secret — using debug signing"
           fi
 
+      - name: Restore google-services.json
+        env:
+          GOOGLE_SERVICES_BASE64: ${{ secrets.GOOGLE_SERVICES_BASE64 }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_BASE64" ]; then
+            echo "$GOOGLE_SERVICES_BASE64" | base64 -d > apps/${{ matrix.app }}/android/app/google-services.json
+            echo "✓ google-services.json restored"
+          else
+            echo "⚠ No GOOGLE_SERVICES_BASE64 secret — creating dummy file"
+            # Create a minimal dummy google-services.json so the build doesn't fail
+            cat > apps/${{ matrix.app }}/android/app/google-services.json << 'DUMMY'
+            {
+              "project_info": {"project_number": "000000000000", "project_id": "dummy", "storage_bucket": "dummy.appspot.com"},
+              "client": [{"client_info": {"mobilesdk_app_id": "1:000000000000:android:0000000000000000", "android_client_info": {"package_name": "id.madrasah.madin.dummy"}}, "oauth_client": [], "api_key": [{"current_key": "AIzaSyDummy"}], "services": {"appinvite_service": {"other_platform_oauth_client": []}}}],
+              "configuration_version": "1"
+            }
+            DUMMY
+            echo "✓ Dummy google-services.json created (FCM won't work in CI without real secret)"
+          fi
+
       - name: Build APK
         run: |
           cd apps/${{ matrix.app }}
