@@ -181,4 +181,5 @@ export 'package:supabase_flutter/supabase_flutter.dart'
         User,
         Session,
         PostgrestException,
-        AuthException;
+        AuthException,
+        UserAttributes;

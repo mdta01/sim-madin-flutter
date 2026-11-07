@@ -25,7 +25,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      setupKepalaRealtime(ref);
+      setupAdminRealtime(ref);
     });
   }
 
@@ -61,6 +61,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     if (confirmed != true) return;
 
     final client = ref.read(supabaseClientProvider);
+    // Lepas semua channel realtime SEBELUM signOut. Tanpa ini, channel lama
+    // tetap hidup dan setelah login ulang event-nya dobel (dan memory bocor).
+    await disposeAppRealtime(ref);
     await client.auth.signOut();
     // ignore: unused_result
     await ref.read(authStorageProvider).clear();
@@ -201,22 +204,41 @@ class _AppShellState extends ConsumerState<AppShell> {
                         tooltip: 'Refresh Data',
                         onPressed: () => invalidateAdminQueries(ref),
                       ),
-                      // User info
+                      // User info — klik untuk membuka halaman profil
                       const SizedBox(width: AppSpacing.sm),
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: AppColors.primaryLight,
-                        foregroundColor: AppColors.primary,
-                        child: Text(
-                          userInitial,
-                          style: AppTextStyles.label.copyWith(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
+                      Tooltip(
+                        message: 'Buka profil saya',
+                        child: InkWell(
+                          onTap: () => context.go('/profile'),
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.pill),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xs,
+                              vertical: 2,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: AppColors.primaryLight,
+                                  foregroundColor: AppColors.primary,
+                                  child: Text(
+                                    userInitial,
+                                    style: AppTextStyles.label.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.xs),
+                                Text(userEmail, style: AppTextStyles.body2),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.xs),
-                      Text(userEmail, style: AppTextStyles.body2),
                       const SizedBox(width: AppSpacing.sm),
                       IconButton(
                         icon: const Icon(Icons.logout, size: 20),
@@ -239,13 +261,37 @@ class _AppShellState extends ConsumerState<AppShell> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.circle,
-                          size: 8, color: AppColors.success),
-                      const SizedBox(width: AppSpacing.xs),
-                      Text(
-                        'Realtime aktif',
-                        style: AppTextStyles.caption
-                            .copyWith(color: AppColors.textMuted),
+                      // Status sebenarnya (bukan teks statis): hijau bila
+                      // channel realtime benar-benar tersambung.
+                      Builder(
+                        builder: (context) {
+                          final connected = ref
+                              .watch(realtimeSubscribedTables)
+                              .isNotEmpty;
+                          final events = ref.watch(realtimeEventCount);
+                          return Row(
+                            children: [
+                              Icon(
+                                Icons.circle,
+                                size: 8,
+                                color: connected
+                                    ? AppColors.success
+                                    : AppColors.warning,
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
+                              Text(
+                                connected
+                                    ? 'Realtime aktif • $events perubahan'
+                                    : 'Realtime terputus — data perlu refresh manual',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: connected
+                                      ? AppColors.textMuted
+                                      : AppColors.warning,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       const Spacer(),
                       Text(
