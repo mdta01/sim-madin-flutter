@@ -15,6 +15,7 @@ import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
 
 import 'query_providers_admin.dart';
+import 'supabase_write.dart';
 
 // ---------------------------------------------------------------------------
 // User CRUD
@@ -42,7 +43,8 @@ Future<UserModel> createUser(
     if (firebaseUid != null) 'firebaseUid': firebaseUid,
     'isActive': isActive,
   };
-  final res = await client.from('User').insert(body).select().single();
+  final res =
+      await client.from('User').insert(insertRow(body)).select().single();
   ref.invalidate(userListProvider);
   ref.invalidate(userCountProvider);
   return UserModel.fromJson(res);
@@ -111,11 +113,11 @@ Future<void> assignRoleToUser(
   required String roleId,
 }) async {
   final client = ref.read(supabaseClientProvider);
-  await client.from('UserRole').insert({
+  await client.from('UserRole').insert(insertRow({
     'userId': userId,
     'roleId': roleId,
     'isActive': true,
-  });
+  }));
   ref.invalidate(userListProvider);
   ref.invalidate(userByIdProvider(userId));
 }
@@ -148,12 +150,12 @@ Future<RoleModel> createRole(
   int sortOrder = 99,
 }) async {
   final client = ref.read(supabaseClientProvider);
-  final res = await client.from('Role').insert({
+  final res = await client.from('Role').insert(insertRow({
     'code': code,
     'name': name,
     if (description != null) 'description': description,
     'sortOrder': sortOrder,
-  }).select().single();
+  })).select().single();
   ref.invalidate(roleListProvider);
   return RoleModel.fromJson(res);
 }
@@ -202,10 +204,10 @@ Future<void> grantPermissionToRole(
   required String permissionId,
 }) async {
   final client = ref.read(supabaseClientProvider);
-  await client.from('RolePermission').insert({
+  await client.from('RolePermission').insert(insertRow({
     'roleId': roleId,
     'permissionId': permissionId,
-  });
+  }));
   ref.invalidate(rolePermissionsMatrixProvider(roleId));
   ref.invalidate(allRolePermissionsProvider);
   ref.invalidate(roleByIdProvider(roleId));
@@ -260,7 +262,9 @@ Future<void> bulkUpdateRolePermissions(
 
   // Execute
   if (toAdd.isNotEmpty) {
-    await client.from('RolePermission').insert(toAdd);
+    await client.from('RolePermission').insert(
+      toAdd.map((row) => insertRow(row)).toList(),
+    );
   }
   for (final permId in toRemove) {
     await client
@@ -306,13 +310,13 @@ Future<SystemSettingModel> upsertSystemSetting(
     ref.invalidate(systemSettingByKeyProvider(key));
     return SystemSettingModel.fromJson(res);
   } else {
-    final res = await client.from('SystemSetting').insert({
+    final res = await client.from('SystemSetting').insert(insertRow({
       'key': key,
       'value': value,
-      if (description != null) 'description': description,
+      'description': description,
       'type': type,
       'isPublic': isPublic,
-    }).select().single();
+    })).select().single();
     ref.invalidate(systemSettingsProvider);
     ref.invalidate(systemSettingByKeyProvider(key));
     return SystemSettingModel.fromJson(res);
