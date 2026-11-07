@@ -88,7 +88,29 @@ jobs:
       - name: Analyze
         run: |
           export PATH="$PATH:$HOME/.pub-cache/bin"
-          melos exec -- dart analyze lib/
+          set +e
+          melos exec -- dart analyze lib/ 2>&1 | tee analyze-report.txt
+          STATUS=${PIPESTATUS[0]}
+          set -e
+
+          # Tampilkan sebagai anotasi supaya langsung terlihat di ringkasan PR
+          # tanpa harus membuka log mentah.
+          grep -E "error •" analyze-report.txt | head -50 | while IFS= read -r line; do
+            echo "::error::$line"
+          done
+
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::error::dart analyze gagal (exit $STATUS)."
+            exit "$STATUS"
+          fi
+
+      - name: Upload analyze report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyze-report
+          path: analyze-report.txt
+          if-no-files-found: ignore
 
       - name: Test
         run: |
