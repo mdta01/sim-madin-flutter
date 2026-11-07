@@ -114,7 +114,7 @@ jobs:
           # per langkah dan log job tidak selalu bisa diunduh.
           if [ $((ERRORS + WARNINGS)) -gt 0 ]; then
             SUMMARY=$(grep -E '^(ERROR|WARNING)[|]' analyze-report.txt \
-              | awk -F'|' '{print $5 ":" $6 " " $3 " " $8}' \
+              | awk -F'|' '{print $4 ":" $5 ":" $6 " " $3}' \
               | head -120 | paste -sd'~' - | sed 's/~/%0A/g')
             echo "::error title=Daftar masalah analyze::${SUMMARY}"
           fi
