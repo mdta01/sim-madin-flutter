@@ -22,7 +22,7 @@ final tagihanListAdminProvider =
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Tagihan').select('*, Santri(name, nis, Kelas(name)), JenisTagihan(name, code)');
-  if (status != null && status != 'ALL') q = q.eq('status', status!);
+  if (status != null && status != 'ALL') q = q.eq('status', status);
   final res = await q.order('createdAt', ascending: false).limit(200);
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
@@ -69,7 +69,7 @@ Future<TagihanModel> adminCreateTagihan(
     'tahunAjaranId': taId,
   };
   final res = await client.from('Tagihan').insert(rowFor('Tagihan', body)).select('*, Santri(name, nis, Kelas(name)), JenisTagihan(name, code)').single();
-  final row = res as Map<String, dynamic>;
+  final row = res;
   final santri = row['Santri'] as Map<String, dynamic>?;
   final kelas = santri?['Kelas'] as Map<String, dynamic>?;
   final jenis = row['JenisTagihan'] as Map<String, dynamic>?;

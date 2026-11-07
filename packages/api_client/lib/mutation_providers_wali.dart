@@ -396,7 +396,7 @@ Future<UjianSesiData> startUjianSesi(
       .maybeSingle();
 
   if (existingRes != null) {
-    final existing = UjianSesiData.fromJson(existingRes as Map<String, dynamic>);
+    final existing = UjianSesiData.fromJson(existingRes);
     if (existing.status == 'FINISHED') {
       throw Exception(
         'Ujian ini sudah Anda selesaikan dan tidak dapat dikerjakan ulang.',
@@ -434,7 +434,7 @@ Future<UjianSesiData> startUjianSesi(
       .insert(rowFor('UjianSesi', body))
       .select()
       .single();
-  return UjianSesiData.fromJson((res as Map<String, dynamic>));
+  return UjianSesiData.fromJson(res);
 }
 
 /// Simpan jawaban sementara (draft) TANPA menutup sesi.

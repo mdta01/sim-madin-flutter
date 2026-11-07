@@ -114,13 +114,15 @@ jobs:
             exit 1
           fi
 
-          # Warning tidak memblokir (belum semua file bersih dari lint), tetapi
-          # dicatat. Turunkan ke 0 secara bertahap lalu jadikan wajib.
+                    # Warning juga MEMBLOKIR: pada 2026-11 repo ini sudah bersih dari
+          # error maupun warning. Tanpa ini, warning baru akan menumpuk lagi
+          # tanpa ada yang memperbaikinya.
           if [ "${WARNINGS:-0}" -gt 0 ]; then
-            echo "::warning::$WARNINGS warning analisis (tidak memblokir)."
             grep '^WARNING|' analyze-report.txt | head -63 | while IFS='|' read -r sev type code file line col len msg; do
-              echo "::warning file=$file,line=$line,col=$col::$code: $msg"
+              echo "::error file=$file,line=$line,col=$col::$code: $msg"
             done
+            echo "::error::$WARNINGS warning analisis. Jalankan 'dart analyze' lokal lalu perbaiki."
+            exit 1
           fi
 
       - name: Upload analyze report

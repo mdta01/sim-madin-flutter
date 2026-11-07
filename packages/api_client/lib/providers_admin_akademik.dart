@@ -42,7 +42,7 @@ Future<JadwalModel> adminCreateJadwal(WidgetRef ref, {required String tahunAjara
   final client = ref.read(supabaseClientProvider);
   final res = await client.from('Jadwal').insert(rowFor('Jadwal', {'tahunAjaranId': tahunAjaranId, 'semesterId': semesterId, 'kelasId': kelasId, 'mapelId': mapelId, 'guruId': guruId, 'dayOfWeek': dayOfWeek, 'startTime': startTime, 'endTime': endTime})).select().single();
   ref.invalidate(jadwalListAdminProvider);
-  return JadwalModel.fromJson(res as Map<String, dynamic>);
+  return JadwalModel.fromJson(res);
 }
 
 Future<void> adminDeleteJadwal(WidgetRef ref, String id) async {
@@ -284,7 +284,7 @@ Future<UjianModel> adminCreateUjian(WidgetRef ref, {required String tahunAjaranI
   final client = ref.read(supabaseClientProvider);
   final res = await client.from('Ujian').insert(rowFor('Ujian', {'tahunAjaranId': tahunAjaranId, 'semesterId': semesterId, 'mapelId': mapelId, 'kelasId': kelasId, 'guruId': guruId, 'title': title, 'type': type, if (description != null) 'description': description, if (startTime != null) 'startTime': startTime.toIso8601String(), if (endTime != null) 'endTime': endTime.toIso8601String(), 'durationMnt': durationMnt, 'maxScore': maxScore, 'passingScore': passingScore, 'isPublished': isPublished})).select().single();
   ref.invalidate(ujianListAdminProvider);
-  return UjianModel.fromJson(res as Map<String, dynamic>);
+  return UjianModel.fromJson(res);
 }
 
 Future<void> adminDeleteUjian(WidgetRef ref, String id) async {
@@ -326,7 +326,7 @@ Future<BankSoalModel> adminCreateBankSoal(WidgetRef ref, {required String mapelI
   final client = ref.read(supabaseClientProvider);
   final res = await client.from('BankSoal').insert(rowFor('BankSoal', {'mapelId': mapelId, 'tahunAjaranId': tahunAjaranId, 'guruId': guruId, 'code': code, 'type': type, 'question': question, if (options != null) 'options': options, if (correctAnswer != null) 'correctAnswer': correctAnswer, if (answerKey != null) 'answerKey': answerKey, 'bobot': bobot, if (difficulty != null) 'difficulty': difficulty})).select().single();
   ref.invalidate(bankSoalListAdminProvider);
-  return BankSoalModel.fromJson(res as Map<String, dynamic>);
+  return BankSoalModel.fromJson(res);
 }
 
 Future<void> adminDeleteBankSoal(WidgetRef ref, String id) async {
@@ -350,7 +350,7 @@ Future<KompetensiModel> adminCreateKompetensi(WidgetRef ref, {required String ma
   final client = ref.read(supabaseClientProvider);
   final res = await client.from('Kompetensi').insert(rowFor('Kompetensi', {'mapelId': mapelId, 'tahunAjaranId': tahunAjaranId, 'code': code, 'name': name, if (description != null) 'description': description, 'category': category, 'sortOrder': sortOrder})).select().single();
   ref.invalidate(kompetensiListAdminProvider);
-  return KompetensiModel.fromJson(res as Map<String, dynamic>);
+  return KompetensiModel.fromJson(res);
 }
 
 Future<void> adminDeleteKompetensi(WidgetRef ref, String id) async {
