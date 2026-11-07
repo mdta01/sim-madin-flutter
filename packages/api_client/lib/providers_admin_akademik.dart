@@ -39,7 +39,7 @@ final jadwalListAdminProvider =
 
 Future<JadwalModel> adminCreateJadwal(WidgetRef ref, {required String tahunAjaranId, required String semesterId, required String kelasId, required String mapelId, required String guruId, required int dayOfWeek, required String startTime, required String endTime}) async {
   final client = ref.read(supabaseClientProvider);
-  final res = await client.from('Jadwal').insert({'tahunAjaranId': tahunAjaranId, 'semesterId': semesterId, 'kelasId': kelasId, 'mapelId': mapelId, 'guruId': guruId, 'dayOfWeek': dayOfWeek, 'startTime': startTime, 'endTime': endTime}).select().single();
+  final res = await client.from('Jadwal').insert(rowFor('Jadwal', {'tahunAjaranId': tahunAjaranId, 'semesterId': semesterId, 'kelasId': kelasId, 'mapelId': mapelId, 'guruId': guruId, 'dayOfWeek': dayOfWeek, 'startTime': startTime, 'endTime': endTime})).select().single();
   ref.invalidate(jadwalListAdminProvider);
   return JadwalModel.fromJson(res as Map<String, dynamic>);
 }
@@ -222,7 +222,7 @@ Future<MateriModel> adminCreateMateri(
     'isPublished': isPublished,
     if (isPublished) 'publishedAt': DateTime.now().toIso8601String(),
   };
-  final res = await client.from('Materi').insert(body).select().single();
+  final res = await client.from('Materi').insert(rowFor('Materi', body)).select().single();
   ref.invalidate(materiListAdminProvider);
   return MateriModel.fromJson(res);
 }
@@ -281,7 +281,7 @@ final ujianListAdminProvider = FutureProvider<List<UjianModel>>((ref) async {
 
 Future<UjianModel> adminCreateUjian(WidgetRef ref, {required String tahunAjaranId, required String semesterId, required String mapelId, required String kelasId, required String guruId, required String title, required String type, String? description, DateTime? startTime, DateTime? endTime, int durationMnt = 90, double maxScore = 100, double passingScore = 70, bool isPublished = false}) async {
   final client = ref.read(supabaseClientProvider);
-  final res = await client.from('Ujian').insert({'tahunAjaranId': tahunAjaranId, 'semesterId': semesterId, 'mapelId': mapelId, 'kelasId': kelasId, 'guruId': guruId, 'title': title, 'type': type, if (description != null) 'description': description, if (startTime != null) 'startTime': startTime.toIso8601String(), if (endTime != null) 'endTime': endTime.toIso8601String(), 'durationMnt': durationMnt, 'maxScore': maxScore, 'passingScore': passingScore, 'isPublished': isPublished}).select().single();
+  final res = await client.from('Ujian').insert(rowFor('Ujian', {'tahunAjaranId': tahunAjaranId, 'semesterId': semesterId, 'mapelId': mapelId, 'kelasId': kelasId, 'guruId': guruId, 'title': title, 'type': type, if (description != null) 'description': description, if (startTime != null) 'startTime': startTime.toIso8601String(), if (endTime != null) 'endTime': endTime.toIso8601String(), 'durationMnt': durationMnt, 'maxScore': maxScore, 'passingScore': passingScore, 'isPublished': isPublished})).select().single();
   ref.invalidate(ujianListAdminProvider);
   return UjianModel.fromJson(res as Map<String, dynamic>);
 }
@@ -323,7 +323,7 @@ final bankSoalListAdminProvider = FutureProvider<List<BankSoalModel>>((ref) asyn
 
 Future<BankSoalModel> adminCreateBankSoal(WidgetRef ref, {required String mapelId, required String tahunAjaranId, required String guruId, required String code, required String type, required String question, String? options, String? correctAnswer, String? answerKey, double bobot = 1.0, String? difficulty}) async {
   final client = ref.read(supabaseClientProvider);
-  final res = await client.from('BankSoal').insert({'mapelId': mapelId, 'tahunAjaranId': tahunAjaranId, 'guruId': guruId, 'code': code, 'type': type, 'question': question, if (options != null) 'options': options, if (correctAnswer != null) 'correctAnswer': correctAnswer, if (answerKey != null) 'answerKey': answerKey, 'bobot': bobot, if (difficulty != null) 'difficulty': difficulty}).select().single();
+  final res = await client.from('BankSoal').insert(rowFor('BankSoal', {'mapelId': mapelId, 'tahunAjaranId': tahunAjaranId, 'guruId': guruId, 'code': code, 'type': type, 'question': question, if (options != null) 'options': options, if (correctAnswer != null) 'correctAnswer': correctAnswer, if (answerKey != null) 'answerKey': answerKey, 'bobot': bobot, if (difficulty != null) 'difficulty': difficulty})).select().single();
   ref.invalidate(bankSoalListAdminProvider);
   return BankSoalModel.fromJson(res as Map<String, dynamic>);
 }
@@ -347,7 +347,7 @@ final kompetensiListAdminProvider = FutureProvider<List<KompetensiModel>>((ref) 
 
 Future<KompetensiModel> adminCreateKompetensi(WidgetRef ref, {required String mapelId, required String tahunAjaranId, required String code, required String name, String? description, String category = 'UMUM', int sortOrder = 0}) async {
   final client = ref.read(supabaseClientProvider);
-  final res = await client.from('Kompetensi').insert({'mapelId': mapelId, 'tahunAjaranId': tahunAjaranId, 'code': code, 'name': name, if (description != null) 'description': description, 'category': category, 'sortOrder': sortOrder}).select().single();
+  final res = await client.from('Kompetensi').insert(rowFor('Kompetensi', {'mapelId': mapelId, 'tahunAjaranId': tahunAjaranId, 'code': code, 'name': name, if (description != null) 'description': description, 'category': category, 'sortOrder': sortOrder})).select().single();
   ref.invalidate(kompetensiListAdminProvider);
   return KompetensiModel.fromJson(res as Map<String, dynamic>);
 }
