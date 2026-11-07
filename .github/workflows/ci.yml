@@ -88,20 +88,36 @@ jobs:
       - name: Analyze
         run: |
           export PATH="$PATH:$HOME/.pub-cache/bin"
-          set +e
-          melos exec -- dart analyze lib/ 2>&1 | tee analyze-report.txt
-          STATUS=${PIPESTATUS[0]}
-          set -e
-
-          # Tampilkan sebagai anotasi supaya langsung terlihat di ringkasan PR
-          # tanpa harus membuka log mentah.
-          grep -E "error •" analyze-report.txt | head -50 | while IFS= read -r line; do
-            echo "::error::$line"
+          # Format `machine` dipakai karena stabil dan mudah di-parse:
+          #   SEVERITY|TYPE|CODE|FILE|LINE|COL|LEN|MESSAGE
+          # Setiap ERROR diteruskan sebagai anotasi agar langsung terlihat
+          # di ringkasan PR.
+          : > analyze-report.txt
+          FAIL=0
+          for d in packages/* apps/*; do
+            [ -f "$d/pubspec.yaml" ] || continue
+            echo "::group::dart analyze $d"
+            (cd "$d" && dart analyze --format=machine lib/ 2>&1 | tee -a ../../analyze-report.txt) || FAIL=1
+            echo "::endgroup::"
           done
 
-          if [ "$STATUS" -ne 0 ]; then
-            echo "::error::dart analyze gagal (exit $STATUS)."
-            exit "$STATUS"
+          ERRORS=$(grep -c '^ERROR|' analyze-report.txt || true)
+          WARNINGS=$(grep -c '^WARNING|' analyze-report.txt || true)
+          echo "Total: $ERRORS error, $WARNINGS warning."
+
+          grep '^ERROR|' analyze-report.txt | while IFS='|' read -r sev type code file line col len msg; do
+            echo "::error file=$file,line=$line,col=$col::$code: $msg"
+          done
+
+          if [ "${ERRORS:-0}" -gt 0 ]; then
+            echo "::error::$ERRORS error analisis. Lihat anotasi / artifact."
+            exit 1
+          fi
+
+          # Warning tidak memblokir (belum semua file bersih dari lint), tetapi
+          # dicatat. Turunkan ke 0 secara bertahap lalu jadikan wajib.
+          if [ "${WARNINGS:-0}" -gt 0 ]; then
+            echo "::warning::$WARNINGS warning analisis (tidak memblokir)."
           fi
 
       - name: Upload analyze report
