@@ -69,7 +69,8 @@ tmp/
 **/android/app/key.jks
 android-keys/
 
-# Firebase config (DO NOT COMMIT — contains API key + project ID)
+# Firebase config — google-services.json di-commit (lihat commit FCM di main)
+# agar build APK di CI tidak butuh secret. Jangan tambahkan kembali ke sini.
 **/firebase_options.dart
 
 # Python tooling artifacts (tool/*.py)
