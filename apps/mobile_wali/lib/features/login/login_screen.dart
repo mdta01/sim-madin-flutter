@@ -186,9 +186,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 : const Text('Masuk'),
                           ),
                           const SizedBox(height: 16),
-                          TextButton(
-                            onPressed: () => context.push('/forgot-pin'),
-                            child: const Text('Lupa PIN?'),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              TextButton(
+                                onPressed: () =>
+                                    context.push('/activate'),
+                                child: const Text('Aktivasi Akun'),
+                              ),
+                              const Text('·'),
+                              TextButton(
+                                onPressed: () => context.push('/forgot-pin'),
+                                child: const Text('Lupa PIN?'),
+                              ),
+                            ],
                           ),
                         ],
                       ),

@@ -78,6 +78,20 @@ def load_schema() -> dict[str, dict[str, tuple[str, bool, bool]]]:
         for col in cols:
             tables.setdefault(table, {})[col] = ("text", False, True)
 
+    # Kolom yang ditambahkan lewat ALTER TABLE ... ADD COLUMN di migrasi
+    # setelah baseline (mis. Wali.authPassword, User.fcmToken).
+    for path in sorted(glob.glob(os.path.join(MIGRATIONS, "*.sql"))):
+        sql = open(path, encoding="utf-8").read()
+        for m in re.finditer(
+            r'ALTER TABLE\s+"?(\w+)"?\s+ADD COLUMN\s+(?:IF NOT EXISTS\s+)?'
+            r'"?([A-Za-z]\w*)"?\s+([\w \(\),]+)',
+            sql,
+            re.I,
+        ):
+            table, col, ctype = m.group(1), m.group(2), m.group(3).strip()
+            if table in tables and col not in tables[table]:
+                tables[table][col] = (ctype, False, True)
+
     # Tabel BARU yang dibuat oleh migrasi setelah baseline (mis. WaliPinReset).
     for path in sorted(glob.glob(os.path.join(MIGRATIONS, "*.sql"))):
         if os.path.basename(path) == os.path.basename(BASELINE):

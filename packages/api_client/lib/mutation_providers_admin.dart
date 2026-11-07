@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
 
+import 'providers_admin_masterdata.dart';
 import 'query_providers_admin.dart';
 import 'supabase_write.dart';
 
@@ -331,4 +332,125 @@ Future<void> deleteSystemSetting(WidgetRef ref, String key) async {
   await client.from('SystemSetting').delete().eq('key', key);
   ref.invalidate(systemSettingsProvider);
   ref.invalidate(systemSettingByKeyProvider(key));
+}
+
+// ---------------------------------------------------------------------------
+// Manajemen akun staf (tambah / hapus) — lewat RPC SECURITY DEFINER
+// ---------------------------------------------------------------------------
+// Kenapa RPC, bukan insert biasa:
+//   * membuat akun login butuh menulis ke schema auth.users (service_role)
+//   * menghapus akun harus ikut menghapus auth.users, kalau tidak akun yang
+//     sudah "dihapus" masih bisa login ke aplikasi mobile
+// Klien hanya boleh memanggil RPC; keduanya menolak selain admin.
+
+/// Buat akun staf (email + password) sekaligus peran & profil guru.
+///
+/// [roles] berisi kode peran, mis. `['KEPALA']`, `['BENDAHARA']`, `['GURU']`.
+Future<AdminAccountResult> adminCreateStaffAccount(
+  WidgetRef ref, {
+  required String email,
+  required String password,
+  required String name,
+  required List<String> roles,
+  String? phone,
+  String? username,
+  String? guruNip,
+  String? specialization,
+}) async {
+  final client = ref.read(supabaseClientProvider);
+
+  final res = await client.rpc<dynamic>('admin_create_staff_account', params: {
+    'p_email': email.trim(),
+    'p_password': password,
+    'p_name': name.trim(),
+    'p_roles': roles,
+    'p_phone': phone?.trim(),
+    'p_username': username?.trim(),
+    'p_guru_nip': guruNip?.trim(),
+    'p_specialization': specialization?.trim(),
+  });
+
+  final map = (res as Map?)?.cast<String, dynamic>() ?? const {};
+  final result = AdminAccountResult(
+    success: map['success'] == true,
+    message: (map['message'] as String?) ?? 'Tanpa pesan dari server',
+  );
+
+  if (!result.success) {
+    throw Exception(result.message);
+  }
+
+  _invalidateUserCaches(ref);
+  return result;
+}
+
+/// Hapus akun: kredensial login dihapus sehingga akun TIDAK BISA lagi masuk.
+///
+/// Data historis (absensi, nilai, pembayaran) dipertahankan; baris `User`
+/// hanya dihapus permanen bila [hardDelete] dan tidak punya jejak historis.
+Future<AdminAccountResult> adminDeleteAccount(
+  WidgetRef ref, {
+  required String email,
+  bool hardDelete = false,
+}) async {
+  final client = ref.read(supabaseClientProvider);
+
+  final res = await client.rpc<dynamic>('admin_delete_account', params: {
+    'p_email': email.trim(),
+    'p_hard_delete': hardDelete,
+  });
+
+  final map = (res as Map?)?.cast<String, dynamic>() ?? const {};
+  final result = AdminAccountResult(
+    success: map['success'] == true,
+    message: (map['message'] as String?) ?? 'Tanpa pesan dari server',
+  );
+
+  if (!result.success) {
+    throw Exception(result.message);
+  }
+
+  _invalidateUserCaches(ref);
+  return result;
+}
+
+/// Aktifkan kembali akun yang terlanjur dihapus/dinonaktifkan.
+Future<AdminAccountResult> adminRestoreAccount(
+  WidgetRef ref, {
+  required String email,
+}) async {
+  final client = ref.read(supabaseClientProvider);
+
+  final res = await client.rpc<dynamic>('admin_restore_account', params: {
+    'p_email': email.trim(),
+  });
+
+  final map = (res as Map?)?.cast<String, dynamic>() ?? const {};
+  final result = AdminAccountResult(
+    success: map['success'] == true,
+    message: (map['message'] as String?) ?? 'Tanpa pesan dari server',
+  );
+
+  if (!result.success) {
+    throw Exception(result.message);
+  }
+
+  _invalidateUserCaches(ref);
+  return result;
+}
+
+void _invalidateUserCaches(WidgetRef ref) {
+  ref.invalidate(userListProvider);
+  ref.invalidate(userCountProvider);
+  ref.invalidate(guruListProvider);
+  ref.invalidate(guruListAdminProvider);
+  ref.invalidate(waliListAdminProvider);
+}
+
+/// Hasil operasi manajemen akun.
+class AdminAccountResult {
+  const AdminAccountResult({required this.success, required this.message});
+
+  final bool success;
+  final String message;
 }
