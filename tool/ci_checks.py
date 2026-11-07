@@ -128,6 +128,52 @@ def dart_files() -> list[str]:
     return files
 
 
+def check_local_imports() -> None:
+    """Simbol dari file lokal harus diimpor eksplisit.
+
+    Paket api_client terdiri dari banyak file 'part-like' (bukan library
+    tunggal), jadi memakai rowFor()/patchFor() tanpa `import
+    'supabase_write.dart';` akan gagal compile. Ini jenis kesalahan yang
+    dulu lolos karena CI memakai `|| true`.
+    """
+    lib = os.path.join(ROOT, "packages", "api_client", "lib")
+    symbols = {
+        "supabase_write.dart": [
+            "rowFor", "patchFor", "softDeleteFor", "insertRow",
+            "updateRow", "softDeleteRow", "nowIso",
+        ],
+        "table_columns.dart": ["kTableCaps", "TableColumnCaps"],
+        "realtime_coordinator.dart": [
+            "realtimeCoordinatorProvider", "realtimeChannelsState",
+            "realtimeSubscribedTables", "realtimeEventCount",
+        ],
+    }
+
+    for path in glob.glob(os.path.join(lib, "*.dart")):
+        name = os.path.basename(path)
+        src = strip_dart_comments(open(path, encoding="utf-8").read())
+
+        for owner, syms in symbols.items():
+            if name == owner:
+                continue
+            used = [s for s in syms if re.search(r"\b" + s + r"\b", src)]
+            if not used:
+                continue
+            # Definisi lokal di file ini? (mis. fungsi helper dengan nama sama)
+            defined = [
+                s
+                for s in used
+                if re.search(r"^(?:final|const|void|String|Map|List|Future)[^\n]*\b" + s + r"\b", src, re.M)
+            ]
+            if len(defined) == len(used):
+                continue
+            if f"import '{owner}';" not in src:
+                add(
+                    f"packages/api_client/lib/{name}: memakai {sorted(set(used) - set(defined))} "
+                    f"tanpa import '{owner}';"
+                )
+
+
 def check_write_payloads(tables: dict) -> None:
     for path in dart_files():
         s = strip_dart_comments(open(path, encoding="utf-8").read())
@@ -256,6 +302,7 @@ def main() -> int:
         return 1
 
     check_migrations()
+    check_local_imports()
     check_write_payloads(tables)
     check_table_references(tables)
     check_realtime_publication(tables)
