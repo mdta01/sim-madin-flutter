@@ -11,6 +11,7 @@ export 'theme.dart';
 
 // Modern widgets (reusable across apps)
 export 'widgets/modern_widgets.dart';
+export 'error_display.dart';
 
 // Constants
 export 'constants.dart';

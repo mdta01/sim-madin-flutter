@@ -6,15 +6,68 @@
 
 import 'package:intl/intl.dart';
 
+// ============================================================================
+// PENTING soal locale
+// ============================================================================
+// `DateFormat(pattern, 'id_ID')` dan `NumberFormat.currency(locale: 'id_ID')`
+// MELEMPAR LocaleDataException bila data locale belum diinisialisasi
+// ("Locale data has not been initialized, call initializeDateFormatting").
+// Paket intl tidak menyertakan data locale secara default.
+//
+// Aplikasi ini memakai formatDate/formatDateTime/formatRupiah di hampir semua
+// layar, tetapi initializeDateFormatting() TIDAK PERNAH dipanggil. Akibatnya
+// setiap layar yang menampilkan tanggal melempar exception saat build, dan
+// Flutter (mode release) menggantinya dengan kotak abu-abu kosong — persis
+// gejala "semua fitur kosong".
+//
+// Perbaikan berlapis:
+//   1. initializeDateFormatting('id_ID') dipanggil di main() tiap aplikasi.
+//   2. Helper _localeSafe() di bawah otomatis jatuh ke locale default bila
+//      data locale belum siap, sehingga formatting TIDAK PERNAH melempar.
+// ============================================================================
+
+/// True setelah initializeDateFormatting('id_ID') berhasil.
+bool _idLocaleReady = false;
+
+/// Tandai bahwa data locale Indonesia sudah tersedia.
+void markIndonesianLocaleReady() => _idLocaleReady = true;
+
+/// Jalankan [build] dengan locale Indonesia, dengan fallback aman.
+///
+/// Tidak pernah melempar LocaleDataException: bila 'id_ID' belum siap,
+/// memakai locale aktif intl, lalu terakhir 'en_US'.
+T _localeSafe<T>(T Function(String locale) build) {
+  const id = 'id_ID';
+  if (_idLocaleReady) {
+    try {
+      return build(id);
+    } catch (_) {
+      // lanjut ke fallback
+    }
+  }
+  try {
+    return build(id);
+  } catch (_) {
+    try {
+      return build(Intl.getCurrentLocale());
+    } catch (_) {
+      return build('en_US');
+    }
+  }
+}
+
 /// Format angka ke Rupiah (Rp 1.234.567).
 String formatRupiah(num? amount, {bool withSymbol = true}) {
   if (amount == null) return withSymbol ? 'Rp 0' : '0';
-  final formatter = NumberFormat.currency(
-    locale: 'id_ID',
-    symbol: withSymbol ? 'Rp ' : '',
-    decimalDigits: 0,
+  final formatted = _localeSafe(
+    (locale) => NumberFormat.currency(
+      locale: locale,
+      symbol: withSymbol ? 'Rp ' : '',
+      decimalDigits: 0,
+    ).format(amount),
   );
-  return formatter.format(amount);
+  // NumberFormat menyisipkan non-breaking space setelah "Rp".
+  return formatted.replaceAll('\u00a0', ' ');
 }
 
 /// Parse string Rupiah kembali ke num.
@@ -28,25 +81,28 @@ num? parseRupiah(String? text) {
 /// Format tanggal Indonesia (1 Januari 2026).
 String formatDate(DateTime? date, {String pattern = 'd MMMM yyyy'}) {
   if (date == null) return '-';
-  return DateFormat(pattern, 'id_ID').format(date);
+  return _localeSafe((locale) => DateFormat(pattern, locale).format(date));
 }
 
 /// Format tanggal pendek (01/01/2026).
 String formatDateShort(DateTime? date) {
   if (date == null) return '-';
-  return DateFormat('dd/MM/yyyy', 'id_ID').format(date);
+  return _localeSafe(
+      (locale) => DateFormat('dd/MM/yyyy', locale).format(date));
 }
 
 /// Format waktu (14:30 WIB).
 String formatTime(DateTime? date) {
   if (date == null) return '-';
-  return DateFormat('HH:mm', 'id_ID').format(date);
+  return _localeSafe(
+      (locale) => DateFormat('HH:mm', locale).format(date));
 }
 
 /// Format datetime lengkap (1 Jan 2026, 14:30).
 String formatDateTime(DateTime? date) {
   if (date == null) return '-';
-  return DateFormat('d MMM yyyy, HH:mm', 'id_ID').format(date);
+  return _localeSafe(
+      (locale) => DateFormat('d MMM yyyy, HH:mm', locale).format(date));
 }
 
 /// Format relative time (5 menit lalu, 2 jam lalu, kemarin).
