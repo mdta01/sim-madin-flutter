@@ -1,7 +1,18 @@
 # ============================================================================
-# Static analysis + tests
+# Static analysis, schema consistency, and tests
 # ============================================================================
-# Run on every push and PR. Failures are non-blocking (|| true).
+# Berlaku untuk setiap push ke main dan setiap pull request.
+#
+# Sebelumnya semua langkah memakai `|| true` sehingga CI selalu hijau dan
+# tidak pernah mencegah merge. Sekarang:
+#
+#   - schema-consistency : WAJIB lulus (cepat, tanpa toolchain Flutter)
+#   - analyze            : WAJIB lulus
+#   - test               : WAJIB lulus (gagal bila tidak ada test? tidak —
+#                          hanya bila test yang ada GAGAL)
+#
+# Hapus satu per satu bila ada langkah yang masih berisik, jangan matikan
+# semuanya sekaligus — itu yang membuat CI sebelumnya tidak berguna.
 # ============================================================================
 
 name: CI
@@ -17,10 +28,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # --------------------------------------------------------------------------
+  # Cepat dan tidak butuh Flutter: konsistensi skema vs kode Dart.
+  # --------------------------------------------------------------------------
+  schema:
+    name: Schema consistency
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify generated table columns are up to date
+        run: |
+          python3 tool/gen_table_caps.py
+          if ! git diff --quiet -- packages/api_client/lib/table_columns.dart; then
+            echo "::error::table_columns.dart sudah usang. Jalankan: python3 tool/gen_table_caps.py lalu commit."
+            git diff -- packages/api_client/lib/table_columns.dart
+            exit 1
+          fi
+
+      - name: Check schema / code consistency
+        run: python3 tool/ci_checks.py
+
+  # --------------------------------------------------------------------------
+  # Analisis dan test Flutter.
+  # --------------------------------------------------------------------------
   analyze:
     name: Analyze & Test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -48,9 +88,24 @@ jobs:
       - name: Analyze
         run: |
           export PATH="$PATH:$HOME/.pub-cache/bin"
-          melos exec -- dart analyze lib/ || true
+          melos exec -- dart analyze lib/
 
       - name: Test
         run: |
           export PATH="$PATH:$HOME/.pub-cache/bin"
-          melos run test || echo "No tests yet"
+          # Jalankan test per paket yang memang punya folder test/.
+          # Paket tanpa test dilewati (bukan kegagalan), tetapi test yang
+          # GAGAL menggagalkan build.
+          FAIL=0
+          for d in packages/* apps/*; do
+            if [ -d "$d/test" ]; then
+              echo "::group::flutter test $d"
+              (cd "$d" && flutter test --no-pub) || FAIL=1
+              echo "::endgroup::"
+            fi
+          done
+          if [ "$FAIL" -ne 0 ]; then
+            echo "::error::Ada test yang gagal."
+            exit 1
+          fi
+          echo "Semua test lulus (atau tidak ada folder test/)."

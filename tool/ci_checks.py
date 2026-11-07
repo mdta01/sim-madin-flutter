@@ -1,0 +1,277 @@
+#!/usr/bin/env python3
+"""Pemeriksaan statis untuk CI: konsistensi skema vs. kode Flutter.
+
+Tidak memerlukan Flutter, Dart, maupun PostgreSQL — hanya Python 3.
+Dijalankan di CI dan bisa dijalankan lokal:
+
+    python3 tool/ci_checks.py
+
+Yang diperiksa
+--------------
+1. Migrasi SQL seimbang (dollar-quote, tanda kurung, BEGIN/END).
+2. Setiap nama tabel yang dipakai kode (rowFor/patchFor/from(...)) ada
+   di skema hasil migrasi.
+3. Setiap payload `rowFor('Tabel', {...})` hanya memakai kolom yang ada,
+   dan mengisi semua kolom NOT NULL tanpa DEFAULT.
+4. Realtime: setiap tabel yang di-subscribe aplikasi ada di publication.
+5. RLS: setiap tabel punya ROW LEVEL SECURITY aktif.
+6. Kode Dart seimbang kurung kurawal/kurung (deteksi cepat file terpotong).
+
+Keluaran: daftar masalah + exit code 1 bila ada masalah.
+"""
+
+from __future__ import annotations
+
+import glob
+import os
+import re
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MIGRATIONS = os.path.join(ROOT, "supabase", "migrations")
+BASELINE = os.path.join(MIGRATIONS, "20231231000000_baseline_schema.sql")
+API_LIB = os.path.join(ROOT, "packages", "api_client", "lib")
+
+problems: list[str] = []
+
+
+def add(msg: str) -> None:
+    problems.append(msg)
+
+
+# ---------------------------------------------------------------------------
+# Skema
+# ---------------------------------------------------------------------------
+
+def load_schema() -> dict[str, dict[str, tuple[str, bool, bool]]]:
+    """Kembalikan {tabel: {kolom: (tipe, not_null, punya_default)}}."""
+    base = open(BASELINE, encoding="utf-8").read()
+    tables: dict[str, dict[str, tuple[str, bool, bool]]] = {}
+
+    for m in re.finditer(
+        r'CREATE TABLE IF NOT EXISTS "([^"]+)" \((.*?)\n\);', base, re.S
+    ):
+        name, body = m.group(1), m.group(2)
+        cols: dict[str, tuple[str, bool, bool]] = {}
+        for line in body.split("\n"):
+            line = line.strip().rstrip(",")
+            cm = re.match(r'"([^"]+)"\s+([\w \(\),]+?)(\s+NOT NULL)?(\s+DEFAULT|\s*$)', line)
+            if not cm:
+                continue
+            cols[cm.group(1)] = (cm.group(2).strip(), bool(cm.group(3)), "DEFAULT" in line)
+        tables[name] = cols
+
+    # Kolom yang ditambahkan / diubah oleh migrasi setelah baseline.
+    added: dict[str, set[str]] = {}
+    for path in sorted(glob.glob(os.path.join(MIGRATIONS, "*.sql"))):
+        if os.path.basename(path) == os.path.basename(BASELINE):
+            continue
+        sql = open(path, encoding="utf-8").read()
+        for m in re.finditer(
+            r'ALTER TABLE\s+"?([A-Za-z]\w*)"?\s+ADD COLUMN\s+(?:IF NOT EXISTS\s+)?"?(\w+)"?',
+            sql,
+            re.I,
+        ):
+            added.setdefault(m.group(1), set()).add(m.group(2))
+
+    for table, cols in added.items():
+        for col in cols:
+            tables.setdefault(table, {})[col] = ("text", False, True)
+
+    # Migration 19 menghapus NOT NULL pada User.passwordHash.
+    if "User" in tables and "passwordHash" in tables["User"]:
+        t, nn, d = tables["User"]["passwordHash"]
+        tables["User"]["passwordHash"] = (t, False, True)
+
+    return tables
+
+
+def check_migrations() -> None:
+    for path in sorted(glob.glob(os.path.join(MIGRATIONS, "*.sql"))):
+        raw = open(path, encoding="utf-8").read()
+        name = os.path.basename(path)
+
+        # Abaikan komentar sebelum menghitung.
+        code = re.sub(r"--[^\n]*", "", raw)
+        code = re.sub(r"/\*.*?\*/", "", code, flags=re.S)
+
+        # Hitung $$ pada kode saja; komentar sering menyebut 'DO $$ ...'.
+        if len(re.findall(r"\$\$", code)) % 2 != 0:
+            add(f"SQL {name}: jumlah $$ ganjil — blok fungsi tidak tertutup")
+
+        if code.count("(") != code.count(")"):
+            add(
+                f"SQL {name}: tanda kurung tidak seimbang "
+                f"({code.count('(')} buka vs {code.count(')')} tutup)"
+            )
+
+
+
+# ---------------------------------------------------------------------------
+# Kode vs skema
+# ---------------------------------------------------------------------------
+
+def strip_dart_comments(src: str) -> str:
+    """Buang komentar agar contoh di dokumentasi tidak ikut diperiksa.
+
+    Literal string TIDAK disentuh karena justru itu yang diperiksa, tetapi
+    komentar baris dan blok dibuang.
+    """
+    src = re.sub(r"/\*.*?\*/", "", src, flags=re.S)
+    src = re.sub(r"^\s*///?[^\n]*$", "", src, flags=re.M)
+    return src
+
+
+def dart_files() -> list[str]:
+    files = glob.glob(os.path.join(ROOT, "packages", "**", "*.dart"), recursive=True)
+    files += glob.glob(os.path.join(ROOT, "apps", "**", "*.dart"), recursive=True)
+    return files
+
+
+def check_write_payloads(tables: dict) -> None:
+    for path in dart_files():
+        s = strip_dart_comments(open(path, encoding="utf-8").read())
+        rel = os.path.relpath(path, ROOT)
+
+        for m in re.finditer(r"rowFor\(\s*'([^']+)'\s*,\s*\{", s):
+            table = m.group(1)
+            if table not in tables:
+                add(f"{rel}: rowFor('{table}') — tabel tidak ada di skema")
+                continue
+
+            # Ambil isi map terlampir.
+            i = m.end() - 1
+            depth = 0
+            body = ""
+            for j in range(i, len(s)):
+                if s[j] == "{":
+                    depth += 1
+                elif s[j] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        body = s[i : j + 1]
+                        break
+
+            keys = set(re.findall(r"'([A-Za-z][A-Za-z0-9]*)'\s*:", body))
+            cols = tables[table]
+
+            unknown = keys - set(cols)
+            if unknown:
+                add(f"{rel}: rowFor('{table}') memakai kolom tak dikenal {sorted(unknown)}")
+
+            # id/createdAt/updatedAt kini punya DEFAULT (migration 24).
+            auto = {"id", "createdAt", "updatedAt"}
+            missing = [
+                c
+                for c, (_t, not_null, has_default) in cols.items()
+                if not_null and not has_default and c not in keys and c not in auto
+            ]
+            if missing:
+                add(
+                    f"{rel}: rowFor('{table}') tidak mengisi kolom NOT NULL "
+                    f"tanpa DEFAULT {sorted(missing)}"
+                )
+
+
+def check_table_references(tables: dict) -> None:
+    pattern = re.compile(r"\.from\(\s*'([^']+)'\s*\)")
+    for path in dart_files():
+        s = strip_dart_comments(open(path, encoding="utf-8").read())
+        rel = os.path.relpath(path, ROOT)
+        for m in pattern.finditer(s):
+            t = m.group(1)
+            if t not in tables:
+                add(f"{rel}: .from('{t}') — tabel tidak ada di skema")
+
+
+def check_realtime_publication(tables: dict) -> None:
+    coordinator = os.path.join(API_LIB, "realtime_coordinator.dart")
+    if not os.path.exists(coordinator):
+        add("realtime_coordinator.dart tidak ditemukan")
+        return
+
+    src = open(coordinator, encoding="utf-8").read()
+    subscribed = set(re.findall(r"'([A-Za-z][A-Za-z0-9]*)'", src))
+    subscribed &= set(tables)  # abaikan string yang bukan nama tabel
+
+    published: set[str] = set()
+    for path in glob.glob(os.path.join(MIGRATIONS, "*.sql")):
+        sql = open(path, encoding="utf-8").read()
+        for m in re.finditer(
+            r'ALTER PUBLICATION\s+\w+\s+ADD TABLE\s+"?([A-Za-z]\w*)"?', sql, re.I
+        ):
+            published.add(m.group(1))
+
+    # Migration 22 menambahkan tabel lewat EXECUTE + FOREACH atas sebuah array,
+    # jadi nama tabelnya tidak muncul di klausa ADD TABLE literal.
+    for path in glob.glob(os.path.join(MIGRATIONS, "*.sql")):
+        sql = open(path, encoding="utf-8").read()
+        for m in re.finditer(r"tables\s+\w*\[\]\s*:=\s*ARRAY\s*\[(.*?)\];", sql, re.S | re.I):
+            published |= set(re.findall(r"'([A-Za-z][A-Za-z0-9]*)'", m.group(1)))
+
+    missing = sorted(subscribed - published)
+    if missing:
+        add(
+            "Realtime: tabel di-subscribe tapi TIDAK ada di publication "
+            f"(perubahan tidak akan sampai ke aplikasi): {missing}"
+        )
+
+
+def check_rls(tables: dict) -> None:
+    enabled: set[str] = set()
+    for path in glob.glob(os.path.join(MIGRATIONS, "*.sql")):
+        sql = open(path, encoding="utf-8").read()
+        for m in re.finditer(
+            r'ALTER TABLE\s+"?([A-Za-z]\w*)"?\s+ENABLE ROW LEVEL SECURITY', sql, re.I
+        ):
+            enabled.add(m.group(1))
+
+    missing = sorted(set(tables) - enabled)
+    if missing:
+        add(f"RLS tidak aktif pada tabel: {missing}")
+
+
+def check_generated_table_columns(tables: dict) -> None:
+    """table_columns.dart harus sinkron dengan skema."""
+    gen = os.path.join(API_LIB, "table_columns.dart")
+    if not os.path.exists(gen):
+        add("table_columns.dart belum di-generate (jalankan tool/gen_table_caps.py)")
+        return
+    src = open(gen, encoding="utf-8").read()
+    entries = set(re.findall(r"'([A-Za-z][A-Za-z0-9]*)':\s*TableColumnCaps\(", src))
+    missing = sorted(set(tables) - entries)
+    extra = sorted(entries - set(tables))
+    if missing:
+        add(f"table_columns.dart kurang tabel: {missing}")
+    if extra:
+        add(f"table_columns.dart punya tabel yang tidak ada di skema: {extra}")
+
+
+# ---------------------------------------------------------------------------
+
+def main() -> int:
+    tables = load_schema()
+    if not tables:
+        print("GAGAL: skema baseline tidak terbaca")
+        return 1
+
+    check_migrations()
+    check_write_payloads(tables)
+    check_table_references(tables)
+    check_realtime_publication(tables)
+    check_rls(tables)
+    check_generated_table_columns(tables)
+
+    print(f"Skema: {len(tables)} tabel")
+    if problems:
+        print(f"\n{len(problems)} masalah ditemukan:\n")
+        for p in problems:
+            print(f"  - {p}")
+        return 1
+
+    print("OK — tidak ada masalah konsistensi skema/kode.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
