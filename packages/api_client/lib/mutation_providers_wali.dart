@@ -21,7 +21,6 @@
 //     (mirip TS app lama yang pakai `devOtp` field saat dev mode).
 // ============================================================================
 
-import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -39,11 +38,6 @@ import 'query_providers_wali.dart';
 // authStorageProvider is defined in api_client.dart (the barrel file).
 // Dart handles circular imports for top-level declarations gracefully.
 import 'api_client.dart';
-
-/// Blacklist 50 PIN lemah — tidak boleh dipakai.
-/// Port dari packages/shared/lib/constants.dart kBlacklistedPins.
-/// Contoh: 000000, 111111, 123456, 654321, 258000, dll.
-const _kBlacklistedPins = kBlacklistedPins; // re-export dari constants
 
 /// Validate PIN — 6 digit + tidak di blacklist.
 /// Throws dengan pesan user-friendly kalau invalid.
@@ -103,7 +97,7 @@ Future<TypedWaliSession> loginWali(
   // Normalisasi nomor di server juga (fungsi normalize_phone, migration 20),
   // jadi wali bisa login dengan format '0812...', '+62812...', atau '62812...'
   // apa pun format yang tersimpan di database.
-  final rpcResult = await client.rpc('wali_login', params: {
+  final rpcResult = await client.rpc<dynamic>('wali_login', params: {
     'p_phone': normalizedPhone,
     'p_pin': pin,
   });
@@ -233,7 +227,7 @@ Future<OtpRequestResult> requestOtp(
   _validatePhone(phone);
   final client = ref.read(supabaseClientProvider);
 
-  final res = await client.rpc('wali_request_otp', params: {
+  final res = await client.rpc<dynamic>('wali_request_otp', params: {
     'p_phone': normalizeWhatsApp(phone) ?? phone,
   });
 
@@ -262,7 +256,7 @@ Future<String> verifyOtp(
   }
   final client = ref.read(supabaseClientProvider);
 
-  final res = await client.rpc('wali_verify_otp', params: {
+  final res = await client.rpc<dynamic>('wali_verify_otp', params: {
     'p_phone': normalizeWhatsApp(phone) ?? phone,
     'p_otp': otpCode,
   });
@@ -287,7 +281,7 @@ Future<void> setNewPin(
   _validatePin(newPin);
   final client = ref.read(supabaseClientProvider);
 
-  final res = await client.rpc('wali_reset_pin', params: {
+  final res = await client.rpc<dynamic>('wali_reset_pin', params: {
     'p_reset_token': verifyToken,
     'p_new_pin': newPin,
   });
@@ -440,7 +434,7 @@ Future<UjianSesiData> startUjianSesi(
       .insert(rowFor('UjianSesi', body))
       .select()
       .single();
-  return UjianSesiData.fromJson(res as Map<String, dynamic>);
+  return UjianSesiData.fromJson((res as Map<String, dynamic>));
 }
 
 /// Simpan jawaban sementara (draft) TANPA menutup sesi.
@@ -485,7 +479,7 @@ Future<int?> ujianRemainingSeconds(WidgetRef ref, String sesiId) async {
   try {
     final res = await ref
         .read(supabaseClientProvider)
-        .rpc('ujian_remaining_seconds', params: {'p_sesi_id': sesiId});
+        .rpc<dynamic>('ujian_remaining_seconds', params: {'p_sesi_id': sesiId});
     if (res is int) return res;
     if (res is num) return res.toInt();
     return null;
