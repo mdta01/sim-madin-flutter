@@ -48,7 +48,9 @@ END $$;
 -- 3. Buat RPC wali_login(p_phone, p_pin)
 --    Returns: JSONB dengan wali data + santri list
 --    Security: SECURITY DEFINER (bypass RLS untuk SELECT Wali + SantriWali + Santri)
--- ============================================================================CREATE OR REPLACE FUNCTION public.wali_login(p_phone TEXT, p_pin TEXT)
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION public.wali_login(p_phone TEXT, p_pin TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
