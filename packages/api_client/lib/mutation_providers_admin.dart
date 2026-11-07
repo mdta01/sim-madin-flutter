@@ -15,6 +15,7 @@ import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
 
 import 'providers_admin_masterdata.dart';
+import 'query_providers.dart';
 import 'query_providers_admin.dart';
 import 'supabase_write.dart';
 
