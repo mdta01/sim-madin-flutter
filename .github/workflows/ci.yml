@@ -118,6 +118,9 @@ jobs:
           # dicatat. Turunkan ke 0 secara bertahap lalu jadikan wajib.
           if [ "${WARNINGS:-0}" -gt 0 ]; then
             echo "::warning::$WARNINGS warning analisis (tidak memblokir)."
+            grep '^WARNING|' analyze-report.txt | head -63 | while IFS='|' read -r sev type code file line col len msg; do
+              echo "::warning file=$file,line=$line,col=$col::$code: $msg"
+            done
           fi
 
       - name: Upload analyze report
