@@ -39,12 +39,15 @@ Future<UserModel> createUser(
     'email': email,
     'username': username,
     'name': name,
+    // passwordHash sengaja tidak diisi: kredensial dikelola Supabase Auth.
+    // Migration 19 membuat kolom ini nullable (sebelumnya NOT NULL ->
+    // pembuatan user selalu gagal).
     if (phone != null) 'phone': phone,
     if (firebaseUid != null) 'firebaseUid': firebaseUid,
     'isActive': isActive,
   };
   final res =
-      await client.from('User').insert(insertRow(body)).select().single();
+      await client.from('User').insert(rowFor('User', body)).select().single();
   ref.invalidate(userListProvider);
   ref.invalidate(userCountProvider);
   return UserModel.fromJson(res);
@@ -113,7 +116,7 @@ Future<void> assignRoleToUser(
   required String roleId,
 }) async {
   final client = ref.read(supabaseClientProvider);
-  await client.from('UserRole').insert(insertRow({
+  await client.from('UserRole').insert(rowFor('UserRole', {
     'userId': userId,
     'roleId': roleId,
     'isActive': true,
@@ -150,7 +153,7 @@ Future<RoleModel> createRole(
   int sortOrder = 99,
 }) async {
   final client = ref.read(supabaseClientProvider);
-  final res = await client.from('Role').insert(insertRow({
+  final res = await client.from('Role').insert(rowFor('Role', {
     'code': code,
     'name': name,
     if (description != null) 'description': description,
@@ -204,7 +207,7 @@ Future<void> grantPermissionToRole(
   required String permissionId,
 }) async {
   final client = ref.read(supabaseClientProvider);
-  await client.from('RolePermission').insert(insertRow({
+  await client.from('RolePermission').insert(rowFor('RolePermission', {
     'roleId': roleId,
     'permissionId': permissionId,
   }));
@@ -310,7 +313,7 @@ Future<SystemSettingModel> upsertSystemSetting(
     ref.invalidate(systemSettingByKeyProvider(key));
     return SystemSettingModel.fromJson(res);
   } else {
-    final res = await client.from('SystemSetting').insert(insertRow({
+    final res = await client.from('SystemSetting').insert(rowFor('SystemSetting', {
       'key': key,
       'value': value,
       'description': description,
