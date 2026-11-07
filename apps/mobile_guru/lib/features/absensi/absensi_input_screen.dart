@@ -184,7 +184,7 @@ class _AbsensiInputScreenState extends ConsumerState<AbsensiInputScreen> {
                               child:
                                   CircularProgressIndicator(strokeWidth: 2)))),
                   error: (e, _) =>
-                      Text('Error: \${friendlyError(e)}', style: const TextStyle(color: AppColors.danger)),
+                      Text('Error: ${friendlyError(e)}', style: const TextStyle(color: AppColors.danger)),
                   data: (list) => PillSelector<String>(
                     items: list.map((k) => k.id).toList(),
                     selected: _selectedKelasId,

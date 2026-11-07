@@ -78,6 +78,28 @@ def load_schema() -> dict[str, dict[str, tuple[str, bool, bool]]]:
         for col in cols:
             tables.setdefault(table, {})[col] = ("text", False, True)
 
+    # Tabel BARU yang dibuat oleh migrasi setelah baseline (mis. WaliPinReset).
+    for path in sorted(glob.glob(os.path.join(MIGRATIONS, "*.sql"))):
+        if os.path.basename(path) == os.path.basename(BASELINE):
+            continue
+        sql = open(path, encoding="utf-8").read()
+        for m in re.finditer(
+            r'CREATE TABLE IF NOT EXISTS\s+"?(\w+)"?\s*\((.*?)\n\);', sql, re.S | re.I
+        ):
+            name = m.group(1)
+            if name in tables:
+                continue
+            cols: dict[str, tuple[str, bool, bool]] = {}
+            for line in m.group(2).split("\n"):
+                line = line.strip().rstrip(",")
+                cm = re.match(
+                    r'"?([A-Za-z]\w*)"?\s+([\w \(\),]+?)(\s+NOT NULL)?(\s+DEFAULT|\s*$)',
+                    line,
+                )
+                if cm:
+                    cols[cm.group(1)] = (cm.group(2).strip(), bool(cm.group(3)), "DEFAULT" in line)
+            tables[name] = cols
+
     # Migration 19 menghapus NOT NULL pada User.passwordHash.
     if "User" in tables and "passwordHash" in tables["User"]:
         t, nn, d = tables["User"]["passwordHash"]
@@ -126,6 +148,45 @@ def dart_files() -> list[str]:
     files = glob.glob(os.path.join(ROOT, "packages", "**", "*.dart"), recursive=True)
     files += glob.glob(os.path.join(ROOT, "apps", "**", "*.dart"), recursive=True)
     return files
+
+
+def check_sql_insert_columns(tables: dict) -> None:
+    """Setiap INSERT di migrasi hanya boleh memakai kolom yang benar-benar ada.
+
+    Kesalahan seperti INSERT INTO "Jadwal"(day, ...) padahal kolomnya
+    "dayOfWeek" (integer) baru ketahuan saat migrasi dijalankan di Postgres.
+    Pemeriksaan statis ini menangkapnya lebih awal.
+    """
+    files = glob.glob(os.path.join(MIGRATIONS, "*.sql"))
+    for path in files:
+        sql = open(path, encoding="utf-8").read()
+        sql = re.sub(r"--[^\n]*", "", sql)
+        name = os.path.basename(path)
+
+        for m in re.finditer(r'INSERT INTO\s+"(\w+)"\s*\(([^)]*)\)', sql):
+            table = m.group(1)
+            if table not in tables:
+                # Tabel di schema auth / extension memang di luar baseline.
+                if table.lower() in ("users", "identities", "sessions"):
+                    continue
+                add(f"SQL {name}: INSERT INTO \"{table}\" — tabel tidak ada di skema")
+                continue
+            cols = tables[table]
+            used = [c.strip().strip('"') for c in m.group(2).split(",") if c.strip()]
+            for col in used:
+                if col not in cols:
+                    add(
+                        f"SQL {name}: INSERT INTO \"{table}\" memakai kolom "
+                        f"\"{col}\" yang tidak ada di skema"
+                    )
+
+        # ALTER TABLE "X" ... juga harus menunjuk tabel nyata
+        for m in re.finditer(r'ALTER TABLE\s+"?(\w+)"?\s', sql):
+            t = m.group(1)
+            if t not in tables and t.lower() not in ("users", "identities", "sessions"):
+                # migration 19-26 bisa menyentuh tabel auth
+                if t not in ("User",):
+                    add(f"SQL {name}: ALTER TABLE \"{t}\" — tabel tidak ada di skema")
 
 
 def check_local_imports() -> None:
@@ -352,6 +413,7 @@ def main() -> int:
         return 1
 
     check_migrations()
+    check_sql_insert_columns(tables)
     check_local_imports()
     check_write_payloads(tables)
     check_table_references(tables)

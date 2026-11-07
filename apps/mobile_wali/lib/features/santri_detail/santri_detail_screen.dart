@@ -47,7 +47,7 @@ class _SantriDetailScreenState extends ConsumerState<SantriDetailScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2)))),
             error: (e, _) => SizedBox(
                 height: 100,
-                child: Center(child: Text('Error: \${friendlyError(e)}',
+                child: Center(child: Text('Error: ${friendlyError(e)}',
                     style: const TextStyle(color: AppColors.danger)))),
             data: (santri) {
               if (santri == null) {
@@ -272,7 +272,7 @@ class _AkademikTab extends ConsumerWidget {
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2)))),
-          error: (e, _) => Text('Error: \${friendlyError(e)}',
+          error: (e, _) => Text('Error: ${friendlyError(e)}',
               style: const TextStyle(color: AppColors.danger, fontSize: 12)),
           data: (list) {
             if (list.isEmpty) {
@@ -326,7 +326,7 @@ class _AkademikTab extends ConsumerWidget {
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2)))),
-          error: (e, _) => Text('Error: \${friendlyError(e)}',
+          error: (e, _) => Text('Error: ${friendlyError(e)}',
               style: const TextStyle(color: AppColors.danger, fontSize: 12)),
           data: (list) {
             if (list.isEmpty) {
@@ -377,7 +377,7 @@ class _AkademikTab extends ConsumerWidget {
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2)))),
-          error: (e, _) => Text('Error: \${friendlyError(e)}',
+          error: (e, _) => Text('Error: ${friendlyError(e)}',
               style: const TextStyle(color: AppColors.danger, fontSize: 12)),
           data: (list) {
             if (list.isEmpty) {
@@ -594,7 +594,7 @@ class _KeuanganTab extends ConsumerWidget {
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2)))),
-          error: (e, _) => Text('Error: \${friendlyError(e)}',
+          error: (e, _) => Text('Error: ${friendlyError(e)}',
               style: const TextStyle(color: AppColors.danger, fontSize: 12)),
           data: (list) {
             if (list.isEmpty) {
@@ -688,7 +688,7 @@ class _KeuanganTab extends ConsumerWidget {
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2)))),
-          error: (e, _) => Text('Error: \${friendlyError(e)}',
+          error: (e, _) => Text('Error: ${friendlyError(e)}',
               style: const TextStyle(color: AppColors.danger, fontSize: 12)),
           data: (list) {
             if (list.isEmpty) {

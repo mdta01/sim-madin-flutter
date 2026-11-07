@@ -83,4 +83,5 @@ const Map<String, TableColumnCaps> kTableCaps = <String, TableColumnCaps>{
   'UserRole': TableColumnCaps(hasId: true, hasCreatedAt: true, hasUpdatedAt: false, hasDeletedAt: false),
   'Wali': TableColumnCaps(hasId: true, hasCreatedAt: true, hasUpdatedAt: true, hasDeletedAt: true),
   'WaliActivation': TableColumnCaps(hasId: true, hasCreatedAt: true, hasUpdatedAt: false, hasDeletedAt: false),
+  'WaliPinReset': TableColumnCaps(hasId: true, hasCreatedAt: true, hasUpdatedAt: false, hasDeletedAt: false),
 };

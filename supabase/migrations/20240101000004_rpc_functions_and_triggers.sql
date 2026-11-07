@@ -657,12 +657,15 @@ SET search_path = public
 AS $$
 BEGIN
   IF TG_OP = 'INSERT' AND NEW."waliId" IS NOT NULL AND NEW."waliId" != '' THEN
+    -- Catatan: "SantriWali" tidak punya kolom updatedAt (lihat baseline).
+    -- Mengirimnya membuat trigger ini gagal sehingga penautan wali–santri
+    -- otomatis tidak pernah berjalan.
     INSERT INTO "SantriWali" (
-      id, "santriId", "waliId", "canAccess", "createdAt", "updatedAt"
+      id, "santriId", "waliId", "canAccess", "createdAt"
     )
     VALUES (
       gen_random_uuid()::text, NEW.id, NEW."waliId", true,
-      NOW(), NOW()
+      NOW()
     )
     ON CONFLICT DO NOTHING;
   END IF;
