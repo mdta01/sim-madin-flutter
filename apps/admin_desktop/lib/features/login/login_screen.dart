@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
+import 'package:api_client/api_client.dart';
 import 'package:supabase_client/supabase_client.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -39,6 +40,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final client = ref.read(supabaseClientProvider);
       await client.auth.signInWithPassword(email: email, password: password);
+
+      // ── GATE ROLE ──────────────────────────────────────────────────────
+      // Sebelumnya SIAPA SAJA yang punya akun valid (termasuk wali dan guru)
+      // bisa masuk ke aplikasi admin dan melihat struktur 34 modul. RLS
+      // memang menyaring datanya, tetapi UI administratif tidak boleh
+      // terbuka untuk peran non-staf.
+      final access = await resolveAccountAccess(client);
+      if (!access.allowed) {
+        await client.auth.signOut();
+        if (!mounted) return;
+        _showError(access.message ?? 'Akun tidak berhak memakai aplikasi ini.');
+        return;
+      }
+
       if (!mounted) return;
       context.go('/dashboard');
     } catch (e) {

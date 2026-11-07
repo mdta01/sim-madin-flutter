@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 import 'package:api_client/api_client.dart';
+import 'package:supabase_client/supabase_client.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -55,11 +56,26 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         onTimeout: () => null,
       );
       if (!mounted) return;
-      if (user != null) {
-        context.go('/dashboard/home');
-      } else {
+      if (user == null) {
         context.go('/login');
+        return;
       }
+
+      // Sesi tersimpan belum tentu akun dengan peran yang benar. Pemeriksaan
+      // yang sama seperti di layar login harus diulang di sini; tanpa ini,
+      // akun yang pernah login (atau perannya dicabut setelah itu) tetap
+      // masuk dan hanya melihat layar kosong karena RLS menyaring datanya.
+      final allowed =
+          await verifyUserRole(ref, roleCode: 'KEPALA');
+      if (!mounted) return;
+      if (!allowed) {
+        await ref.read(supabaseClientProvider).auth.signOut();
+        if (!mounted) return;
+        context.go('/login');
+        return;
+      }
+
+      context.go('/dashboard/home');
     } catch (e) {
       debugPrint('Splash check session error: $e');
       if (!mounted) return;

@@ -49,6 +49,7 @@ export 'storage_service.dart';
 export 'supabase_write.dart';
 export 'table_columns.dart';
 export 'wali_admin_provisioning.dart';
+export 'role_gate.dart';
 export 'realtime_coordinator.dart';
 
 import 'dart:convert';
