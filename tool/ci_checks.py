@@ -263,6 +263,56 @@ def check_realtime_publication(tables: dict) -> None:
         )
 
 
+def check_launcher_icons() -> None:
+    """Setiap app mobile harus punya launcher icon yang valid & lengkap.
+
+    Tanpa adaptive icon (mipmap-anydpi-v26), launcher Android 8+ mem-mask
+    ic_launcher.png lama menjadi lingkaran/rounded-square. Ikon dengan latar
+    putih penuh akan tampak seperti lingkaran putih kosong — inilah kenapa
+    ikon app terlihat "tidak tercantum".
+    """
+    dens = ["mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"]
+    for app in ("mobile_wali", "mobile_guru", "mobile_kepala", "mobile_bendahara"):
+        base = os.path.join(
+            ROOT, "apps", app, "android", "app", "src", "main"
+        )
+        res = os.path.join(base, "res")
+
+        # 1. adaptive icon XML
+        for name in ("ic_launcher.xml", "ic_launcher_round.xml"):
+            f = os.path.join(res, "mipmap-anydpi-v26", name)
+            if not os.path.exists(f):
+                add(f"{app}: adaptive icon mipmap-anydpi-v26/{name} tidak ada")
+
+        # 2. foreground per kerapatan
+        for d in dens:
+            f = os.path.join(res, f"mipmap-{d}", "ic_launcher_foreground.png")
+            if not os.path.exists(f):
+                add(f"{app}: mipmap-{d}/ic_launcher_foreground.png tidak ada")
+
+        # 3. warna latar adaptive
+        colors = os.path.join(res, "values", "colors.xml")
+        if not os.path.exists(colors) or "ic_launcher_background" not in open(
+            colors, encoding="utf-8"
+        ).read():
+            add(f"{app}: values/colors.xml belum mendefinisikan ic_launcher_background")
+
+        # 4. manifest merujuk icon + roundIcon
+        manifest = os.path.join(base, "AndroidManifest.xml")
+        if os.path.exists(manifest):
+            m = open(manifest, encoding="utf-8").read()
+            if 'android:icon="@mipmap/ic_launcher"' not in m:
+                add(f"{app}: AndroidManifest tidak merujuk @mipmap/ic_launcher")
+            if "android:roundIcon" not in m:
+                add(f"{app}: AndroidManifest tidak punya android:roundIcon")
+
+        # 5. PNG legacy tidak boleh hilang
+        for d in dens:
+            f = os.path.join(res, f"mipmap-{d}", "ic_launcher.png")
+            if not os.path.exists(f):
+                add(f"{app}: mipmap-{d}/ic_launcher.png tidak ada")
+
+
 def check_rls(tables: dict) -> None:
     enabled: set[str] = set()
     for path in glob.glob(os.path.join(MIGRATIONS, "*.sql")):
@@ -306,6 +356,7 @@ def main() -> int:
     check_write_payloads(tables)
     check_table_references(tables)
     check_realtime_publication(tables)
+    check_launcher_icons()
     check_rls(tables)
     check_generated_table_columns(tables)
 
