@@ -34,6 +34,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 // realtimeRefreshTick, etc), query_providers_wali.dart (TypedWaliSession,
 // waliSessionProvider, invalidateWaliQueries, etc).
 import 'query_providers.dart';
+import 'supabase_write.dart';
 import 'query_providers_wali.dart';
 // authStorageProvider is defined in api_client.dart (the barrel file).
 // Dart handles circular imports for top-level declarations gracefully.
@@ -99,6 +100,9 @@ Future<TypedWaliSession> loginWali(
   // === Production: call wali_login RPC (bcrypt PIN verify server-side) ===
   // RPC returns: { success, wali: {...}, santriList: [...] }
   // atau { success: false, message: "..." }
+  // Normalisasi nomor di server juga (fungsi normalize_phone, migration 20),
+  // jadi wali bisa login dengan format '0812...', '+62812...', atau '62812...'
+  // apa pun format yang tersimpan di database.
   final rpcResult = await client.rpc('wali_login', params: {
     'p_phone': normalizedPhone,
     'p_pin': pin,
@@ -193,75 +197,60 @@ Future<void> _saveFcmTokenForWali(WidgetRef ref, String userId) async {
 }
 
 // ---------------------------------------------------------------------------
-// Forgot PIN — OTP flow
+// Forgot PIN — OTP flow (verifikasi sepenuhnya di server)
+// ---------------------------------------------------------------------------
+// Sebelumnya OTP di-generate & dibandingkan di CLIENT, OTP dikembalikan ke
+// pemanggil, disimpan plain-text di `Wali.otpCode`, dan `wali_set_pin()`
+// bisa dipanggil anon hanya dengan wali id (bypass autentikasi).
+//
+// Sekarang semua verifikasi ada di RPC Postgres (lihat migration 20):
+//   wali_request_otp(phone)        -> OTP di-hash bcrypt, tidak dikembalikan
+//                                     (kecuali SystemSetting OTP_DEBUG=true)
+//   wali_verify_otp(phone, otp)    -> terbitkan reset token sekali pakai
+//   wali_reset_pin(token, pin)     -> set PIN baru setelah token valid
 // ---------------------------------------------------------------------------
 
-/// Request OTP untuk reset PIN.
+/// Hasil permintaan OTP.
 ///
-/// Phase 5 simplified: OTP di-generate random 6 digit, disimpan di
-/// Wali.otpCode + otpExpiresAt (5 menit). OTP dikirim via WA gateway
-/// (Fonnte/Twilio) di production. Untuk dev, return OTP di response
-/// supaya bisa di-test tanpa WA.
+/// [debugOtp] hanya terisi kalau admin menyalakan `SystemSetting.OTP_DEBUG`.
+/// Di production nilainya harus null — UI tidak boleh menampilkannya.
+class OtpRequestResult {
+  const OtpRequestResult({required this.message, this.debugOtp});
+  final String message;
+  final String? debugOtp;
+}
+
+/// Minta kode OTP reset PIN untuk [phone].
 ///
-/// Rate limit: max 5 OTP per jam per phone.
-Future<String> requestOtp(
+/// Tidak melempar exception untuk nomor yang tidak terdaftar — server sengaja
+/// memberi pesan seragam supaya penyerang tidak bisa memakai endpoint ini
+/// untuk menebak nomor mana yang terdaftar (user enumeration).
+Future<OtpRequestResult> requestOtp(
   WidgetRef ref, {
   required String phone,
   String type = 'FORGOT_PIN',
 }) async {
   _validatePhone(phone);
   final client = ref.read(supabaseClientProvider);
-  final normalizedPhone = normalizeWhatsApp(phone) ?? phone;
 
-  // Query wali by phone
-  final waliRes = await client
-      .from('Wali')
-      .select()
-      .eq('phone', normalizedPhone)
-      .filter('deletedAt', 'is', null)
-      .maybeSingle();
-  if (waliRes == null) {
-    throw Exception('Nomor WhatsApp tidak terdaftar');
+  final res = await client.rpc('wali_request_otp', params: {
+    'p_phone': normalizeWhatsApp(phone) ?? phone,
+  });
+
+  final map = (res as Map?)?.cast<String, dynamic>() ?? const {};
+  if (map['success'] != true) {
+    throw Exception(map['message'] ?? 'Gagal mengirim OTP');
   }
-  final wali = WaliModel.fromJson(waliRes as Map<String, dynamic>);
-
-  // Check rate limit (5 per jam)
-  final now = DateTime.now();
-  final resetAt = wali.otpRequestResetAt;
-  final currentCount = wali.otpRequestCount ?? 0;
-  if (resetAt != null && now.isBefore(resetAt) && currentCount >= 5) {
-    final remaining = resetAt.difference(now).inMinutes;
-    throw Exception(
-        'Terlalu banyak request OTP. Coba lagi dalam $remaining menit.');
-  }
-
-  // Generate OTP
-  final otp = generateOtp();
-  final newCount = (resetAt != null && now.isBefore(resetAt))
-      ? currentCount + 1
-      : 1;
-  final newResetAt = newCount == 1
-      ? now.add(const Duration(hours: 1))
-      : resetAt;
-
-  // Save OTP + reset attempts
-  await client.from('Wali').update({
-    'otpCode': otp,
-    'otpExpiresAt': now.add(const Duration(minutes: 5)).toIso8601String(),
-    'otpAttempts': 0,
-    'otpRequestCount': newCount,
-    'otpRequestResetAt': newResetAt?.toIso8601String(),
-  }).eq('id', wali.id);
-
-  // TODO production: kirim OTP via WA gateway (Fonnte/Twilio).
-  // Untuk dev: return OTP langsung supaya user bisa test tanpa WA.
-  return otp;
+  return OtpRequestResult(
+    message: (map['message'] as String?) ?? 'Kode OTP dikirim.',
+    debugOtp: map['otp'] as String?,
+  );
 }
 
-/// Verify OTP + return verifyToken (untuk setPin selanjutnya).
+/// Verifikasi OTP dan kembalikan reset token sekali pakai.
 ///
-/// Phase 5 simplified: verifyToken = base64(waliId + ':verified:' + timestamp).
-/// Production: JWT proper dengan short expiry (5 menit).
+/// Token diterbitkan & disimpan (dalam bentuk hash) oleh server, jadi proses
+/// reset tetap jalan walaupun aplikasi sempat di-restart.
 Future<String> verifyOtp(
   WidgetRef ref, {
   required String phone,
@@ -272,98 +261,42 @@ Future<String> verifyOtp(
     throw Exception('OTP harus 6 digit');
   }
   final client = ref.read(supabaseClientProvider);
-  final normalizedPhone = normalizeWhatsApp(phone) ?? phone;
 
-  final waliRes = await client
-      .from('Wali')
-      .select()
-      .eq('phone', normalizedPhone)
-      .filter('deletedAt', 'is', null)
-      .maybeSingle();
-  if (waliRes == null) {
-    throw Exception('Nomor WhatsApp tidak terdaftar');
+  final res = await client.rpc('wali_verify_otp', params: {
+    'p_phone': normalizeWhatsApp(phone) ?? phone,
+    'p_otp': otpCode,
+  });
+
+  final map = (res as Map?)?.cast<String, dynamic>() ?? const {};
+  if (map['success'] != true) {
+    throw Exception(map['message'] ?? 'OTP salah');
   }
-  final wali = WaliModel.fromJson(waliRes as Map<String, dynamic>);
-
-  // Check OTP expiry
-  if (wali.otpExpiresAt == null ||
-      wali.otpExpiresAt!.isBefore(DateTime.now())) {
-    throw Exception('OTP kedaluwarsa. Request OTP baru.');
+  final token = map['resetToken'] as String?;
+  if (token == null || token.isEmpty) {
+    throw Exception('Server tidak mengembalikan token reset');
   }
-
-  // Check OTP attempts (max 5)
-  final attempts = wali.otpAttempts ?? 0;
-  if (attempts >= 5) {
-    throw Exception('Terlalu banyak percobaan OTP salah. Request OTP baru.');
-  }
-
-  if (wali.otpCode != otpCode) {
-    await client.from('Wali').update({
-      'otpAttempts': attempts + 1,
-    }).eq('id', wali.id);
-    throw Exception('OTP salah. Sisa percobaan: ${5 - attempts - 1}');
-  }
-
-  // OTP valid — clear otpCode + generate verifyToken
-  // CRITICAL: pakai proper base64 encode supaya token unik per wali + per
-  // timestamp. Sebelumnya pakai Uri.dataFromString(...).toString().split(',')[0]
-  // yang selalu return "data:;base64" (konstan untuk semua wali) — security hole.
-  // TODO production: pakai proper signed JWT dengan HS256 + secret di env.
-  final rawPayload =
-      '${wali.id}:${DateTime.now().millisecondsSinceEpoch}';
-  final verifyToken = base64Encode(utf8.encode(rawPayload));
-  await client.from('Wali').update({
-    'otpCode': null,
-    'otpExpiresAt': null,
-    'otpAttempts': 0,
-  }).eq('id', wali.id);
-
-  // Phase 5: simpan verifyToken ke state provider sementara.
-  // Production: return signed JWT dengan expiry 5 menit.
-  ref.read(otpVerifyTokenProvider.notifier).state =
-      (waliId: wali.id, token: verifyToken, createdAt: DateTime.now());
-
-  return verifyToken;
+  return token;
 }
 
-/// Set new PIN (after OTP verified).
+/// Set PIN baru memakai reset token dari [verifyOtp].
 Future<void> setNewPin(
   WidgetRef ref, {
   required String verifyToken,
   required String newPin,
 }) async {
   _validatePin(newPin);
-
-  // Verify token match (Phase 5 simplified — production: JWT verify)
-  final stored = ref.read(otpVerifyTokenProvider);
-  if (stored == null || stored.token != verifyToken) {
-    throw Exception('Token verifikasi tidak valid. Ulangi dari awal.');
-  }
-  // Check token age (max 5 menit)
-  if (DateTime.now().difference(stored.createdAt).inMinutes > 5) {
-    throw Exception('Token verifikasi kedaluwarsa. Ulangi dari awal.');
-  }
-
   final client = ref.read(supabaseClientProvider);
-  // Production: hash PIN dengan bcrypt via RPC wali_set_pin (server-side)
-  final success = await client.rpc('wali_set_pin', params: {
-    'p_wali_id': stored.waliId,
+
+  final res = await client.rpc('wali_reset_pin', params: {
+    'p_reset_token': verifyToken,
     'p_new_pin': newPin,
   });
 
-  if (success != true) {
-    throw Exception('Gagal mengubah PIN. Coba lagi.');
+  final map = (res as Map?)?.cast<String, dynamic>() ?? const {};
+  if (map['success'] != true) {
+    throw Exception(map['message'] ?? 'Gagal mengubah PIN');
   }
-
-  // Clear verifyToken
-  ref.read(otpVerifyTokenProvider.notifier).state = null;
 }
-
-/// Provider untuk menyimpan verifyToken sementara (setelah OTP verify).
-/// Production: ganti dengan JWT yang self-contained (tidak butuh state).
-final otpVerifyTokenProvider =
-    StateProvider<({String waliId, String token, DateTime createdAt})?>(
-        (_) => null);
 
 // ---------------------------------------------------------------------------
 // Logout
@@ -413,13 +346,13 @@ Future<void> sendChatMessageAsWali(
   if (session == null) throw Exception('Sesi wali tidak ditemukan');
 
   final client = ref.read(supabaseClientProvider);
-  await client.from('ChatMessage').insert({
+  await client.from('ChatMessage').insert(rowFor('ChatMessage', {
     'chatRoomId': roomId,
     'senderType': ChatSenderType.wali,
     'senderWaliId': session.wali.id,
     'message': message,
     'isRead': false,
-  });
+  }));
 
   // Update lastMessage + lastMessageAt di ChatRoom
   await client.from('ChatRoom').update({
@@ -441,6 +374,15 @@ Future<void> sendChatMessageAsWali(
 
 /// Start ujian sesi untuk santri. Kalau sudah ada sesi yang belum selesai,
 /// resume sesi tersebut (untuk recovery — mis. app crash).
+/// Pakai sesi ujian milik santri untuk ujian tertentu.
+///
+/// Recovery: kalau sudah ada sesi (mis. app tertutup di tengah ujian), sesi
+/// itu dikembalikan APA ADANYA — termasuk `startTime` aslinya. Tanpa ini,
+/// timer akan mulai dari nol setiap kali app dibuka ulang dan waktu ujian
+/// bisa dipakai berulang kali (santri tinggal restart app untuk reset timer).
+///
+/// Catatan: urutan soal (soalOrder) yang tersimpan di sesi juga dipakai
+/// kembali, jadi santri yang resume tidak mendapat urutan soal baru.
 Future<UjianSesiData> startUjianSesi(
   WidgetRef ref, {
   required String ujianId,
@@ -448,20 +390,25 @@ Future<UjianSesiData> startUjianSesi(
 }) async {
   final client = ref.read(supabaseClientProvider);
 
-  // Check existing sesi yang belum finished
+  // Sesi apapun yang sudah pernah dibuat (termasuk yang sudah FINISHED).
+  // Kalau FINISHED, ujian sudah selesai dan tidak boleh dikerjakan ulang.
   final existingRes = await client
       .from('UjianSesi')
       .select()
       .eq('ujianId', ujianId)
       .eq('santriId', santriId)
-      .neq('status', 'FINISHED')
       .order('createdAt', ascending: false)
       .limit(1)
       .maybeSingle();
 
   if (existingRes != null) {
-    // Resume existing sesi
-    return UjianSesiData.fromJson(existingRes as Map<String, dynamic>);
+    final existing = UjianSesiData.fromJson(existingRes as Map<String, dynamic>);
+    if (existing.status == 'FINISHED') {
+      throw Exception(
+        'Ujian ini sudah Anda selesaikan dan tidak dapat dikerjakan ulang.',
+      );
+    }
+    return existing; // resume
   }
 
   // Get soal list untuk shuffle
@@ -490,10 +437,61 @@ Future<UjianSesiData> startUjianSesi(
   };
   final res = await client
       .from('UjianSesi')
-      .insert(body)
+      .insert(rowFor('UjianSesi', body))
       .select()
       .single();
   return UjianSesiData.fromJson(res as Map<String, dynamic>);
+}
+
+/// Simpan jawaban sementara (draft) TANPA menutup sesi.
+///
+/// Sebelumnya jawaban hanya ada di memori sampai `submit_ujian` dipanggil.
+/// Kalau aplikasi tertutup, HP mati, atau koneksi putus, seluruh pekerjaan
+/// santri hilang. Autosave memanggil fungsi ini secara berkala.
+///
+/// Aman dipanggil berulang: upsert berdasarkan (sesiId, ujianSoalId).
+Future<void> saveUjianAnswerDraft(
+  WidgetRef ref, {
+  required String sesiId,
+  required String santriId,
+  required List<UjianJawabanSubmit> answers,
+}) async {
+  final toSave = answers.where((a) => a.answer.trim().isNotEmpty).toList();
+  if (toSave.isEmpty) return;
+
+  final rows = toSave
+      .map((a) => rowFor('UjianJawaban', {
+            'sesiId': sesiId,
+            'ujianSoalId': a.ujianSoalId,
+            'santriId': santriId,
+            'answer': a.answer,
+            if (a.optionOrder != null) 'optionOrder': a.optionOrder,
+            'isAutoCorrected': false,
+          }))
+      .toList();
+
+  await ref
+      .read(supabaseClientProvider)
+      .from('UjianJawaban')
+      .upsert(rows, onConflict: '"sesiId","ujianSoalId"');
+}
+
+/// Sisa waktu ujian menurut SERVER (otoritatif).
+///
+/// Timer di layar ujian hanya untuk tampilan; nilai yang mengikat adalah
+/// hasil RPC ini karena jam perangkat bisa diubah santri. Mengembalikan
+/// null kalau gagal, supaya layar bisa jatuh ke perhitungan lokal.
+Future<int?> ujianRemainingSeconds(WidgetRef ref, String sesiId) async {
+  try {
+    final res = await ref
+        .read(supabaseClientProvider)
+        .rpc('ujian_remaining_seconds', params: {'p_sesi_id': sesiId});
+    if (res is int) return res;
+    if (res is num) return res.toInt();
+    return null;
+  } catch (_) {
+    return null;
+  }
 }
 
 /// Submit jawaban ujian + compute score (auto-correct untuk PG).

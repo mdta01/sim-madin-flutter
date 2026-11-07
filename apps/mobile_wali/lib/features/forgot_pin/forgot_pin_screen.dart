@@ -15,7 +15,9 @@ class ForgotPinScreen extends ConsumerStatefulWidget {
 class _ForgotPinScreenState extends ConsumerState<ForgotPinScreen> {
   int _step = 0; // 0=phone, 1=otp, 2=setPin
   bool _loading = false;
-  String? _devOtp; // dev mode only — production: remove
+  // Hanya terisi kalau admin menyalakan SystemSetting OTP_DEBUG.
+  // Di production nilainya null: OTP dikirim lewat notifikasi/WhatsApp.
+  String? _devOtp;
   String? _verifyToken;
 
   final _phoneController = TextEditingController();
@@ -39,24 +41,16 @@ class _ForgotPinScreenState extends ConsumerState<ForgotPinScreen> {
     }
     setState(() => _loading = true);
     try {
-      final otp = await requestOtp(ref,
+      final result = await requestOtp(ref,
           phone: _phoneController.text.trim(), type: 'FORGOT_PIN');
       if (!mounted) return;
-      // Phase 5 DEV: tampilkan OTP langsung supaya bisa test tanpa WA.
-      // Production: jangan tampilkan OTP, kirim via WA gateway.
-      if (kDebugMode) {
-        setState(() {
-          _devOtp = otp;
-          _step = 1;
-        });
-        _toast('✅ OTP dikirim (dev mode: $otp)');
-      } else {
-        setState(() {
-          _devOtp = null;
-          _step = 1;
-        });
-        _toast('✅ OTP dikirim via WhatsApp');
-      }
+      // Server yang memutuskan apakah OTP boleh ditampilkan (mode debug).
+      // Di production `debugOtp` selalu null.
+      setState(() {
+        _devOtp = kDebugMode ? result.debugOtp : null;
+        _step = 1;
+      });
+      _toast(result.message);
     } catch (e) {
       if (mounted) _toast('Gagal: ${friendlyError(e)}', isError: true);
     } finally {
