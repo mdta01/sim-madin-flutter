@@ -55,6 +55,18 @@ def main() -> int:
         return 1
 
     tables = parse_columns(SCHEMA.read_text(encoding="utf-8"))
+
+    # Tabel yang dibuat oleh migrasi SETELAH baseline (mis. WaliPinReset)
+    # juga harus terdaftar, kalau tidak helper rowFor() akan menolaknya.
+    for mig in sorted((ROOT / "supabase/migrations").glob("*.sql")):
+        if mig.name == SCHEMA.name:
+            continue
+        sql = mig.read_text(encoding="utf-8")
+        for name, cols in parse_columns(sql).items():
+            if name not in tables:
+                tables[name] = cols
+                print(f"  + tabel dari {mig.name}: {name}")
+
     if not tables:
         print("error: tidak ada tabel yang ter-parse", file=sys.stderr)
         return 1

@@ -164,13 +164,27 @@ BEGIN
   -- 6. Seed Pertemuan (2 pertemuan untuk jadwal guru)
   -- ============================================================================
   IF NOT EXISTS (SELECT 1 FROM "Pertemuan") THEN
-    INSERT INTO "Pertemuan" ("jadwalId", "tanggal", "materi", "catatan", "isDone")
-    SELECT j.id, CURRENT_DATE, 'Pertemuan hari ini', NULL, false
+    -- Kolom nyata "Pertemuan": tahunAjaranId, semesterId, kelasId, mapelId,
+    -- guruId, pertemuanKe, date, topic, description, isCompleted.
+    -- Versi sebelumnya memakai jadwalId/tanggal/materi/catatan/isDone yang
+    -- TIDAK ADA, sehingga seluruh seed gagal dan aplikasi terisi data kosong.
+    INSERT INTO "Pertemuan" (
+      id, "tahunAjaranId", "semesterId", "kelasId", "mapelId", "guruId",
+      "pertemuanKe", date, topic, description, "isCompleted", "createdAt", "updatedAt"
+    )
+    SELECT gen_random_uuid()::text, j."tahunAjaranId", j."semesterId", j."kelasId",
+           j."mapelId", j."guruId", 1, CURRENT_DATE, 'Pertemuan hari ini',
+           NULL, false, now(), now()
     FROM "Jadwal" j LIMIT 1
     RETURNING id INTO v_pertemuan_id;
 
-    INSERT INTO "Pertemuan" ("jadwalId", "tanggal", "materi", "catatan", "isDone")
-    SELECT j.id, CURRENT_DATE - INTERVAL '1 day', 'Pertemuan kemarin', 'Berjalan lancar', true
+    INSERT INTO "Pertemuan" (
+      id, "tahunAjaranId", "semesterId", "kelasId", "mapelId", "guruId",
+      "pertemuanKe", date, topic, description, "isCompleted", "createdAt", "updatedAt"
+    )
+    SELECT gen_random_uuid()::text, j."tahunAjaranId", j."semesterId", j."kelasId",
+           j."mapelId", j."guruId", 2, CURRENT_DATE - INTERVAL '1 day',
+           'Pertemuan kemarin', 'Berjalan lancar', true, now(), now()
     FROM "Jadwal" j LIMIT 1;
     RAISE NOTICE 'Created Pertemuan: %', v_pertemuan_id;
   END IF;
