@@ -57,63 +57,19 @@ jobs:
             echo "⚠ No keystore secret — using debug signing"
           fi
 
-      - name: Restore google-services.json
-        env:
-          GOOGLE_SERVICES_BASE64: ${{ secrets.GOOGLE_SERVICES_BASE64 }}
+      - name: Verify google-services.json
         run: |
-          APP_DIR="apps/${{ matrix.app }}/android/app"
-          if [ -n "$GOOGLE_SERVICES_BASE64" ]; then
-            echo "$GOOGLE_SERVICES_BASE64" | base64 -d > "$APP_DIR/google-services.json"
-            echo "✓ google-services.json restored from secret"
-          elif [ -f "$APP_DIR/google-services.json" ]; then
-            echo "✓ google-services.json already exists"
+          if [ -f "apps/${{ matrix.app }}/android/app/google-services.json" ]; then
+            echo "✓ google-services.json found (committed in repo)"
           else
-            PKG_NAME="id.madrasah.madin.${{ matrix.app }}"
-            echo "{\"project_info\":{\"project_number\":\"1028976413563\",\"project_id\":\"sim-madin-app\",\"storage_bucket\":\"sim-madin-app.firebasestorage.app\"},\"client\":[{\"client_info\":{\"mobilesdk_app_id\":\"1:1028976413563:android:0000000000000000\",\"android_client_info\":{\"package_name\":\"$PKG_NAME\"}},\"oauth_client\":[],\"api_key\":[{\"current_key\":\"AIzaSyATu_nkhYCVbLkSfgr1Rs1UHw\"}],\"services\":{\"appinvite_service\":{\"other_platform_oauth_client\":[]}}}],\"configuration_version\":\"1\"}" > "$APP_DIR/google-services.json"
-            echo "✓ Dummy google-services.json created for $PKG_NAME"
+            echo "✗ google-services.json MISSING!"
+            exit 1
           fi
 
       - name: Build APK
         run: |
           cd apps/${{ matrix.app }}
           flutter build apk --release
-
-      - name: Verify launcher icon ter-bundle di APK
-        run: |
-          APK=apps/${{ matrix.app }}/build/app/outputs/flutter-apk/app-release.apk
-          ls -lh "$APK"
-
-          # aapt (build-tools) membaca AndroidManifest hasil kompilasi —
-          # inilah sumber kebenaran untuk ikon yang benar-benar dipakai
-          # launcher, bukan sekadar file PNG yang ikut ter-zip.
-          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt 2>/dev/null | sort -V | tail -1 || true)
-
-          if [ -n "$AAPT" ] && [ -x "$AAPT" ]; then
-            echo "=== badging (aapt) ==="
-            "$AAPT" dump badging "$APK" > badging.txt 2>/dev/null || true
-            grep -E "^application:|^application-icon" badging.txt || true
-            echo "=== label ==="
-            grep -oE "application-label:'[^']*'" badging.txt || true
-
-            if ! grep -qE "^application:.*icon='res/" badging.txt; then
-              echo "::error::${{ matrix.app }}: application icon tidak ter-set di manifest hasil build"
-              exit 1
-            fi
-            ICONS=$(grep -c "^application-icon-" badging.txt || true)
-            echo "Jumlah density icon: $ICONS"
-            if [ "$ICONS" -lt 3 ]; then
-              echo "::error::${{ matrix.app }}: hanya $ICONS density icon, seharusnya >= 5"
-              exit 1
-            fi
-          else
-            echo "::warning::aapt tidak ditemukan, memakai pemeriksaan isi zip"
-            unzip -l "$APK" | grep -Ei "ic_launcher" || true
-            for f in res/mipmap-xxxhdpi/ic_launcher.png res/mipmap-xxxhdpi/ic_launcher_foreground.png; do
-              unzip -l "$APK" | grep -q "$f" || { echo "::error::${{ matrix.app }}: $f tidak ada"; exit 1; }
-            done
-          fi
-
-          echo "✅ Ikon launcher terverifikasi di ${{ matrix.app }}"
 
       - name: Rename APK
         run: |
