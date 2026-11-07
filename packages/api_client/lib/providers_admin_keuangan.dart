@@ -272,7 +272,9 @@ Future<int> adminGenerateHonorGuruBulk(
     'status': HonorGuruStatus.draft,
   }).toList();
 
-  await client.from('HonorGuru').insert(rowFor('HonorGuru', rows));
+  await client
+      .from('HonorGuru')
+      .insert(rows.map((r) => rowFor('HonorGuru', r)).toList());
   ref.invalidate(honorGuruListAdminProvider);
   return guruIds.length;
 }
@@ -412,7 +414,9 @@ Future<int> adminCreateNotifikasiBulk(
     'isPushSent': false,
   }).toList();
 
-  await client.from('Notifikasi').insert(rowFor('Notifikasi', rows));
+  await client
+      .from('Notifikasi')
+      .insert(rows.map((r) => rowFor('Notifikasi', r)).toList());
   ref.invalidate(notifikasiListAdminProvider);
   return waliIds.length;
 }
