@@ -162,3 +162,23 @@ String? currentAdminUid(WidgetRef ref) {
   final client = ref.read(supabaseClientProvider);
   return client.auth.currentUser?.id;
 }
+
+// ---------------------------------------------------------------------------
+// Barrel re-export
+// ---------------------------------------------------------------------------
+// Aplikasi & package lain (api_client) memakai tipe SupabaseClient,
+// RealtimeChannel, dan PostgrestException tanpa harus menambahkan
+// supabase_flutter sebagai dependency langsung.
+export 'package:supabase_flutter/supabase_flutter.dart'
+    show
+        SupabaseClient,
+        RealtimeChannel,
+        PostgresChangeEvent,
+        PostgresChangeFilter,
+        PostgresChangeFilterType,
+        AuthState,
+        AuthChangeEvent,
+        User,
+        Session,
+        PostgrestException,
+        AuthException;
