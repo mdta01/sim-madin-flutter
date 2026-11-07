@@ -110,6 +110,15 @@ jobs:
           grep -E '^(ERROR|WARNING)\|' analyze-report.txt || true
           echo "::endgroup::"
 
+          # Satu anotasi berisi SELURUH daftar: GitHub membatasi ~10 anotasi
+          # per langkah dan log job tidak selalu bisa diunduh.
+          if [ $((ERRORS + WARNINGS)) -gt 0 ]; then
+            SUMMARY=$(grep -E '^(ERROR|WARNING)[|]' analyze-report.txt \
+              | awk -F'|' '{print $5 ":" $6 " " $3 " " $8}' \
+              | head -120 | paste -sd'~' - | sed 's/~/%0A/g')
+            echo "::error title=Daftar masalah analyze::${SUMMARY}"
+          fi
+
           grep '^ERROR|' analyze-report.txt | while IFS='|' read -r sev type code file line col len msg; do
             echo "::error file=$file,line=$line,col=$col::$code: $msg"
           done
@@ -119,7 +128,7 @@ jobs:
             exit 1
           fi
 
-                    # Warning juga MEMBLOKIR: pada 2026-11 repo ini sudah bersih dari
+          # Warning juga MEMBLOKIR: pada 2026-11 repo ini sudah bersih dari
           # error maupun warning. Tanpa ini, warning baru akan menumpuk lagi
           # tanpa ada yang memperbaikinya.
           if [ "${WARNINGS:-0}" -gt 0 ]; then
