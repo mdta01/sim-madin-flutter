@@ -457,13 +457,11 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
-    this.valueColor,
   });
 
   final IconData icon;
   final String label;
   final String value;
-  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -492,7 +490,7 @@ class _InfoRow extends StatelessWidget {
             child: Text(value,
                 style: AppTextStyles.body2.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: valueColor ?? AppColors.text),
+                    color: AppColors.text),
                 textAlign: TextAlign.end,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis),

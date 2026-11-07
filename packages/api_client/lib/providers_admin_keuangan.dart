@@ -154,7 +154,7 @@ final pembayaranListAdminProvider =
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Payment').select('*, Santri(name, nis), Tagihan(*, JenisTagihan(code))');
-  if (status != null && status != 'ALL') q = q.eq('status', status!);
+  if (status != null && status != 'ALL') q = q.eq('status', status);
   final res = await q.order('paymentDate', ascending: false).limit(200);
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
@@ -198,7 +198,7 @@ Future<KasModel> adminCreateKas(WidgetRef ref, {required String code, required S
   final client = ref.read(supabaseClientProvider);
   final res = await client.from('Kas').insert(rowFor('Kas', {'code': code, 'name': name, 'type': type, if (accountNumber != null) 'accountNumber': accountNumber, if (bankName != null) 'bankName': bankName})).select().single();
   ref.invalidate(kasListAdminProvider);
-  return KasModel.fromJson(res as Map<String, dynamic>);
+  return KasModel.fromJson(res);
 }
 
 Future<void> adminDeleteKas(WidgetRef ref, String id) async {
@@ -216,7 +216,7 @@ final honorGuruListAdminProvider =
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('HonorGuru').select('*, Guru(name, specialization)');
-  if (status != null && status != 'ALL') q = q.eq('status', status!);
+  if (status != null && status != 'ALL') q = q.eq('status', status);
   final res = await q.order('createdAt', ascending: false).limit(200);
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
@@ -321,7 +321,7 @@ Future<AnnouncementModel> adminCreatePengumuman(WidgetRef ref, {required String 
   final client = ref.read(supabaseClientProvider);
   final res = await client.from('Announcement').insert(rowFor('Announcement', {'title': title, 'content': content, 'priority': priority, 'audience': audience, 'publishedAt': DateTime.now().toIso8601String(), 'createdById': client.auth.currentUser?.id})).select().single();
   ref.invalidate(pengumumanListAdminProvider);
-  return AnnouncementModel.fromJson(res as Map<String, dynamic>);
+  return AnnouncementModel.fromJson(res);
 }
 
 Future<void> adminDeletePengumuman(WidgetRef ref, String id) async {

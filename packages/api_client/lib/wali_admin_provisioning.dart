@@ -45,7 +45,7 @@ class WaliLinkCheck {
 /// ke admin.
 Future<String> provisionWaliAuth(WidgetRef ref, String waliId) async {
   final client = ref.read(supabaseClientProvider);
-  final res = await client.rpc(
+  final res = await client.rpc<dynamic>(
     'provision_wali_auth',
     params: {'p_wali_id': waliId},
   );
@@ -65,7 +65,7 @@ Future<List<WaliLinkCheck>> checkWaliLink(
   String waliId,
 ) async {
   final client = ref.read(supabaseClientProvider);
-  final res = await client.rpc(
+  final res = await client.rpc<dynamic>(
     'check_wali_link',
     params: {'p_wali_id': waliId},
   );

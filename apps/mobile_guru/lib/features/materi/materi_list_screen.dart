@@ -97,7 +97,10 @@ class MateriListScreen extends ConsumerWidget {
                       ref.invalidate(materiGuruProvider);
                     }
                   },
-                  child: ModernCard(
+                  child: InkWell(
+                    onTap: () => _showMateriDetail(context, m),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    child: ModernCard(
                     margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                     padding: const EdgeInsets.all(AppSpacing.md),
                     child: Row(
@@ -148,6 +151,7 @@ class MateriListScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
+                  ),
                   ),
                 );
               },

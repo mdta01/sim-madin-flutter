@@ -22,6 +22,9 @@ class ProfileScreen extends ConsumerWidget {
             name: wali?.name ?? '-',
             roleLabel: 'Wali Santri',
             avatarName: wali?.name,
+            // Foto profil wali tersimpan di Wali.photoUrl (ditambahkan
+            // migration 8) dan sebelumnya tidak pernah ditampilkan.
+            photoUrl: wali?.photoUrl,
           ),
           const SizedBox(height: AppSpacing.lg),
 

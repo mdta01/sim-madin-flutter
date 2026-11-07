@@ -91,7 +91,6 @@ final santriWaliByWaliProvider =
       .eq('waliId', waliId);
   return (res as List).map((r) {
     final santri = (r as Map<String, dynamic>)['Santri'] as Map<String, dynamic>?;
-    final kelas = santri?['Kelas'] as Map<String, dynamic>?;
     return SantriWaliModel.fromJson({
       ...r,
       'santriName': santri?['name'],
@@ -139,7 +138,7 @@ Future<SantriModel> adminCreateSantri(
   };
   final res = await client.from('Santri').insert(rowFor('Santri', body)).select().single();
   ref.invalidate(santriListProvider);
-  return SantriModel.fromJson(res as Map<String, dynamic>);
+  return SantriModel.fromJson(res);
 }
 
 Future<SantriModel> adminUpdateSantri(
@@ -175,7 +174,7 @@ Future<SantriModel> adminUpdateSantri(
   };
   final res = await client.from('Santri').update(body).eq('id', santriId).select().single();
   ref.invalidate(santriListProvider);
-  return SantriModel.fromJson(res as Map<String, dynamic>);
+  return SantriModel.fromJson(res);
 }
 
 Future<void> adminSoftDeleteSantri(WidgetRef ref, String santriId) async {
@@ -225,7 +224,7 @@ Future<GuruModel> adminCreateGuru(
   };
   final res = await client.from('Guru').insert(rowFor('Guru', body)).select().single();
   ref.invalidate(guruListAdminProvider);
-  return GuruModel.fromJson(res as Map<String, dynamic>);
+  return GuruModel.fromJson(res);
 }
 
 Future<GuruModel> adminUpdateGuru(
@@ -261,7 +260,7 @@ Future<GuruModel> adminUpdateGuru(
   };
   final res = await client.from('Guru').update(body).eq('id', guruId).select().single();
   ref.invalidate(guruListAdminProvider);
-  return GuruModel.fromJson(res as Map<String, dynamic>);
+  return GuruModel.fromJson(res);
 }
 
 Future<void> adminSoftDeleteGuru(WidgetRef ref, String guruId) async {
@@ -303,7 +302,7 @@ Future<WaliModel> adminCreateWali(
   };
   final res = await client.from('Wali').insert(rowFor('Wali', body)).select().single();
   ref.invalidate(waliListAdminProvider);
-  return WaliModel.fromJson(res as Map<String, dynamic>);
+  return WaliModel.fromJson(res);
 }
 
 Future<WaliModel> adminUpdateWali(
@@ -333,7 +332,7 @@ Future<WaliModel> adminUpdateWali(
   };
   final res = await client.from('Wali').update(body).eq('id', waliId).select().single();
   ref.invalidate(waliListAdminProvider);
-  return WaliModel.fromJson(res as Map<String, dynamic>);
+  return WaliModel.fromJson(res);
 }
 
 Future<void> adminSoftDeleteWali(WidgetRef ref, String waliId) async {
@@ -401,7 +400,7 @@ Future<KelasModel> adminCreateKelas(
   };
   final res = await client.from('Kelas').insert(rowFor('Kelas', body)).select().single();
   ref.invalidate(kelasListProvider);
-  return KelasModel.fromJson(res as Map<String, dynamic>);
+  return KelasModel.fromJson(res);
 }
 
 Future<KelasModel> adminUpdateKelas(
@@ -429,7 +428,7 @@ Future<KelasModel> adminUpdateKelas(
   };
   final res = await client.from('Kelas').update(body).eq('id', kelasId).select().single();
   ref.invalidate(kelasListProvider);
-  return KelasModel.fromJson(res as Map<String, dynamic>);
+  return KelasModel.fromJson(res);
 }
 
 Future<void> adminSoftDeleteKelas(WidgetRef ref, String kelasId) async {
@@ -467,7 +466,7 @@ Future<MataPelajaranModel> adminCreateMapel(
   };
   final res = await client.from('MataPelajaran').insert(rowFor('MataPelajaran', body)).select().single();
   ref.invalidate(mapelListProvider);
-  return MataPelajaranModel.fromJson(res as Map<String, dynamic>);
+  return MataPelajaranModel.fromJson(res);
 }
 
 Future<MataPelajaranModel> adminUpdateMapel(
@@ -495,7 +494,7 @@ Future<MataPelajaranModel> adminUpdateMapel(
   };
   final res = await client.from('MataPelajaran').update(body).eq('id', mapelId).select().single();
   ref.invalidate(mapelListProvider);
-  return MataPelajaranModel.fromJson(res as Map<String, dynamic>);
+  return MataPelajaranModel.fromJson(res);
 }
 
 Future<void> adminSoftDeleteMapel(WidgetRef ref, String mapelId) async {
@@ -529,7 +528,7 @@ Future<TahunAjaranModel> adminCreateTahunAjaran(
   final res = await client.from('TahunAjaran').insert(rowFor('TahunAjaran', body)).select().single();
   ref.invalidate(tahunAjaranListProvider);
   ref.invalidate(tahunAjaranActiveProvider);
-  return TahunAjaranModel.fromJson(res as Map<String, dynamic>);
+  return TahunAjaranModel.fromJson(res);
 }
 
 Future<TahunAjaranModel> adminUpdateTahunAjaran(
@@ -549,7 +548,7 @@ Future<TahunAjaranModel> adminUpdateTahunAjaran(
   };
   final res = await client.from('TahunAjaran').update(body).eq('id', taId).select().single();
   ref.invalidate(tahunAjaranListProvider);
-  return TahunAjaranModel.fromJson(res as Map<String, dynamic>);
+  return TahunAjaranModel.fromJson(res);
 }
 
 /// Activate tahun ajaran (deactivate all others first).
@@ -593,5 +592,5 @@ Future<SemesterModel> adminCreateSemester(
   };
   final res = await client.from('Semester').insert(rowFor('Semester', body)).select().single();
   ref.invalidate(semesterListProvider);
-  return SemesterModel.fromJson(res as Map<String, dynamic>);
+  return SemesterModel.fromJson(res);
 }

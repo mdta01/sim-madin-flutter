@@ -83,6 +83,7 @@ Future<PembayaranCreateResult> createPembayaran(
   required String paymentMethod,
   String? note,
   String? kasId,
+  String? proofUrl,
 }) async {
   final client = ref.read(supabaseClientProvider);
   final user = client.auth.currentUser;
@@ -94,6 +95,7 @@ Future<PembayaranCreateResult> createPembayaran(
     if (tagihanId != null) 'tagihanId': tagihanId,
     if (note != null && note.isNotEmpty) 'note': note,
     if (kasId != null) 'kasId': kasId,
+    if (proofUrl != null && proofUrl.isNotEmpty) 'proofUrl': proofUrl,
     if (user != null) 'recordedById': user.id,
     'paymentDate': DateTime.now().toIso8601String(),
   };
