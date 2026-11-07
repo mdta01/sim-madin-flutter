@@ -20,7 +20,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'realtime_coordinator.dart';
 
 // ---------------------------------------------------------------------------
 // Helper: parse Santri row + nested relations
@@ -429,142 +430,46 @@ final kasListProvider = FutureProvider<List<KasModel>>((ref) async {
 });
 
 // ---------------------------------------------------------------------------
-// Realtime refresh — global tick counter that bumps when any monitored
-// table changes. Screens listen via `ref.watch(realtimeRefreshTick)`
-// to trigger refetch automatically.
+// Realtime refresh
 // ---------------------------------------------------------------------------
+// Implementasi nyata ada di `realtime_coordinator.dart` supaya daftar tabel
+// per aplikasi punya satu sumber kebenaran. Provider di bawah dipertahankan
+// dengan nama lama karena ~100 tempat sudah `ref.watch(realtimeRefreshTick)`
+// dan `ref.read(realtimeRefreshTick.notifier)`.
 
-final realtimeRefreshTick = StateProvider<int>((_) => 0);
+/// Naik setiap ada perubahan realtime → semua provider yang watch ini refetch.
+final realtimeRefreshTick = realtimeTick;
 
-/// Track active realtime channels so we can unsubscribe on logout / re-init.
-/// Tanpa tracking ini, setiap kali user logout-login, channel baru ditumpuk
-/// di atas channel lama → memory leak + event dobel.
-final realtimeChannelsProvider =
-    StateProvider<List<RealtimeChannel>>((_) => const []);
+/// Channel realtime aktif (di-unsubscribe saat logout).
+final realtimeChannelsProvider = realtimeChannelsState;
 
-/// Setup realtime subscriptions untuk tabel-tabel yang relevan.
-/// Panggil saat login berhasil (di splash / dashboard init).
-/// Setiap perubahan akan bump `realtimeRefreshTick` yang otomatis
-/// me-refresh semua FutureProvider yang watch tick ini.
-///
-/// Sebelum subscribe baru, fungsi ini akan unsubscribe channel lama
-/// (kalau ada) untuk mencegah leak & duplikasi event.
+/// Setup subscription untuk [tables] (idempotent, unsubscribe yang lama).
 void setupAppRealtime(WidgetRef ref, {required List<String> tables}) {
-  // Dispose existing channels first (idempotent).
-  disposeAppRealtime(ref);
-
-  final client = ref.read(supabaseClientProvider);
-  final channels = <RealtimeChannel>[];
-  for (final t in tables) {
-    try {
-      final ch = subscribeToTable(
-        client: client,
-        table: t,
-        onPayload: (_) {
-          // Bump tick — akan invalidate semua provider yang watch tick ini.
-          ref.read(realtimeRefreshTick.notifier).state++;
-        },
-      );
-      channels.add(ch);
-    } catch (_) {
-      // Realtime best-effort: kalau fail (RLS / network), abaikan diam-diam.
-      // Provider tetap bisa di-refresh manual via pull-to-refresh.
-    }
-  }
-  ref.read(realtimeChannelsProvider.notifier).state = channels;
+  startAppRealtime(ref, tables: tables);
 }
 
-/// Unsubscribe semua realtime channels. Panggil saat logout.
-Future<void> disposeAppRealtime(WidgetRef ref) async {
-  final channels = ref.read(realtimeChannelsProvider);
-  for (final ch in channels) {
-    try {
-      await ch.unsubscribe();
-    } catch (_) {
-      // Best-effort.
-    }
-  }
-  ref.read(realtimeChannelsProvider.notifier).state = const [];
-}
+/// Unsubscribe semua channel. Panggil saat logout.
+Future<void> disposeAppRealtime(WidgetRef ref) => stopAppRealtime(ref);
 
-/// Realtime untuk mobile_kepala (read-only monitoring).
-/// Subscribe: Santri, Payment, Tagihan, HonorGuru, Absensi, Nilai, Kas,
-/// TransaksiKas, Guru, Jadwal — supaya semua monitor screen auto-refresh.
-void setupKepalaRealtime(WidgetRef ref) {
-  setupAppRealtime(ref, tables: const [
-    'Santri',
-    'Payment',
-    'Tagihan',
-    'HonorGuru',
-    'Absensi',
-    'Nilai',
-    'Kas',
-    'TransaksiKas',
-    'Guru',
-    'Jadwal',
-  ]);
-}
+/// Realtime mobile_kepala (read-only monitoring).
+void setupKepalaRealtime(WidgetRef ref) =>
+    startAppRealtime(ref, tables: kKepalaRealtimeTables);
 
-/// Realtime untuk mobile_wali.
-/// Subscribe: Notifikasi, ChatRoom, ChatMessage, Tagihan, Payment, Absensi,
-/// Nilai — fitur utama wali (notif & chat) harus auto-refresh.
-void setupWaliRealtime(WidgetRef ref) {
-  setupAppRealtime(ref, tables: const [
-    'Notifikasi',
-    'ChatRoom',
-    'ChatMessage',
-    'Tagihan',
-    'Payment',
-    'Absensi',
-    'Nilai',
-    'PerkembanganQuran',
-    'HafalanKitab',
-    'AkhlakPenilaian',
-    'Pembinaan',
-    'UjianPeserta',
-    'UjianSesi',
-  ]);
-}
+/// Realtime mobile_wali.
+void setupWaliRealtime(WidgetRef ref) =>
+    startAppRealtime(ref, tables: kWaliRealtimeTables);
 
-/// Realtime untuk mobile_guru.
-/// Subscribe: Jadwal, Materi, Tugas, Pertemuan, Ujian, UjianSoal,
-/// PengumpulanTugas, ChatRoom, ChatMessage, Absensi, Nilai, PerkembanganQuran,
-/// HafalanKitab, AkhlakPenilaian, Pembinaan, Pengumuman.
-void setupGuruRealtime(WidgetRef ref) {
-  setupAppRealtime(ref, tables: const [
-    'Jadwal',
-    'Materi',
-    'Tugas',
-    'Pertemuan',
-    'Ujian',
-    'UjianSoal',
-    'PengumpulanTugas',
-    'ChatRoom',
-    'ChatMessage',
-    'Absensi',
-    'Nilai',
-    'PerkembanganQuran',
-    'HafalanKitab',
-    'AkhlakPenilaian',
-    'Pembinaan',
-    'Pengumuman',
-    'BankSoal',
-  ]);
-}
+/// Realtime mobile_guru.
+void setupGuruRealtime(WidgetRef ref) =>
+    startAppRealtime(ref, tables: kGuruRealtimeTables);
 
-/// Realtime untuk mobile_bendahara.
-/// Subscribe: Payment, Tagihan, HonorGuru, Kas, TransaksiKas, Santri, Guru.
-void setupBendaharaRealtime(WidgetRef ref) {
-  setupAppRealtime(ref, tables: const [
-    'Payment',
-    'Tagihan',
-    'HonorGuru',
-    'Kas',
-    'TransaksiKas',
-    'Santri',
-    'Guru',
-  ]);
-}
+/// Realtime mobile_bendahara.
+void setupBendaharaRealtime(WidgetRef ref) =>
+    startAppRealtime(ref, tables: kBendaharaRealtimeTables);
+
+/// Realtime admin_desktop (sebelumnya belum ada sama sekali).
+void setupAdminRealtime(WidgetRef ref) =>
+    startAppRealtime(ref, tables: kAdminRealtimeTables);
 
 /// Provider aggregate untuk dashboard mobile_kepala.
 /// Hitung exact counts/sums tanpa underestimate dari list dengan .limit.

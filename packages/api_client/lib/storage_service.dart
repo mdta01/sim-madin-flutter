@@ -28,7 +28,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:supabase_client/supabase_client.dart';
 
-import 'query_providers.dart' show realtimeRefreshTick;
 
 /// Nama bucket Supabase Storage. Diset konstan supaya tidak salah ketik.
 class StorageBucket {

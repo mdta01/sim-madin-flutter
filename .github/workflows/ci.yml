@@ -1,7 +1,18 @@
 # ============================================================================
-# Static analysis + tests
+# Static analysis, schema consistency, and tests
 # ============================================================================
-# Run on every push and PR. Failures are non-blocking (|| true).
+# Berlaku untuk setiap push ke main dan setiap pull request.
+#
+# Sebelumnya semua langkah memakai `|| true` sehingga CI selalu hijau dan
+# tidak pernah mencegah merge. Sekarang:
+#
+#   - schema-consistency : WAJIB lulus (cepat, tanpa toolchain Flutter)
+#   - analyze            : WAJIB lulus
+#   - test               : WAJIB lulus (gagal bila tidak ada test? tidak —
+#                          hanya bila test yang ada GAGAL)
+#
+# Hapus satu per satu bila ada langkah yang masih berisik, jangan matikan
+# semuanya sekaligus — itu yang membuat CI sebelumnya tidak berguna.
 # ============================================================================
 
 name: CI
@@ -17,10 +28,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # --------------------------------------------------------------------------
+  # Cepat dan tidak butuh Flutter: konsistensi skema vs kode Dart.
+  # --------------------------------------------------------------------------
+  schema:
+    name: Schema consistency
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify generated table columns are up to date
+        run: |
+          python3 tool/gen_table_caps.py
+          if ! git diff --quiet -- packages/api_client/lib/table_columns.dart; then
+            echo "::error::table_columns.dart sudah usang. Jalankan: python3 tool/gen_table_caps.py lalu commit."
+            git diff -- packages/api_client/lib/table_columns.dart
+            exit 1
+          fi
+
+      - name: Check schema / code consistency
+        run: python3 tool/ci_checks.py
+
+  # --------------------------------------------------------------------------
+  # Analisis dan test Flutter.
+  # --------------------------------------------------------------------------
   analyze:
     name: Analyze & Test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -48,9 +88,81 @@ jobs:
       - name: Analyze
         run: |
           export PATH="$PATH:$HOME/.pub-cache/bin"
-          melos exec -- dart analyze lib/ || true
+          # Format `machine` dipakai karena stabil dan mudah di-parse:
+          #   SEVERITY|TYPE|CODE|FILE|LINE|COL|LEN|MESSAGE
+          # Setiap ERROR diteruskan sebagai anotasi agar langsung terlihat
+          # di ringkasan PR.
+          : > analyze-report.txt
+          FAIL=0
+          for d in packages/* apps/*; do
+            [ -f "$d/pubspec.yaml" ] || continue
+            echo "::group::dart analyze $d"
+            (cd "$d" && dart analyze --format=machine lib/ 2>&1 | tee -a ../../analyze-report.txt) || FAIL=1
+            echo "::endgroup::"
+          done
+
+          ERRORS=$(grep -c '^ERROR|' analyze-report.txt || true)
+          WARNINGS=$(grep -c '^WARNING|' analyze-report.txt || true)
+          echo "Total: $ERRORS error, $WARNINGS warning."
+
+          # Ringkasan ke log (artifact/job log bisa diunduh manual).
+          echo "::group::Daftar lengkap ($ERRORS error, $WARNINGS warning)"
+          grep -E '^(ERROR|WARNING)\|' analyze-report.txt || true
+          echo "::endgroup::"
+
+          # Satu anotasi berisi SELURUH daftar: GitHub membatasi ~10 anotasi
+          # per langkah dan log job tidak selalu bisa diunduh.
+          if [ $((ERRORS + WARNINGS)) -gt 0 ]; then
+            SUMMARY=$(grep -E '^(ERROR|WARNING)[|]' analyze-report.txt \
+              | awk -F'|' '{print $4 ":" $5 ":" $6 " " $3}' \
+              | head -120 | paste -sd'~' - | sed 's/~/%0A/g')
+            echo "::error title=Daftar masalah analyze::${SUMMARY}"
+          fi
+
+          grep '^ERROR|' analyze-report.txt | while IFS='|' read -r sev type code file line col len msg; do
+            echo "::error file=$file,line=$line,col=$col::$code: $msg"
+          done
+
+          if [ "${ERRORS:-0}" -gt 0 ]; then
+            echo "::error::$ERRORS error analisis. Lihat anotasi / artifact."
+            exit 1
+          fi
+
+          # Warning juga MEMBLOKIR: pada 2026-11 repo ini sudah bersih dari
+          # error maupun warning. Tanpa ini, warning baru akan menumpuk lagi
+          # tanpa ada yang memperbaikinya.
+          if [ "${WARNINGS:-0}" -gt 0 ]; then
+            grep '^WARNING|' analyze-report.txt | head -63 | while IFS='|' read -r sev type code file line col len msg; do
+              echo "::error file=$file,line=$line,col=$col::$code: $msg"
+            done
+            echo "::error::$WARNINGS warning analisis. Jalankan 'dart analyze' lokal lalu perbaiki."
+            exit 1
+          fi
+
+      - name: Upload analyze report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyze-report
+          path: analyze-report.txt
+          if-no-files-found: ignore
 
       - name: Test
         run: |
           export PATH="$PATH:$HOME/.pub-cache/bin"
-          melos run test || echo "No tests yet"
+          # Jalankan test per paket yang memang punya folder test/.
+          # Paket tanpa test dilewati (bukan kegagalan), tetapi test yang
+          # GAGAL menggagalkan build.
+          FAIL=0
+          for d in packages/* apps/*; do
+            if [ -d "$d/test" ]; then
+              echo "::group::flutter test $d"
+              (cd "$d" && flutter test --no-pub) || FAIL=1
+              echo "::endgroup::"
+            fi
+          done
+          if [ "$FAIL" -ne 0 ]; then
+            echo "::error::Ada test yang gagal."
+            exit 1
+          fi
+          echo "Semua test lulus (atau tidak ada folder test/)."

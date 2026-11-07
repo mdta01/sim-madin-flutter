@@ -31,6 +31,7 @@ import 'query_providers.dart';
 import 'query_providers_guru.dart';
 // Import storage service (for delete operations on materi/tugas/ujian files).
 import 'storage_service.dart';
+import 'supabase_write.dart';
 
 /// Helper untuk dapatkan guruId dari user yang login (via Wali.userId
 /// match). Return null kalau user bukan guru.
@@ -224,7 +225,7 @@ Future<MateriModel> createMateri(
 
   final res = await client
       .from('Materi')
-      .insert(body)
+      .insert(rowFor('Materi', body))
       .select('*, MataPelajaran(*), Kelas(*), Guru(*, User(*))')
       .single();
   final materi = MateriModel.fromJson({
@@ -304,7 +305,7 @@ Future<TugasModel> createTugas(
 
   final res = await client
       .from('Tugas')
-      .insert(body)
+      .insert(rowFor('Tugas', body))
       .select('*, MataPelajaran(*), Kelas(*), Guru(*, User(*))')
       .single();
   final tugas = TugasModel.fromJson({
@@ -406,7 +407,7 @@ Future<PertemuanModel> createPertemuan(
 
   final res = await client
       .from('Pertemuan')
-      .insert(body)
+      .insert(rowFor('Pertemuan', body))
       .select('*, Kelas(*), MataPelajaran(*), Guru(*, User(*))')
       .single();
   final pertemuan = PertemuanModel.fromJson({
@@ -478,7 +479,7 @@ Future<UjianModel> createUjian(
 
   final res = await client
       .from('Ujian')
-      .insert(body)
+      .insert(rowFor('Ujian', body))
       .select('*, MataPelajaran(*), Kelas(*), Guru(*, User(*))')
       .single();
   final ujian = UjianModel.fromJson({
@@ -534,7 +535,7 @@ Future<BankSoalModel> createBankSoal(
 
   final res = await client
       .from('BankSoal')
-      .insert(body)
+      .insert(rowFor('BankSoal', body))
       .select()
       .single();
   ref.invalidate(bankSoalGuruProvider);
@@ -550,12 +551,12 @@ Future<void> addUjianSoal(
   double bobot = 1.0,
 }) async {
   final client = ref.read(supabaseClientProvider);
-  await client.from('UjianSoal').insert({
+  await client.from('UjianSoal').insert(rowFor('UjianSoal', {
     'ujianId': ujianId,
     'bankSoalId': bankSoalId,
     'urutan': urutan,
     'bobot': bobot,
-  });
+  }));
   ref.invalidate(ujianSoalByUjianProvider(ujianId));
 }
 
@@ -627,7 +628,7 @@ Future<PerkembanganQuranModel> createPerkembanganQuran(
 
   final res = await client
       .from('PerkembanganQuran')
-      .insert(body)
+      .insert(rowFor('PerkembanganQuran', body))
       .select('*, Santri(*), Guru(*, User(*))')
       .single();
   ref.invalidate(perkembanganQuranProvider);
@@ -672,7 +673,7 @@ Future<HafalanKitabModel> createHafalanKitab(
 
   final res = await client
       .from('HafalanKitab')
-      .insert(body)
+      .insert(rowFor('HafalanKitab', body))
       .select('*, Santri(*), Guru(*, User(*))')
       .single();
   ref.invalidate(hafalanKitabProvider);
@@ -724,7 +725,7 @@ Future<AkhlakPenilaianModel> createAkhlakPenilaian(
 
   final res = await client
       .from('AkhlakPenilaian')
-      .insert(body)
+      .insert(rowFor('AkhlakPenilaian', body))
       .select('*, Santri(*), Guru(*, User(*))')
       .single();
   ref.invalidate(akhlakPenilaianProvider);
@@ -767,7 +768,7 @@ Future<PembinaanModel> createPembinaan(
 
   final res = await client
       .from('Pembinaan')
-      .insert(body)
+      .insert(rowFor('Pembinaan', body))
       .select('*, Santri(*), Guru(*, User(*))')
       .single();
   ref.invalidate(pembinaanProvider);
@@ -804,7 +805,7 @@ Future<ChatRoomModel> createChatRoom(
 
   final res = await client
       .from('ChatRoom')
-      .insert(body)
+      .insert(rowFor('ChatRoom', body))
       .select('*, Wali(*), Guru(*, User(*)), Santri(*)')
       .single();
   ref.invalidate(chatRoomsGuruProvider);
@@ -835,7 +836,7 @@ Future<ChatMessageModel> sendChatMessage(
 
   final res = await client
       .from('ChatMessage')
-      .insert(body)
+      .insert(rowFor('ChatMessage', body))
       .select()
       .single();
 

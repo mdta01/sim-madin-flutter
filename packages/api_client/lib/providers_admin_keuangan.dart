@@ -11,6 +11,7 @@ import 'package:supabase_client/supabase_client.dart';
 
 import 'query_providers.dart';
 import 'storage_service.dart';
+import 'supabase_write.dart';
 
 // ===========================================================================
 // TAGIHAN
@@ -21,7 +22,7 @@ final tagihanListAdminProvider =
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Tagihan').select('*, Santri(name, nis, Kelas(name)), JenisTagihan(name, code)');
-  if (status != null && status != 'ALL') q = q.eq('status', status!);
+  if (status != null && status != 'ALL') q = q.eq('status', status);
   final res = await q.order('createdAt', ascending: false).limit(200);
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
@@ -47,10 +48,16 @@ Future<TagihanModel> adminCreateTagihan(
   String? description,
   DateTime? dueDate,
   String? tahunAjaranId,
-  String? semesterId,
+  String? semesterId, // diabaikan: tabel Tagihan tidak punya kolom semesterId
 }) async {
   final client = ref.read(supabaseClientProvider);
   final taId = tahunAjaranId ?? (await ref.read(tahunAjaranActiveProvider.future))?.id;
+  if (taId == null) {
+    throw Exception(
+      'Tahun ajaran aktif belum diset. Aktifkan tahun ajaran di menu '
+      'Tahun Ajaran sebelum membuat tagihan.',
+    );
+  }
   final body = {
     'santriId': santriId,
     'jenisTagihanId': jenisTagihanId,
@@ -59,11 +66,10 @@ Future<TagihanModel> adminCreateTagihan(
     'status': TagihanStatus.belumBayar,
     if (description != null) 'description': description,
     if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
-    if (taId != null) 'tahunAjaranId': taId,
-    if (semesterId != null) 'semesterId': semesterId,
+    'tahunAjaranId': taId,
   };
-  final res = await client.from('Tagihan').insert(body).select('*, Santri(name, nis, Kelas(name)), JenisTagihan(name, code)').single();
-  final row = res as Map<String, dynamic>;
+  final res = await client.from('Tagihan').insert(rowFor('Tagihan', body)).select('*, Santri(name, nis, Kelas(name)), JenisTagihan(name, code)').single();
+  final row = res;
   final santri = row['Santri'] as Map<String, dynamic>?;
   final kelas = santri?['Kelas'] as Map<String, dynamic>?;
   final jenis = row['JenisTagihan'] as Map<String, dynamic>?;
@@ -81,10 +87,16 @@ Future<int> adminCreateTagihanBulk(
   String? description,
   DateTime? dueDate,
   String? tahunAjaranId,
-  String? semesterId,
+  String? semesterId, // diabaikan: tabel Tagihan tidak punya kolom semesterId
 }) async {
   final client = ref.read(supabaseClientProvider);
   final taId = tahunAjaranId ?? (await ref.read(tahunAjaranActiveProvider.future))?.id;
+  if (taId == null) {
+    throw Exception(
+      'Tahun ajaran aktif belum diset. Aktifkan tahun ajaran di menu '
+      'Tahun Ajaran sebelum membuat tagihan.',
+    );
+  }
 
   // Get all santri in kelas
   final santriRes = await client.from('Santri').select('id').eq('kelasId', kelasId).eq('status', SantriStatus.aktif).filter('deletedAt', 'is', null);
@@ -100,11 +112,12 @@ Future<int> adminCreateTagihanBulk(
     'status': TagihanStatus.belumBayar,
     if (description != null) 'description': description,
     if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
-    if (taId != null) 'tahunAjaranId': taId,
-    if (semesterId != null) 'semesterId': semesterId,
+    'tahunAjaranId': taId,
   }).toList();
 
-  await client.from('Tagihan').insert(rows);
+  await client.from('Tagihan').insert(
+    rows.map((row) => rowFor('Tagihan', row)).toList(),
+  );
   ref.invalidate(tagihanListAdminProvider);
   return santriIds.length;
 }
@@ -141,7 +154,7 @@ final pembayaranListAdminProvider =
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('Payment').select('*, Santri(name, nis), Tagihan(*, JenisTagihan(code))');
-  if (status != null && status != 'ALL') q = q.eq('status', status!);
+  if (status != null && status != 'ALL') q = q.eq('status', status);
   final res = await q.order('paymentDate', ascending: false).limit(200);
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
@@ -183,9 +196,9 @@ final kasListAdminProvider = FutureProvider<List<KasModel>>((ref) async {
 
 Future<KasModel> adminCreateKas(WidgetRef ref, {required String code, required String name, required String type, String? accountNumber, String? bankName}) async {
   final client = ref.read(supabaseClientProvider);
-  final res = await client.from('Kas').insert({'code': code, 'name': name, 'type': type, if (accountNumber != null) 'accountNumber': accountNumber, if (bankName != null) 'bankName': bankName}).select().single();
+  final res = await client.from('Kas').insert(rowFor('Kas', {'code': code, 'name': name, 'type': type, if (accountNumber != null) 'accountNumber': accountNumber, if (bankName != null) 'bankName': bankName})).select().single();
   ref.invalidate(kasListAdminProvider);
-  return KasModel.fromJson(res as Map<String, dynamic>);
+  return KasModel.fromJson(res);
 }
 
 Future<void> adminDeleteKas(WidgetRef ref, String id) async {
@@ -203,7 +216,7 @@ final honorGuruListAdminProvider =
   ref.watch(realtimeRefreshTick);
   final client = ref.watch(supabaseClientProvider);
   var q = client.from('HonorGuru').select('*, Guru(name, specialization)');
-  if (status != null && status != 'ALL') q = q.eq('status', status!);
+  if (status != null && status != 'ALL') q = q.eq('status', status);
   final res = await q.order('createdAt', ascending: false).limit(200);
   return (res as List).map((r) {
     final row = r as Map<String, dynamic>;
@@ -259,7 +272,9 @@ Future<int> adminGenerateHonorGuruBulk(
     'status': HonorGuruStatus.draft,
   }).toList();
 
-  await client.from('HonorGuru').insert(rows);
+  await client
+      .from('HonorGuru')
+      .insert(rows.map((r) => rowFor('HonorGuru', r)).toList());
   ref.invalidate(honorGuruListAdminProvider);
   return guruIds.length;
 }
@@ -304,9 +319,9 @@ final pengumumanListAdminProvider = FutureProvider<List<AnnouncementModel>>((ref
 
 Future<AnnouncementModel> adminCreatePengumuman(WidgetRef ref, {required String title, required String content, String priority = AnnouncementPriority.normal, String audience = AnnouncementAudience.all}) async {
   final client = ref.read(supabaseClientProvider);
-  final res = await client.from('Announcement').insert({'title': title, 'content': content, 'priority': priority, 'audience': audience, 'publishedAt': DateTime.now().toIso8601String(), 'createdById': client.auth.currentUser?.id}).select().single();
+  final res = await client.from('Announcement').insert(rowFor('Announcement', {'title': title, 'content': content, 'priority': priority, 'audience': audience, 'publishedAt': DateTime.now().toIso8601String(), 'createdById': client.auth.currentUser?.id})).select().single();
   ref.invalidate(pengumumanListAdminProvider);
-  return AnnouncementModel.fromJson(res as Map<String, dynamic>);
+  return AnnouncementModel.fromJson(res);
 }
 
 Future<void> adminDeletePengumuman(WidgetRef ref, String id) async {
@@ -361,7 +376,7 @@ Future<void> adminCreateNotifikasi(
   String? entityId,
 }) async {
   final client = ref.read(supabaseClientProvider);
-  await client.from('Notifikasi').insert({
+  await client.from('Notifikasi').insert(rowFor('Notifikasi', {
     'waliId': waliId,
     'santriId': santriId,
     'type': type,
@@ -372,7 +387,7 @@ Future<void> adminCreateNotifikasi(
     'entityId': entityId,
     'isRead': false,
     'isPushSent': false,
-  });
+  }));
   ref.invalidate(notifikasiListAdminProvider);
 }
 
@@ -399,7 +414,9 @@ Future<int> adminCreateNotifikasiBulk(
     'isPushSent': false,
   }).toList();
 
-  await client.from('Notifikasi').insert(rows);
+  await client
+      .from('Notifikasi')
+      .insert(rows.map((r) => rowFor('Notifikasi', r)).toList());
   ref.invalidate(notifikasiListAdminProvider);
   return waliIds.length;
 }
@@ -491,7 +508,7 @@ Future<void> adminCreateSurat(
   String? filePath,
 }) async {
   final client = ref.read(supabaseClientProvider);
-  await client.from('Surat').insert({
+  await client.from('Surat').insert(rowFor('Surat', {
     'santriId': santriId,
     'type': type,
     'title': title,
@@ -501,7 +518,7 @@ Future<void> adminCreateSurat(
     'tanggalSurat': (tanggalSurat ?? DateTime.now()).toIso8601String(),
     if (fileUrl != null) 'fileUrl': fileUrl,
     if (filePath != null) 'filePath': filePath,
-  });
+  }));
   ref.invalidate(suratListAdminProvider);
 }
 

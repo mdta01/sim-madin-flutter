@@ -40,6 +40,12 @@ class _UjianTakeScreenState extends ConsumerState<UjianTakeScreen>
   bool _submitting = false;
   double? _resultScore;
 
+  // Autosave: jawaban disimpan ke DB beberapa detik setelah berhenti mengetik
+  // supaya pekerjaan santri tidak hilang kalau app tertutup / HP mati.
+  Timer? _autosaveTimer;
+  bool _savingDraft = false;
+  DateTime? _lastSaved;
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +56,7 @@ class _UjianTakeScreenState extends ConsumerState<UjianTakeScreen>
   @override
   void dispose() {
     _timer?.cancel();
+    _autosaveTimer?.cancel();
     // Dispose semua cached essay controllers supaya tidak leak.
     for (final c in _essayControllers.values) {
       c.dispose();
@@ -60,6 +67,12 @@ class _UjianTakeScreenState extends ConsumerState<UjianTakeScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Simpan jawaban sebelum app ditinggalkan / di-background.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      // ignore: discarded_futures
+      _saveDraft(silent: true);
+    }
     onAppLifecycleChanged(state);
   }
 
@@ -131,12 +144,31 @@ class _UjianTakeScreenState extends ConsumerState<UjianTakeScreen>
         );
       }
 
-      // Calculate remaining time
+      // Sisa waktu: utamakan hitungan SERVER (jam perangkat bisa diubah
+      // santri). Fallback ke perhitungan lokal bila RPC tidak tersedia.
       final durationSec = _data!.ujian.durationMnt * 60;
-      final elapsedSec = _sesi!.startTime != null
-          ? DateTime.now().difference(_sesi!.startTime!).inSeconds
-          : 0;
-      _remainingSeconds = (durationSec - elapsedSec).clamp(0, durationSec);
+      final serverRemaining = await ujianRemainingSeconds(ref, _sesi!.id);
+      if (serverRemaining != null) {
+        _remainingSeconds = serverRemaining.clamp(0, durationSec);
+      } else {
+        final elapsedSec = _sesi!.startTime != null
+            ? DateTime.now().difference(_sesi!.startTime!).inSeconds
+            : 0;
+        _remainingSeconds = (durationSec - elapsedSec).clamp(0, durationSec);
+      }
+
+      // Sesi yang waktunya sudah habis: kumpulkan jawaban yang tersimpan,
+      // lalu tampilkan status (bukan layar kosong).
+      if (_remainingSeconds <= 0) {
+        setState(() => _loading = false);
+        await _doSubmit(auto: true);
+        if (!mounted) return;
+        setState(() {
+          _error = 'Waktu ujian ini sudah habis. Jawaban yang tersimpan '
+              'telah dikumpulkan otomatis.';
+        });
+        return;
+      }
 
       // Start timer
       _startTimer();
@@ -202,12 +234,60 @@ class _UjianTakeScreenState extends ConsumerState<UjianTakeScreen>
         optionOrder: _answers[ujianSoalId]?.optionOrder,
       );
     });
+    _scheduleAutosave();
+  }
+
+  /// Debounce 3 detik — cukup untuk mencegah spam tulis saat mengetik essay.
+  void _scheduleAutosave() {
+    _autosaveTimer?.cancel();
+    _autosaveTimer = Timer(const Duration(seconds: 3), () {
+      // ignore: discarded_futures
+      _saveDraft(silent: true);
+    });
+  }
+
+  /// Simpan jawaban ke DB tanpa menutup sesi.
+  Future<void> _saveDraft({bool silent = true}) async {
+    if (_savingDraft || _sesi == null || _submitting) return;
+    if (_sesi!.status == 'FINISHED') return;
+    _savingDraft = true;
+    try {
+      final answers = _answers.entries
+          .map((e) => UjianJawabanSubmit(
+                ujianSoalId: e.key,
+                answer: e.value.answer,
+                optionOrder: e.value.optionOrder,
+              ))
+          .toList();
+      await saveUjianAnswerDraft(
+        ref,
+        sesiId: _sesi!.id,
+        santriId: widget.santriId,
+        answers: answers,
+      );
+      _lastSaved = DateTime.now();
+      if (!silent && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Jawaban tersimpan'),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (_) {
+      // Diam saja: autosave tidak boleh mengganggu jalannya ujian.
+      // Jawaban tetap ada di memori dan akan ikut terkirim saat submit.
+    } finally {
+      _savingDraft = false;
+    }
   }
 
   Future<void> _doSubmit({bool auto = false}) async {
     if (_submitting) return;
     setState(() => _submitting = true);
     _timer?.cancel();
+    _autosaveTimer?.cancel();
 
     try {
       final answers = _answers.entries
@@ -408,6 +488,26 @@ class _UjianTakeScreenState extends ConsumerState<UjianTakeScreen>
         appBar: AppBar(
           title: Text(ujian.title, style: const TextStyle(fontSize: 14)),
           actions: [
+            // Indikator autosave — santri tahu jawabannya sudah tersimpan.
+            if (_lastSaved != null)
+              Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.xs),
+                child: Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.cloud_done,
+                          size: 13, color: AppColors.success),
+                      const SizedBox(width: 3),
+                      Text(
+                        'Tersimpan',
+                        style: AppTextStyles.caption
+                            .copyWith(color: AppColors.success),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             Container(
               margin: const EdgeInsets.only(right: AppSpacing.md),
               padding:

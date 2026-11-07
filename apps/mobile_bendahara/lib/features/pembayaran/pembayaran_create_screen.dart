@@ -40,7 +40,6 @@ class _PembayaranCreateScreenState
   // Bukti pembayaran (optional — upload ke Storage bucket 'tugas')
   PlatformFile? _pickedFile;
   Uint8List? _fileBytes;
-  String? _proofUrl;
 
   @override
   void dispose() {
@@ -113,6 +112,10 @@ class _PembayaranCreateScreenState
         amount: _amount.toDouble(),
         paymentMethod: _method,
         note: _note.isNotEmpty ? _note : null,
+        // Bukti yang sudah di-upload HARUS ikut tersimpan; sebelumnya variabel
+        // proofUrl hanya diisi lalu dibuang sehingga bendahara kehilangan bukti
+        // transfer dan tidak ada cara memverifikasi pembayaran.
+        proofUrl: proofUrl,
       );
       if (!mounted) return;
       _toast('Pembayaran ${formatRupiah(_amount.toDouble())} tercatat');

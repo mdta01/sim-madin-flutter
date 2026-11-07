@@ -18,7 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
 
-import 'query_providers.dart' show realtimeRefreshTick, supabaseClientProvider;
+import 'query_providers.dart' show realtimeRefreshTick;
 
 // ---------------------------------------------------------------------------
 // Helper: parse relation rows

@@ -1,0 +1,1503 @@
+// ============================================================================
+// PRISMA SCHEMA - MADRASAH DINIYAH TERPADU (SIM MADIN)
+// ============================================================================
+// Filosofi: "Satu pintu, bertahap, fondasi kuat"
+// - Role + Permission (bukan hard-code akses per aplikasi)
+// - Satu Data Santri (single source of truth)
+// - Satu Data Wali (satu wali bisa punya banyak anak)
+// - Riwayat Data (audit log & soft delete)
+// - Tahun Ajaran & Semester (semua data akademik terikat)
+// - Data Keuangan Terhubung Santri
+// - Modular (siap V2-V14 tanpa bongkar total)
+// ============================================================================
+
+generator client {
+  binaryTargets = ["native", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+}
+
+// ============================================================================
+// 1. AUTENTIKASI, ROLE & PERMISSION
+// ============================================================================
+// Sistem hak akses berbasis Role + Permission.
+// Setiap User bisa punya banyak Role, setiap Role punya banyak Permission.
+// Contoh: Guru + Wali Kelas = 1 User dengan 2 Role yang aktif.
+// ============================================================================
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  username      String   @unique
+  passwordHash  String
+  name          String
+  phone         String?
+  avatarUrl     String?
+  firebaseUid   String?  @unique // ⚠️ Legacy field name — sekarang menyimpan Supabase Auth UID (rename ke supabaseUid akan break migration existing). Akses via prisma.user.firebaseUid.
+  isActive      Boolean  @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime? // soft delete
+
+  // Relasi
+  userRoles     UserRole[]
+  auditLogs     AuditLog[]
+  payments      Payment[]      @relation("RecordedBy")
+  announcements Announcement[] @relation("CreatedBy")
+  santri        Santri?
+  guru          Guru?
+  wali          Wali?
+
+  @@index([isActive])
+  @@index([deletedAt])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  code        String   @unique // SUPER_ADMIN, KEPALA, BENDAHARA, GURU, WALI
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  isSystem    Boolean  @default(false) // role sistem, tidak bisa dihapus
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userRoles   UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  code        String   @unique // contoh: "santri:create", "nilai:read"
+  name        String
+  module      String // "santri", "nilai", "keuangan", dll
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles       RolePermission[]
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+// ============================================================================
+// 2. MASTER AKADEMIK (TAHUN AJARAN, SEMESTER, KELAS, MAPEL)
+// ============================================================================
+
+model TahunAjaran {
+  id        String   @id @default(cuid())
+  code      String   @unique // "2025/2026"
+  name      String   // "Tahun Ajaran 2025/2026"
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  semesters Semester[]
+  santri    Santri[]
+  jadwal    Jadwal[]
+  absensi   Absensi[]
+  nilai     Nilai[]
+  rapor     Rapor[]
+  tagihan   Tagihan[]
+  pembayaran Payment[]
+  materi     Materi[]
+  tugas      Tugas[]
+  pertemuan Pertemuan[]
+  kompetensi Kompetensi[]
+  ujian     Ujian[]      // V3
+  bankSoal  BankSoal[]   // V3
+  // V4 — Perkembangan Santri
+  perkembanganQuran  PerkembanganQuran[]
+  hafalanKitab       HafalanKitab[]
+  akhlakPenilaian    AkhlakPenilaian[]
+  pembinaan          Pembinaan[]
+  catatanWaliKelas   CatatanWaliKelas[]
+  // V5 — Keuangan Lanjutan
+  transaksiKas       TransaksiKas[]
+  honorGuru          HonorGuru[]
+  // V10 — Kelulusan & Alumni
+  alumniLulus        Alumni[]
+}
+
+model Semester {
+  id           String   @id @default(cuid())
+  tahunAjaranId String
+  code         String   @unique // "2025/2026-GANJIL"
+  name         String   // "Ganjil" / "Genap"
+  type         String   // "GANJIL" | "GENAP"
+  startDate    DateTime
+  endDate      DateTime
+  isActive     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tahunAjaran  TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  jadwal       Jadwal[]
+  nilai        Nilai[]
+  rapor        Rapor[]
+  materi     Materi[]
+  tugas      Tugas[]
+  pertemuan Pertemuan[]
+  ujian     Ujian[]      // V3
+  // V4 — Perkembangan Santri
+  perkembanganQuran  PerkembanganQuran[]
+  hafalanKitab       HafalanKitab[]
+  akhlakPenilaian    AkhlakPenilaian[]
+  pembinaan          Pembinaan[]
+  catatanWaliKelas   CatatanWaliKelas[]
+  // V5 — Keuangan Lanjutan (honorGuru only, TransaksiKas doesn't need semester)
+  honorGuru          HonorGuru[]
+
+  @@index([tahunAjaranId])
+}
+
+model Kelas {
+  id          String   @id @default(cuid())
+  code        String   @unique // "MDA-1A"
+  name        String   // "Kelas 1 Madrasah A"
+  level       String   // "MDA-1" | "MDA-2" | ... | "MDI-1"
+  description String?
+  capacity    Int      @default(30)
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  waliKelasId String? // Guru yang jadi wali kelas
+  waliKelas   Guru?   @relation("KelasWali", fields: [waliKelasId], references: [id])
+
+  santri      Santri[]
+  jadwal      Jadwal[]
+  absensi     Absensi[]
+  nilai       Nilai[]
+  rapor       Rapor[]
+  tagihan     Tagihan[]
+  materi     Materi[]
+  tugas      Tugas[]
+  pertemuan Pertemuan[]
+  ujian       Ujian[]      // V3
+
+  @@index([level])
+  @@index([isActive])
+  @@index([deletedAt])
+}
+
+model MataPelajaran {
+  id          String   @id @default(cuid())
+  code        String   @unique // "FIKIH"
+  name        String   // "Fiqih"
+  category    String   // "DINIYAH" | "UMUM" | "AL_QURAN" | dll
+  description String?
+  kkm         Float    @default(70) // Kriteria Ketuntasan Minimal
+  durationMnt Int      @default(90) // durasi per pertemuan
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  jadwal      Jadwal[]
+  nilai       Nilai[]
+  materi     Materi[]
+  tugas      Tugas[]
+  pertemuan Pertemuan[]
+  kompetensi Kompetensi[]
+  ujian       Ujian[]      // V3
+  bankSoal    BankSoal[]   // V3
+  raporMapel  RaporMapel[] // V3
+
+  @@index([category])
+  @@index([isActive])
+  @@index([deletedAt])
+}
+
+// ============================================================================
+// 3. DATA INDUK (WALI, SANTRI, GURU)
+// ============================================================================
+
+model Wali {
+  id          String   @id @default(cuid())
+  userId      String?  @unique // link ke User jika sudah punya akun (deprecated, gunakan pinHash langsung)
+  name        String
+  nik         String?  @unique
+  phone       String?  @unique // Nomor WhatsApp — identitas login wali. Null jika belum punya WA.
+  email       String?
+  occupation  String?
+  address     String?
+  relationship String  @default("WALI") // default relationship (untuk backward compat)
+  // Activation & Auth
+  activationStatus String @default("PENDING") // PENDING_NO_PHONE | PENDING | ACTIVE | SUSPENDED
+  pinHash     String?  // PIN 6 digit yang di-hash (bcrypt)
+  otpCode     String?  // OTP aktif saat ini
+  otpExpiresAt DateTime?
+  otpAttempts Int      @default(0) // attempt verify OTP
+  otpRequestCount Int  @default(0) // anti-spam: max 5/jam
+  otpRequestResetAt DateTime?
+  failedLoginAttempts Int @default(0)
+  lockedUntil DateTime?
+  lastLoginAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  user        User?    @relation(fields: [userId], references: [id])
+  santri      Santri[] // backward compat (wali utama)
+  santriLinks SantriWali[] // semua relasi wali-santri
+  activations WaliActivation[]
+  phoneChangeLogs PhoneChangeLog[]
+  // V6 — Komunikasi & Notifikasi
+  notifikasi     Notifikasi[]
+  chatRooms      ChatRoom[]
+  chatMessages   ChatMessage[]
+
+  @@index([phone])
+  @@index([activationStatus])
+  @@index([deletedAt])
+}
+
+model SantriWali {
+  id           String   @id @default(cuid())
+  santriId     String
+  waliId       String
+  relationship String   // AYAH | IBU | WALI | KAKEK | NENEK | PAMAN | BIBI
+  isPrimary    Boolean  @default(false) // wali utama (1 per santri)
+  canAccess    Boolean  @default(true) // admin bisa disable akses wali tertentu
+  createdAt    DateTime @default(now())
+
+  santri       Santri   @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  wali         Wali     @relation(fields: [waliId], references: [id], onDelete: Cascade)
+
+  @@unique([santriId, waliId])
+  @@index([waliId])
+  @@index([santriId, isPrimary])
+}
+
+model WaliActivation {
+  id           String   @id @default(cuid())
+  waliId       String
+  token        String   @unique // untuk link aktivasi
+  otpCode      String   // 6 digit OTP
+  type         String   // INVITE | FORGOT_PIN | CHANGE_PHONE
+  expiresAt    DateTime
+  usedAt       DateTime?
+  attempts     Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  wali         Wali     @relation(fields: [waliId], references: [id], onDelete: Cascade)
+
+  @@index([waliId])
+  @@index([token])
+  @@index([type, expiresAt])
+}
+
+model PhoneChangeLog {
+  id           String   @id @default(cuid())
+  waliId       String
+  oldPhone     String?
+  newPhone     String
+  changedById  String?  // admin yang mengubah
+  changedAt    DateTime @default(now())
+  reason       String?
+
+  wali         Wali     @relation(fields: [waliId], references: [id], onDelete: Cascade)
+
+  @@index([waliId])
+}
+
+model Santri {
+  id            String   @id @default(cuid())
+  nis           String   @unique // Nomor Induk Santri — auto-generated, identitas permanen
+  nisn          String?  @unique
+  name          String
+  gender        String   // "L" | "P"
+  birthPlace    String?
+  birthDate     DateTime?
+  address      String?
+  phone         String?
+  photoUrl      String?
+  entryDate     DateTime @default(now())
+  status        String   @default("AKTIF") // "AKTIF" | "LULUS" | "PINDAH" | "KELUAR"
+  waliId        String?  // backward compat: shortcut ke wali utama
+  kelasId       String?
+  tahunAjaranId String?  // tahun ajaran saat pendaftaran
+  userId        String?  @unique // link ke User jika santri punya akun (untuk wali/santri portal)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  wali          Wali?        @relation(fields: [waliId], references: [id])
+  kelas         Kelas?       @relation(fields: [kelasId], references: [id])
+  tahunAjaran   TahunAjaran? @relation(fields: [tahunAjaranId], references: [id])
+  user          User?        @relation(fields: [userId], references: [id])
+  waliLinks     SantriWali[] // semua wali yang terhubung (multi-wali)
+  absensi       Absensi[]
+  nilai         Nilai[]
+  rapor         Rapor[]
+  tagihan       Tagihan[]
+  payments      Payment[]
+  pengumpulanTugas PengumpulanTugas[]
+  ujianPeserta    UjianPeserta[]  // V3
+  ujianNilai      UjianNilai[]    // V3
+  // V4 — Perkembangan Santri
+  perkembanganQuran  PerkembanganQuran[]
+  hafalanKitab       HafalanKitab[]
+  akhlakPenilaian    AkhlakPenilaian[]
+  pembinaan          Pembinaan[]
+  catatanWaliKelas   CatatanWaliKelas[]
+  // V3 Complete — Ujian Online
+  ujianSesi          UjianSesi[]
+  ujianJawaban       UjianJawaban[]
+  // V6 — Komunikasi & Notifikasi
+  notifikasi         Notifikasi[]
+  chatRooms          ChatRoom[]
+  // V7 — Administrasi & Dokumen
+  surat              Surat[]
+  // V10 — Kelulusan & Alumni
+  alumni             Alumni[]
+
+  @@index([kelasId])
+  @@index([waliId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Guru {
+  id          String   @id @default(cuid())
+  userId      String?  @unique
+  nip         String?  @unique
+  nuptk       String?  @unique
+  name        String
+  gender      String   // "L" | "P"
+  birthPlace  String?
+  birthDate   DateTime?
+  address     String?
+  phone       String?
+  email       String?
+  photoUrl    String?
+  joinDate    DateTime @default(now())
+  specialization String? // "Tahfidz", "Fiqih", dll
+  status      String   @default("AKTIF") // "AKTIF" | "CUTI" | "KELUAR"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  user        User?    @relation(fields: [userId], references: [id])
+  kelasWali   Kelas[]  @relation("KelasWali")
+  jadwal      Jadwal[]
+  absensi     Absensi[] @relation("RecordedByGuru")
+  materi      Materi[]
+  tugas       Tugas[]
+  pertemuan   Pertemuan[]
+  nilai       Nilai[]
+  ujian       Ujian[]      // V3
+  bankSoal    BankSoal[]   // V3
+  // V4 — Perkembangan Santri (guru sebagai pengampu/penilai)
+  perkembanganQuran  PerkembanganQuran[]
+  hafalanKitab       HafalanKitab[]
+  akhlakPenilaian    AkhlakPenilaian[]
+  pembinaan          Pembinaan[]
+  catatanWaliKelas   CatatanWaliKelas[]
+  // V5 — Keuangan Lanjutan
+  honorGuru          HonorGuru[]
+  // V6 — Komunikasi & Notifikasi
+  chatRooms          ChatRoom[]
+  chatMessages       ChatMessage[]
+  // V7 — Administrasi & Dokumen
+  surat              Surat[]
+
+  @@index([status])
+  @@index([deletedAt])
+}
+
+// ============================================================================
+// 4. JADWAL PELAJARAN
+// ============================================================================
+
+model Jadwal {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  semesterId    String
+  kelasId       String
+  mapelId       String
+  guruId        String
+  dayOfWeek     Int      // 1=Senin, 7=Minggu
+  startTime     String   // "07:00"
+  endTime       String   // "08:30"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tahunAjaran  TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  semester     Semester    @relation(fields: [semesterId], references: [id])
+  kelas        Kelas       @relation(fields: [kelasId], references: [id])
+  mapel        MataPelajaran @relation(fields: [mapelId], references: [id])
+  guru         Guru        @relation(fields: [guruId], references: [id])
+
+  @@unique([kelasId, mapelId, dayOfWeek, startTime, tahunAjaranId, semesterId])
+  @@index([kelasId, dayOfWeek])
+  @@index([guruId, dayOfWeek])
+}
+
+// ============================================================================
+// 5. AKADEMIK HARIAN (ABSENSI & NILAI)
+// ============================================================================
+
+model Absensi {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  santriId      String
+  kelasId       String
+  date          DateTime
+  status        String   // "HADIR" | "SAKIT" | "IZIN" | "ALFA"
+  note          String?
+  recordedByGuruId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  santri        Santri      @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  kelas         Kelas       @relation(fields: [kelasId], references: [id])
+  guru          Guru?       @relation("RecordedByGuru", fields: [recordedByGuruId], references: [id])
+
+  @@unique([santriId, date, tahunAjaranId])
+  @@index([kelasId, date])
+  @@index([santriId, date])
+  @@index([status, date])
+}
+
+model Nilai {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  semesterId    String
+  santriId      String
+  kelasId       String
+  mapelId       String
+  guruId        String?
+  kompetensiId  String? // V2 #6: link to specific Kompetensi (capaian pembelajaran)
+  type          String   // "HARIAN" | "TUGAS" | "UTS" | "UAS" | "PRAKTIK"
+  score         Float
+  notes         String?
+  assessmentDate DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  semester     Semester    @relation(fields: [semesterId], references: [id])
+  santri        Santri      @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  kelas         Kelas       @relation(fields: [kelasId], references: [id])
+  mapel         MataPelajaran @relation(fields: [mapelId], references: [id])
+  guru          Guru?       @relation(fields: [guruId], references: [id])
+  kompetensi    Kompetensi? @relation(fields: [kompetensiId], references: [id], onDelete: SetNull)
+
+  @@unique([santriId, mapelId, type, semesterId, tahunAjaranId])
+  @@index([kelasId, mapelId, type])
+  @@index([santriId, semesterId])
+  @@index([kompetensiId])
+}
+
+// ============================================================================
+// 6. RAPOR
+// ============================================================================
+
+model Rapor {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  semesterId    String
+  santriId      String
+  kelasId       String
+  // Rata-rata per mapel akan dihitung dari Nilai (tidak disimpan denormalized)
+  notes         String? // catatan wali kelas
+  absensiHadir  Int     @default(0)
+  absensiSakit  Int     @default(0)
+  absensiIzin   Int     @default(0)
+  absensiAlfa   Int     @default(0)
+  published     Boolean @default(false)
+  publishedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  semester     Semester    @relation(fields: [semesterId], references: [id])
+  santri        Santri      @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  kelas         Kelas       @relation(fields: [kelasId], references: [id])
+  raporMapel    RaporMapel[]   // V3: detail per mapel
+  raporCatatan  RaporCatatan?  // V3: catatan wali kelas + prestasi + akhlak
+
+  @@unique([santriId, semesterId, tahunAjaranId])
+  @@index([kelasId, semesterId])
+}
+
+// ============================================================================
+// 7. KEUANGAN (TAGIHAN & PEMBAYARAN)
+// ============================================================================
+
+model JenisTagihan {
+  id          String   @id @default(cuid())
+  code        String   @unique // "SYAHRIYAH", "UANG_UJIAN", "SERAGAM"
+  name        String   // "Syahriyah"
+  description String?
+  defaultAmount Int    // nominal default
+  category    String   // "RUTIN" | "INSIDENTAL"
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tagihan     Tagihan[]
+}
+
+model Tagihan {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  santriId      String
+  kelasId       String?
+  jenisTagihanId String
+  amount        Float
+  paidAmount    Float    @default(0)
+  description   String?
+  dueDate       DateTime?
+  status        String   @default("BELUM_BAYAR") // "BELUM_BAYAR" | "CICIL" | "LUNAS"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  santri        Santri      @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  kelas         Kelas?      @relation(fields: [kelasId], references: [id])
+  jenisTagihan  JenisTagihan @relation(fields: [jenisTagihanId], references: [id])
+  payments      Payment[]
+
+  @@index([santriId, status])
+  @@index([tahunAjaranId, status])
+  @@index([dueDate])
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  invoiceNo     String   @unique // "INV-2025-000001"
+  tahunAjaranId String?
+  tagihanId     String?
+  santriId      String?
+  amount        Float
+  paymentMethod String   // "TUNAI" | "TRANSFER" | "QRIS"
+  paymentDate   DateTime @default(now())
+  status        String   @default("VERIFIED") // "PENDING" | "VERIFIED" | "REJECTED"
+  note          String?
+  proofUrl      String?  // bukti transfer untuk verifikasi
+  recordedById  String?
+  kasId         String?  // V5: kas yang menerima pembayaran
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tahunAjaran   TahunAjaran? @relation(fields: [tahunAjaranId], references: [id])
+  tagihan        Tagihan?     @relation(fields: [tagihanId], references: [id])
+  santri        Santri?      @relation(fields: [santriId], references: [id])
+  recordedBy    User?        @relation("RecordedBy", fields: [recordedById], references: [id])
+  kas           Kas?         @relation(fields: [kasId], references: [id])
+  transaksiKas  TransaksiKas[] // V5: transaksi kas yang terkait
+
+  @@index([santriId, paymentDate])
+  @@index([status, paymentDate])
+  @@index([tagihanId])
+}
+
+// ============================================================================
+// 8. PENGUMUMAN
+// ============================================================================
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  audience    String   // "ALL" | "GURU" | "WALI" | "KELAS"
+  kelasId     String?  // jika audience=KELAS
+  priority    String   @default("NORMAL") // "NORMAL" | "PENTING" | "URGENT"
+  isPublished Boolean  @default(true)
+  publishedAt DateTime @default(now())
+  expiresAt   DateTime?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy   User?    @relation("CreatedBy", fields: [createdById], references: [id])
+
+  @@index([isPublished, publishedAt])
+  @@index([audience])
+}
+
+// ============================================================================
+// 9. AUDIT LOG (riwayat perubahan penting - foundation V1 siap V2-V14)
+// ============================================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String   // "CREATE" | "UPDATE" | "DELETE" | "LOGIN" | "LOGOUT"
+  module    String   // "SANTRI", "NILAI", "PEMBAYARAN", dll
+  entityId  String?
+  entityType String?
+  changes   String?  // JSON diff
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([module, action, createdAt])
+}
+
+// ============================================================================
+// 10. PENGATURAN SISTEM
+// ============================================================================
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique // "MADRASAH_NAME", "MADRASAH_ADDRESS", "ACTIVE_TA_ID"
+  value     String
+  type      String   @default("STRING") // "STRING" | "NUMBER" | "JSON" | "BOOLEAN"
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
+// ============================================================================
+// 11. V2 — AKADEMIK & PEMBELAJARAN
+// ============================================================================
+
+model Materi {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  semesterId    String
+  mapelId       String
+  kelasId       String?
+  guruId        String?
+  title         String
+  description   String?
+  type          String   @default("DOKUMEN")
+  fileUrl       String?
+  externalUrl   String?
+  pertemuan     Int?
+  sortOrder     Int      @default(0)
+  isPublished   Boolean  @default(true)
+  publishedAt   DateTime @default(now())
+  createdById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  semester      Semester    @relation(fields: [semesterId], references: [id])
+  mapel         MataPelajaran @relation(fields: [mapelId], references: [id])
+  kelas         Kelas?      @relation(fields: [kelasId], references: [id])
+  guru          Guru?       @relation(fields: [guruId], references: [id])
+  tugas         Tugas[]
+
+  @@index([mapelId, kelasId])
+  @@index([tahunAjaranId, semesterId])
+  @@index([deletedAt])
+}
+
+model Tugas {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  semesterId    String
+  mapelId       String
+  kelasId       String
+  guruId        String?
+  materiId      String?
+  title         String
+  description   String?
+  type          String   @default("INDIVIDU")
+  fileUrl       String?
+  maxScore      Float    @default(100)
+  dueDate       DateTime
+  isPublished   Boolean  @default(true)
+  publishedAt   DateTime @default(now())
+  createdById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  semester      Semester    @relation(fields: [semesterId], references: [id])
+  mapel         MataPelajaran @relation(fields: [mapelId], references: [id])
+  kelas         Kelas       @relation(fields: [kelasId], references: [id])
+  guru          Guru?       @relation(fields: [guruId], references: [id])
+  materi        Materi?     @relation(fields: [materiId], references: [id])
+  submissions   PengumpulanTugas[]
+
+  @@index([kelasId, mapelId])
+  @@index([dueDate])
+  @@index([deletedAt])
+}
+
+model PengumpulanTugas {
+  id            String   @id @default(cuid())
+  tugasId       String
+  santriId      String
+  fileUrl       String?
+  textAnswer    String?
+  submittedAt   DateTime @default(now())
+  status        String   @default("SUBMITTED")
+  score         Float?
+  feedback      String?
+  gradedAt      DateTime?
+  gradedById    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tugas         Tugas      @relation(fields: [tugasId], references: [id], onDelete: Cascade)
+  santri        Santri     @relation(fields: [santriId], references: [id], onDelete: Cascade)
+
+  @@unique([tugasId, santriId])
+  @@index([santriId])
+  @@index([status])
+}
+
+model Pertemuan {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  semesterId    String
+  kelasId       String
+  mapelId       String
+  guruId        String?
+  pertemuanKe   Int
+  date          DateTime
+  topic         String?
+  description   String?
+  isCompleted   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  semester      Semester    @relation(fields: [semesterId], references: [id])
+  kelas         Kelas       @relation(fields: [kelasId], references: [id])
+  mapel         MataPelajaran @relation(fields: [mapelId], references: [id])
+  guru          Guru?       @relation(fields: [guruId], references: [id])
+
+  @@unique([kelasId, mapelId, pertemuanKe, tahunAjaranId, semesterId])
+  @@index([kelasId, date])
+}
+
+model Kompetensi {
+  id            String   @id @default(cuid())
+  mapelId       String
+  tahunAjaranId String
+  code          String   @unique
+  name          String
+  description   String?
+  category      String   @default("UMUM")
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  mapel         MataPelajaran @relation(fields: [mapelId], references: [id])
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  nilai         Nilai[]   // V2 #6: relasi balik ke Nilai
+  bankSoal      BankSoal[] // V3: soal yang link ke kompetensi ini
+
+  @@index([mapelId])
+  @@index([category])
+}
+
+// ============================================================================
+// 12. V3 — UJIAN & RAPOR TERINTEGRASI
+// ============================================================================
+// Modul ujian (UTS/UAS/Quiz) + bank soal + nilai ujian + rapor lengkap
+// dengan deskripsi capaian per mapel + catatan wali kelas + prestasi & akhlak.
+//
+// Filosofi:
+// - Manual flow dulu (guru input nilai ujian manual), online exam = V3.5
+// - Bank soal reusable across ujian (1 soal bisa dipakai banyak ujian)
+// - Nilai ujian otomatis feed ke rapor aggregation
+// - Rapor = generated dari Nilai (HARIAN+TUGAS+UTS+UAS+PRAKTIK) + deskripsi manual
+// ============================================================================
+
+model Ujian {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  semesterId    String
+  mapelId       String
+  kelasId       String
+  guruId        String?
+  title         String   // "UTS Ganjil 2025/2026 - Fiqih Kelas 5"
+  type          String   // "UTS" | "UAS" | "QUIZ" | "MAKEUP"
+  description   String?
+  startTime     DateTime
+  endTime       DateTime
+  durationMnt   Int      @default(90) // durasi dalam menit
+  ruang         String?  // "Aula Utama" / "Kelas 5A"
+  pengawas      String?  // "Ust. Ahmad, Ust. Salim"
+  isPublished   Boolean  @default(false) // publish ke wali/santri
+  // V3 clarification: ujian SELALU offline (manual input).
+  // Online exam (santri take via mobile) = future V3.5, not implemented.
+  maxScore      Float    @default(100)
+  passingScore  Float?   // KKM untuk ujian ini (override mapel.kkm)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt     DateTime?
+
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  semester      Semester    @relation(fields: [semesterId], references: [id])
+  mapel         MataPelajaran @relation(fields: [mapelId], references: [id])
+  kelas         Kelas       @relation(fields: [kelasId], references: [id])
+  guru          Guru?       @relation(fields: [guruId], references: [id])
+  soalLinks     UjianSoal[]
+  peserta       UjianPeserta[]
+  nilai         UjianNilai[]
+  sesi          UjianSesi[]   // V3 Complete: ujian online sessions
+
+  @@index([tahunAjaranId, semesterId])
+  @@index([kelasId, mapelId])
+  @@index([type, startTime])
+  @@index([deletedAt])
+}
+
+model BankSoal {
+  id            String   @id @default(cuid())
+  mapelId       String
+  tahunAjaranId String
+  guruId        String?
+  code          String   @unique // "FIK-001", "QUR-002"
+  type          String   // "PG" | "ISIAN" | "ESSAY" | "PRAKTIK"
+  question      String   // pertanyaan (bisa markdown / rich text)
+  options       String?  // JSON array untuk PG: ["A. ...", "B. ...", "C. ...", "D. ..."]
+  correctAnswer String?  // "A" untuk PG, "jawaban teks" untuk ISIAN, null untuk ESSAY/PRAKTIK (manual)
+  answerKey     String?  // kunci jawaban / rubric untuk ESSAY/PRAKTIK
+  bobot         Float    @default(1) // bobot soal (untuk scoring)
+  difficulty    String   @default("SEDANG") // "MUDAH" | "SEDANG" | "SULIT"
+  kompetensiId  String?  // link ke Kompetensi (V2 #6)
+  tags          String?  // comma-separated tags: "tajwid,nun mati,idgham"
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  mapel         MataPelajaran @relation(fields: [mapelId], references: [id])
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  guru          Guru?       @relation(fields: [guruId], references: [id])
+  kompetensi    Kompetensi? @relation(fields: [kompetensiId], references: [id])
+  ujianLinks    UjianSoal[]
+
+  @@index([mapelId, type])
+  @@index([difficulty])
+  @@index([kompetensiId])
+}
+
+model UjianSoal {
+  id            String   @id @default(cuid())
+  ujianId       String
+  bankSoalId    String
+  urutan        Int      // urutan soal di ujian ini
+  bobot         Float    @default(1) // bobot di ujian ini (override bank soal bobot)
+  createdAt     DateTime @default(now())
+
+  ujian         Ujian    @relation(fields: [ujianId], references: [id], onDelete: Cascade)
+  bankSoal      BankSoal @relation(fields: [bankSoalId], references: [id])
+
+  @@unique([ujianId, bankSoalId])
+  @@index([ujianId, urutan])
+}
+
+model UjianPeserta {
+  id            String   @id @default(cuid())
+  ujianId       String
+  santriId      String
+  ruang         String?  // override ujian.ruang untuk santri ini
+  pengawas      String?  // override ujian.pengawas
+  isHadir       Boolean  @default(true) // absen ujian
+  catatan       String?  // catatan khusus (terlambat, sakit, dll)
+  createdAt     DateTime @default(now())
+
+  ujian         Ujian    @relation(fields: [ujianId], references: [id], onDelete: Cascade)
+  santri        Santri   @relation(fields: [santriId], references: [id], onDelete: Cascade)
+
+  @@unique([ujianId, santriId])
+  @@index([santriId])
+}
+
+model UjianNilai {
+  id            String   @id @default(cuid())
+  ujianId       String
+  santriId      String
+  score         Float    // nilai akhir ujian (0-100 atau skala maxScore)
+  scoreUts      Float?   // optional: nilai terpisah UTS (jika composite)
+  scoreUas      Float?
+  scorePraktik  Float?
+  notes         String?  // catatan guru
+  gradedById    String?  // guru yang menilai
+  gradedAt      DateTime?
+  isAutoCorrect Boolean  @default(false) // true jika auto-correct dari jawaban online
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ujian         Ujian    @relation(fields: [ujianId], references: [id], onDelete: Cascade)
+  santri        Santri   @relation(fields: [santriId], references: [id], onDelete: Cascade)
+
+  @@unique([ujianId, santriId])
+  @@index([santriId])
+}
+
+// V3: Rapor extensions — deskripsi per mapel + catatan wali kelas + prestasi
+model RaporMapel {
+  id            String   @id @default(cuid())
+  raporId       String
+  mapelId       String
+  nilaiAkhir    Float    // nilai akhir mapel (avg dari HARIAN+TUGAS+UTS+UAS+PRAKTIK with bobot)
+  predikat      String?  // "A" / "B" / "C" / "D" (optional)
+  deskripsi     String?  // deskripsi capaian: "Ananda Ahmad menunjukkan penguasaan..."
+  kkm          Float    @default(70)
+  isTuntas      Boolean  @default(false) // nilaiAkhir >= kkm
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  rapor         Rapor    @relation(fields: [raporId], references: [id], onDelete: Cascade)
+  mapel         MataPelajaran @relation(fields: [mapelId], references: [id])
+
+  @@unique([raporId, mapelId])
+  @@index([mapelId])
+}
+
+model RaporCatatan {
+  id            String   @id @default(cuid())
+  raporId       String   @unique // 1 rapor 1 catatan
+  catatanWaliKelas String? // catatan umum dari wali kelas
+  prestasi     String?  // prestasi santri: "Juara 1 Tahfidz"
+  akhlak       String?  // penilaian akhlak: "Sangat Baik"
+  kehadiran    String?  // rekap kehadiran: "Hadir 90%, Sakit 2, Izin 1, Alfa 0"
+  saran        String?  // saran pengembangan
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  rapor        Rapor    @relation(fields: [raporId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================================
+// 13. V4 — PERKEMBANGAN SANTRI & PEMBINAAN
+// ============================================================================
+// Sesuai roadmap.pdf V4:
+// - Al-Qur'an: tahsin, tilawah, hafalan (juz 30, target, progress)
+// - Kitab: hafalan, kelancaran membaca, pemahaman, target
+// - Akhlak: adab guru/orang tua/teman, kedisiplinan, kebersihan, tanggung jawab
+// - Pembinaan: catatan guru, pelanggaran, tindakan, riwayat
+// - Catatan wali kelas (periodik, terpisah dari RaporCatatan)
+// ============================================================================
+
+// Tahsin, Tilawah, Hafalan Al-Qur'an per santri
+model PerkembanganQuran {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  semesterId    String
+  santriId      String
+  guruId        String?
+  type          String   // "TAHSIN" | "TILAWAH" | "HAFALAN"
+  surah         String?  // "Al-Falaq" untuk hafalan
+  juz           Int?     // 30 untuk juz 30
+  ayatFrom      Int?     // ayat mulai
+  ayatTo        Int?     // ayat selesai
+  score         Float?   // 0-100 untuk penilaian tahsin/tilawah
+  status        String   @default("PROGRESS") // "PROGRESS" | "SELESAI" | "BELUM" | "REMEDIAL"
+  target        String?  // "Hafal 5 surat juz 30 per semester"
+  catatan       String?  // catatan guru
+  pertemuanDate DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  semester      Semester    @relation(fields: [semesterId], references: [id])
+  santri        Santri      @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  guru          Guru?       @relation(fields: [guruId], references: [id])
+
+  @@index([santriId, type])
+  @@index([tahunAjaranId, semesterId])
+  @@index([status])
+}
+
+// Hafalan Kitab, Kelancaran, Pemahaman
+model HafalanKitab {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  semesterId    String
+  santriId      String
+  guruId        String?
+  type          String   // "HAFALAN" | "KELANCARAN" | "PEMAHAMAN"
+  kitabName     String   // "Matan Jurumiyyah", "Imrithi", "Safinatun Najah"
+  halaman       String?  // "Hal. 5-10" / "Bab 1"
+  score         Float?   // 0-100
+  status        String   @default("PROGRESS") // "PROGRESS" | "SELESAI" | "BELUM" | "REMEDIAL"
+  target        String?  // "Hafal Matan Jurumiyyah bab 1-5"
+  catatan       String?
+  pertemuanDate DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  semester      Semester    @relation(fields: [semesterId], references: [id])
+  santri        Santri      @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  guru          Guru?       @relation(fields: [guruId], references: [id])
+
+  @@index([santriId, type])
+  @@index([tahunAjaranId, semesterId])
+}
+
+// Penilaian Akhlak (6 aspek per roadmap.pdf)
+model AkhlakPenilaian {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  semesterId    String
+  santriId      String
+  guruId        String?
+  // 6 aspek akhlak (sesuai roadmap.pdf V4)
+  adabGuru      Float    @default(0) // adab kepada guru (0-100)
+  adabOrangTua  Float    @default(0) // adab kepada orang tua
+  adabTeman     Float    @default(0) // adab kepada teman
+  kedisiplinan  Float    @default(0)
+  kebersihan    Float    @default(0)
+  tanggungJawab Float    @default(0)
+  rataRata      Float    @default(0) // auto-compute rata-rata 6 aspek
+  predikat      String?  // "SANGAT_BAIK" | "BAIK" | "CUKUP" | "KURANG"
+  catatan       String?
+  periode       String?  // "BULANAN" | "SEMESTER" — penilaian periodik
+  periodeDate   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  semester      Semester    @relation(fields: [semesterId], references: [id])
+  santri        Santri      @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  guru          Guru?       @relation(fields: [guruId], references: [id])
+
+  @@index([santriId, periodeDate])
+  @@index([tahunAjaranId, semesterId])
+}
+
+// Pembinaan: catatan guru, pelanggaran, tindakan, riwayat
+model Pembinaan {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  semesterId    String
+  santriId      String
+  guruId        String?
+  type          String   // "PELANGGARAN" | "TINDAKAN" | "CATATAN_GURU" | "CATATAN_UMUM"
+  category      String?  // "AKADEMIK" | "AKHLAK" | "DISIPLIN" | "KEBERSIHAN" | dll
+  title         String   // judul singkat
+  description   String   // detail kejadian / tindakan
+  severity      String   @default("RINGAN") // "RINGAN" | "SEDANG" | "BERAT"
+  tindakan      String?  // tindakan yang diambil
+  status        String   @default("OPEN") // "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED"
+  resolvedAt    DateTime?
+  resolvedById  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  semester      Semester    @relation(fields: [semesterId], references: [id])
+  santri        Santri      @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  guru          Guru?       @relation(fields: [guruId], references: [id])
+
+  @@index([santriId, type])
+  @@index([tahunAjaranId, semesterId])
+  @@index([status])
+  @@index([severity])
+}
+
+// Catatan Wali Kelas periodik (terpisah dari RaporCatatan agar bisa multi-entry)
+model CatatanWaliKelas {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  semesterId    String
+  santriId      String
+  waliKelasId   String?  // guru yang jadi wali kelas
+  periode       String   // "BULANAN" | "MINGGUAN" | "SEMESTER"
+  periodeDate   DateTime @default(now())
+  catatan       String   // isi catatan
+  rekomendasi   String?  // rekomendasi untuk wali santri
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  semester      Semester    @relation(fields: [semesterId], references: [id])
+  santri        Santri      @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  guru          Guru?       @relation(fields: [waliKelasId], references: [id])
+
+  @@index([santriId, periodeDate])
+  @@index([tahunAjaranId, semesterId])
+}
+
+// ============================================================================
+// 14. V5 — KEUANGAN TERINTEGRASI LANJUTAN
+// ============================================================================
+// Sesuai roadmap.pdf V5:
+// - Kas & Rekening (multiple accounts)
+// - Pemasukan & Pengeluaran (TransaksiKas)
+// - Saldo & Mutasi
+// - Honor Guru (mengajar, insentif, tunjangan, potongan, slip)
+// - Kwitansi otomatis (PDF dari Payment)
+// - Laporan bulanan/semester/tahunan
+// ============================================================================
+
+// Kas & Rekening madrasah (multiple accounts)
+model Kas {
+  id            String   @id @default(cuid())
+  code          String   @unique // "KAS_TUNAI", "BANK_BRI", "BANK_BNI"
+  name          String   // "Kas Tunai", "Bank BRI"
+  accountNumber String?  // nomor rekening (untuk bank)
+  bankName      String?  // "BRI", "BNI", "Mandiri"
+  type          String   // "TUNAI" | "BANK" | "E_WALLET"
+  balance       Float    @default(0) // saldo saat ini
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  transaksi     TransaksiKas[]
+  payments      Payment[]   // V5: link Payment ke Kas
+  honorGuru     HonorGuru[] // V5: honor yang dibayar dari kas ini
+
+  @@index([isActive])
+}
+
+// Transaksi Kas (pemasukan & pengeluaran)
+model TransaksiKas {
+  id            String   @id @default(cuid())
+  kasId         String
+  tahunAjaranId String?
+  type          String   // "PEMASUKAN" | "PENGELUARAN"
+  category      String   // "PEMBAYARAN_SANTRI" | "HONOR_GURU" | "OPERASIONAL" | "KEGIATAN" | "LAIN_LAIN"
+  amount        Float
+  description   String
+  reference     String?  // invoiceNo / referensi eksternal
+  paymentId     String?  // link ke Payment jika ini pemasukan dari pembayaran santri
+  honorGuruId   String?  // link ke HonorGuru jika ini pengeluaran honor
+  transaksiDate DateTime @default(now())
+  recordedById  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  kas           Kas      @relation(fields: [kasId], references: [id])
+  tahunAjaran   TahunAjaran? @relation(fields: [tahunAjaranId], references: [id])
+  payment       Payment?  @relation(fields: [paymentId], references: [id])
+  honorGuru     HonorGuru? @relation(fields: [honorGuruId], references: [id])
+
+  @@index([kasId, transaksiDate])
+  @@index([type, category])
+  @@index([transaksiDate])
+}
+
+// Honor Guru (mengajar, insentif, tunjangan, potongan, slip)
+model HonorGuru {
+  id            String   @id @default(cuid())
+  tahunAjaranId String
+  semesterId    String
+  guruId        String
+  periode       String   // "2025-10" untuk bulanan, "GANJIL_2025" untuk semester
+  periodeLabel  String   // "Oktober 2025" / "Semester Ganjil 2025/2026"
+  // Komponen honor
+  honorMengajar Float    @default(0) // honor mengajar
+  insentif      Float    @default(0) // insentif
+  tunjangan     Float    @default(0) // tunjangan
+  potongan      Float    @default(0) // potongan
+  totalHonor    Float    @default(0) // auto-compute: mengajar + insentif + tunjangan - potongan
+  // Status
+  status        String   @default("DRAFT") // "DRAFT" | "DISETUJUI" | "DIBAYARKAN"
+  paidAt        DateTime?
+  kasId         String?  // kas yang digunakan untuk bayar
+  catatan       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tahunAjaran   TahunAjaran @relation(fields: [tahunAjaranId], references: [id])
+  semester      Semester    @relation(fields: [semesterId], references: [id])
+  guru          Guru       @relation(fields: [guruId], references: [id])
+  kas           Kas?       @relation(fields: [kasId], references: [id])
+  transaksi     TransaksiKas[]
+
+  @@unique([guruId, periode])
+  @@index([tahunAjaranId, semesterId])
+  @@index([status])
+}
+
+// ============================================================================
+// 15. V3 COMPLETE — Ujian Online (sesuai roadmap.pdf V3)
+// ============================================================================
+// Ujian melalui HP, Timer, Random soal, Random pilihan,
+// Koreksi otomatis untuk soal objektif, Nilai otomatis
+// ============================================================================
+
+// Sesi ujian per santri (tracking waktu mulai/selesai, status)
+model UjianSesi {
+  id            String   @id @default(cuid())
+  ujianId       String
+  santriId      String
+  startTime     DateTime @default(now())
+  endTime       DateTime? // null = belum selesai, set saat submit
+  durationUsed  Int?     // detik yang dipakai
+  score         Float?   // nilai otomatis (0-100)
+  status        String   @default("NOT_STARTED") // "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED" | "GRADED"
+  // Random order info (disimpan untuk reproducibility)
+  soalOrder     String?  // JSON array of soal IDs in shuffled order
+  isAutoCorrected Boolean @default(false) // true jika sudah dikoreksi otomatis
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ujian         Ujian    @relation(fields: [ujianId], references: [id], onDelete: Cascade)
+  santri        Santri   @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  jawaban       UjianJawaban[]
+
+  @@unique([ujianId, santriId])
+  @@index([santriId])
+  @@index([status])
+}
+
+// Jawaban santri per soal (dengan shuffled option order untuk PG)
+model UjianJawaban {
+  id            String   @id @default(cuid())
+  sesiId        String
+  ujianSoalId   String   // link ke UjianSoal
+  santriId      String
+  // Jawaban santri
+  answer       String?  // "A" / "B" / "C" / "D" untuk PG, teks untuk ISIAN/ESSAY
+  // Shuffled option order untuk PG (disimpan saat sesi dimulai)
+  optionOrder  String?  // JSON array: [2, 0, 3, 1] artinya opsi asli index 2 jadi urutan 0
+  // Scoring
+  isCorrect    Boolean? // null = belum dikoreksi, true/false untuk PG/ISIAN
+  score        Float?   // skor soal ini (bobot × benar/salah)
+  isAutoCorrected Boolean @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sesi         UjianSesi @relation(fields: [sesiId], references: [id], onDelete: Cascade)
+  santri       Santri   @relation(fields: [santriId], references: [id], onDelete: Cascade)
+
+  @@unique([sesiId, ujianSoalId])
+  @@index([santriId])
+}
+
+// ============================================================================
+// 16. V6 — KOMUNIKASI & NOTIFIKASI
+// ============================================================================
+// Sesuai roadmap.pdf V6:
+// - Notifikasi otomatis (absensi ALFA, tagihan due, ujian besok, nilai updated, rapor published)
+// - Chat internal (Wali ↔ Wali Kelas, Wali ↔ Madrasah, Guru ↔ Wali)
+// - Riwayat komunikasi
+// ============================================================================
+
+// Notifikasi otomatis (system-generated, per wali/santri)
+model Notifikasi {
+  id            String   @id @default(cuid())
+  waliId        String?  // target wali (null = broadcast to all wali)
+  santriId      String?  // related santri (for context)
+  type          String   // "ABSENSI_ALFA" | "TAGIHAN_DUE" | "UJIAN_TOMORROW" | "NILAI_UPDATED" | "RAPOR_PUBLISHED" | "PENGUMUMAN" | "CUSTOM"
+  title         String
+  message       String
+  priority      String   @default("NORMAL") // "NORMAL" | "PENTING" | "URGENT"
+  isRead        Boolean  @default(false)
+  readAt        DateTime?
+  // Metadata for deep linking
+  entityType    String?  // "ABSENSI" | "TAGIHAN" | "UJIAN" | "NILAI" | "RAPOR" | "PENGUMUMAN"
+  entityId      String?  // ID of related entity
+  // Delivery channels
+  isEmailSent   Boolean  @default(false)
+  isPushSent    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  wali          Wali?    @relation(fields: [waliId], references: [id], onDelete: Cascade)
+  santri        Santri?  @relation(fields: [santriId], references: [id], onDelete: Cascade)
+
+  @@index([waliId, isRead])
+  @@index([type, createdAt])
+  @@index([createdAt])
+}
+
+// Chat Room (1-on-1 atau group kecil)
+model ChatRoom {
+  id            String   @id @default(cuid())
+  type          String   // "WALI_WALI_KELAS" | "WALI_MADRASAH" | "GURU_WALI"
+  waliId        String?  // wali yang terlibat (untuk WALI_WALI_KELAS / WALI_MADRASAH)
+  guruId        String?  // guru yang terlibat (untuk GURU_WALI / WALI_WALI_KELAS)
+  santriId      String?  // santri yang dibahas (context)
+  title         String?  // optional custom title
+  lastMessageAt DateTime? // auto-update saat message baru
+  lastMessage   String?  // preview pesan terakhir
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  wali          Wali?    @relation(fields: [waliId], references: [id], onDelete: Cascade)
+  guru          Guru?    @relation(fields: [guruId], references: [id], onDelete: Cascade)
+  santri        Santri?  @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  messages      ChatMessage[]
+
+  @@index([waliId, isActive])
+  @@index([guruId, isActive])
+}
+
+// Chat Message (individual messages in chat room)
+model ChatMessage {
+  id            String   @id @default(cuid())
+  chatRoomId    String
+  senderType    String   // "WALI" | "GURU" | "ADMIN" — who sent the message
+  senderWaliId  String?  // if sender is wali
+  senderGuruId  String?  // if sender is guru
+  senderUserId  String?  // if sender is admin (User)
+  message       String
+  attachments   String?  // JSON array of file URLs
+  isRead        Boolean  @default(false)
+  readAt        DateTime?
+  createdAt     DateTime @default(now())
+
+  chatRoom      ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  senderWali    Wali?    @relation(fields: [senderWaliId], references: [id])
+  senderGuru    Guru?    @relation(fields: [senderGuruId], references: [id])
+
+  @@index([chatRoomId, createdAt])
+  @@index([senderType, isRead])
+}
+
+// ============================================================================
+// 17. V7 — ADMINISTRASI & DOKUMEN
+// ============================================================================
+// Sesuai roadmap.pdf V7:
+// - Surat otomatis: aktif, izin, tugas, undangan, keterangan, keputusan, kelulusan
+// - Dokumen: sertifikat, piagam, kartu santri, kartu ujian, berita acara
+// - Data diambil otomatis dari database
+// ============================================================================
+
+model Surat {
+  id            String   @id @default(cuid())
+  nomorSurat   String   @unique // "001/SKT/X/2025" — auto-generated
+  type          String   // "AKTIF" | "IZIN" | "TUGAS" | "UNDANGAN" | "KETERANGAN" | "KEPUTUSAN" | "KELULUSAN"
+  title         String   // "Surat Keterangan Aktif Santri"
+  // Penerima (siapa yang di-surat)
+  santriId      String?  // untuk surat yang terkait santri
+  guruId        String?  // untuk surat yang terkait guru (surat tugas)
+  // Content
+  content       String   // body surat (HTML/plain text)
+  periodeMulai  DateTime? // untuk surat izin/tugas (rentang waktu)
+  periodeSelesai DateTime?
+  tempat        String?  // tempat dikeluarkan surat
+  tanggalSurat  DateTime @default(now())
+  // Status
+  status        String   @default("DRAFT") // "DRAFT" | "DITERBITKAN" | "DIARSIP"
+  signedBy      String?  // penandatangan (nama kepala madrasah)
+  signedAt      DateTime?
+  // Metadata
+  createdById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  santri        Santri?  @relation(fields: [santriId], references: [id], onDelete: SetNull)
+  guru          Guru?    @relation(fields: [guruId], references: [id], onDelete: SetNull)
+
+  @@index([type, status])
+  @@index([santriId])
+  @@index([tanggalSurat])
+}
+
+// ============================================================================
+// 18. V8 — QR CODE & DIGITALISASI
+// ============================================================================
+// Sesuai roadmap.pdf V8:
+// - QR Santri: absensi, identitas, perpustakaan, kegiatan
+// - QR Guru: absensi guru, identitas guru
+// - Digital Card: kartu santri digital, kartu guru digital
+// ============================================================================
+
+model QRScan {
+  id            String   @id @default(cuid())
+  qrType        String   // "SANTRI" | "GURU"
+  entityId      String   // santriId or guruId
+  scanType      String   // "ABSENSI" | "IDENTITAS" | "PERPUSTAKAAN" | "KEGIATAN"
+  scannedById   String?  // user/guru yang scan
+  deviceInfo    String?  // device info (user agent / device ID)
+  location      String?  // optional location info
+  result        String   @default("SUCCESS") // "SUCCESS" | "ALREADY_SCANNED" | "NOT_FOUND" | "ERROR"
+  message       String?  // detail result message
+  createdAt     DateTime @default(now())
+
+  @@index([qrType, entityId])
+  @@index([scanType, createdAt])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// 19. V10 — KELULUSAN & ALUMNI
+// ============================================================================
+// Sesuai roadmap.pdf V10:
+// - Kelulusan: persyaratan, ujian akhir, nilai akhir, penentuan, berita acara, sertifikat, piagam, surat lulus
+// - Alumni: tahun lulus, pendidikan lanjutan, pekerjaan, kontak, domisili, aktivitas
+// - Santri → Lulus → Alumni (data tetap tersimpan)
+// ============================================================================
+
+model Alumni {
+  id            String   @id @default(cuid())
+  santriId      String   @unique // link ke Santri (data tetap tersimpan)
+  tahunLulus    Int      // 2025
+  tahunAjaranLulusId String? // link ke TahunAjaran saat lulus
+  // Status kelulusan
+  statusKelulusan String @default("LULUS") // "LULUS" | "TIDAK_LULUS" | "PENDING"
+  nilaiAkhir    Float?   // nilai akhir gabungan semua mapel
+  predikatAkhir String?  // "A" | "B" | "C" | "D"
+  // Persyaratan kelulusan (checklist)
+  syaratNilaiLengkap Boolean @default(false)
+  syaratAbsensiCukup  Boolean @default(false)
+  syaratTagihanLunas  Boolean @default(false)
+  syaratUjianAkhir    Boolean @default(false) // sudah ikut ujian akhir
+  syaratLainnya       String? // catatan persyaratan lain
+  // Dokumen kelulusan
+  suratKeteranganLulus Boolean @default(false) // sudah dibuatkan surat?
+  sertifikat           Boolean @default(false)
+  piagam               Boolean @default(false) // jika ada prestasi
+  beritaAcaraId        String? // link ke Surat berita acara (V7)
+  // Data alumni (setelah lulus)
+  pendidikanLanjutan String?  // "SMP Al-Azhar", "MTs Negeri 1", "Sekolah Rumah"
+  pekerjaan          String?  // jika sudah bekerja
+  telepon            String?  // kontak alumni
+  email              String?  // email alumni
+  domisiliKota       String?  // kota domisili sekarang
+  domisiliAlamat     String?  // alamat lengkap
+  aktivitasAlumni    String?  // "Kegiatan dakwah", "Wirausaha", "Melanjutkan kuliah"
+  catatan            String?  // catatan admin
+  // Metadata
+  tanggalLulus    DateTime? // tanggal resmi kelulusan
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  santri          Santri   @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  tahunAjaranLulus TahunAjaran? @relation(fields: [tahunAjaranLulusId], references: [id])
+
+  @@index([tahunLulus])
+  @@index([statusKelulusan])
+}

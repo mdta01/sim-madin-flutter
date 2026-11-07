@@ -20,7 +20,6 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_client/supabase_client.dart';
 
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/guru/guru_screen.dart';
@@ -29,6 +28,7 @@ import '../features/kelas/kelas_screen.dart';
 import '../features/login/login_screen.dart';
 import '../features/mapel/mapel_screen.dart';
 import '../features/permissions/permissions_screen.dart';
+import '../features/profile/profile_screen.dart';
 import '../features/pertemuan/pertemuan_screen.dart';
 import '../features/absensi/absensi_screen.dart';
 import '../features/nilai/nilai_screen.dart';
@@ -100,6 +100,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/settings',
             name: 'settings',
             builder: (c, s) => const SettingsScreen(),
+          ),
+          GoRoute(
+            path: '/profile',
+            name: 'profile',
+            builder: (c, s) => const ProfileScreen(),
           ),
           // Phase 6b — master data routes
           GoRoute(path: '/santri', name: 'santri', builder: (c, s) => const SantriScreen()),

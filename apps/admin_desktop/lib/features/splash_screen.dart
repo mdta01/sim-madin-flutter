@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 
 import 'package:api_client/api_client.dart';
+import 'package:supabase_client/supabase_client.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -43,13 +44,43 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Future<void> _checkSession() async {
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
-    final user = await ref.read(currentUserProvider.future);
-    if (!mounted) return;
-    if (user != null) {
-      context.go('/dashboard');
-    } else {
-      context.go('/login');
+
+    final client = ref.read(supabaseClientProvider);
+
+    // Sesi tersimpan? Kalau tidak, langsung ke login.
+    if (client.auth.currentSession == null) {
+      if (mounted) context.go('/login');
+      return;
     }
+
+    // Sesi ADA, tetapi itu belum berarti akun ini staf. Pemeriksaan yang sama
+    // dengan layar login HARUS dijalankan juga di sini — kalau tidak, akun
+    // non-staf yang pernah login di perangkat ini akan langsung masuk ke
+    // dashboard setiap aplikasi dibuka.
+    AccountAccess access;
+    try {
+      access = await resolveAccountAccess(client);
+    } catch (e) {
+      access = AccountAccess.denied('Gagal memverifikasi hak akses: $e');
+    }
+
+    if (!mounted) return;
+
+    if (!access.allowed) {
+      await client.auth.signOut();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(access.message ?? 'Akun tidak berhak memakai aplikasi ini.'),
+          backgroundColor: AppColors.danger,
+          duration: const Duration(seconds: 6),
+        ),
+      );
+      context.go('/login');
+      return;
+    }
+
+    context.go('/dashboard');
   }
 
   @override

@@ -16,12 +16,36 @@ import 'package:supabase_flutter/supabase_flutter.dart' show AuthChangeEvent, Au
 
 import 'app/router.dart';
 
+/// Init Firebase tanpa mematikan aplikasi kalau config belum tersedia.
+Future<void> _initFirebaseSafely() async {
+  try {
+    if (Firebase.apps.isNotEmpty) return;
+    await Firebase.initializeApp();
+  } catch (e, st) {
+    // Push notification non-kritis: log saja dan lanjut.
+    // Penyebab umum: google-services.json belum ditambahkan (lihat
+    // docs/PRODUCTION-CHECKLIST.md bagian Firebase).
+    debugPrint('Firebase init dilewati (push notification nonaktif): $e');
+    if (kDebugMode) debugPrintStack(stackTrace: st);
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final supabase = await initSupabase();
 
   // Initialize Firebase untuk FCM push notification.
-  await Firebase.initializeApp();
+  //
+  // PENTING: Firebase.initializeApp() TIDAK boleh membuat app crash saat
+  // startup. Di repo ini `google-services.json` / `GoogleService-Info.plist`
+  // tidak di-commit (berisi kredensial project) dan di desktop tidak relevan,
+  // jadi kalau file config belum ada, pemanggilan tanpa guard akan melempar
+  // exception dan aplikasi langsung mati sebelum sempat menampilkan UI.
+  //
+  // Push notification bersifat opsional: kalau Firebase gagal init, aplikasi
+  // tetap jalan penuh dan realtime Supabase (jalur utama sinkronisasi antar
+  // aplikasi) tetap aktif.
+  await _initFirebaseSafely();
 
   // Buat ProviderContainer lebih awal supaya bisa init NotificationService
   // (butuh Ref untuk akses supabaseClientProvider) sebelum runApp.

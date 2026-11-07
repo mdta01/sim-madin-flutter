@@ -58,7 +58,7 @@ class SupabaseRpc {
   }) async {
     final client = ref.read(supabaseClientProvider);
     try {
-      final res = await client.rpc('verify_payment', params: {
+      final res = await client.rpc<dynamic>('verify_payment', params: {
         'p_payment_id': paymentId,
         'p_kas_id': kasId,
       });
@@ -93,7 +93,7 @@ class SupabaseRpc {
   }) async {
     final client = ref.read(supabaseClientProvider);
     try {
-      final res = await client.rpc('reject_payment', params: {
+      final res = await client.rpc<dynamic>('reject_payment', params: {
         'p_payment_id': paymentId,
         'p_reason': reason,
       });
@@ -129,7 +129,7 @@ class SupabaseRpc {
   }) async {
     final client = ref.read(supabaseClientProvider);
     try {
-      final res = await client.rpc('create_transaksi_kas', params: {
+      final res = await client.rpc<dynamic>('create_transaksi_kas', params: {
         'p_kas_id': kasId,
         'p_type': type,
         'p_category': category,
@@ -166,7 +166,7 @@ class SupabaseRpc {
   }) async {
     final client = ref.read(supabaseClientProvider);
     try {
-      final res = await client.rpc('update_honor_guru_status', params: {
+      final res = await client.rpc<dynamic>('update_honor_guru_status', params: {
         'p_honor_id': honorId,
         'p_new_status': newStatus,
         'p_kas_id': kasId,
@@ -208,7 +208,7 @@ class SupabaseRpc {
             'answer': a['answer'],
           }).toList();
 
-      final res = await client.rpc('submit_ujian', params: {
+      final res = await client.rpc<dynamic>('submit_ujian', params: {
         'p_sesi_id': sesiId,
         'p_answers': jsonAnswers,
       });

@@ -10,6 +10,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+export 'package:supabase_flutter/supabase_flutter.dart'
+    show
+        SupabaseClient,
+        RealtimeChannel,
+        PostgresChangeEvent,
+        PostgresChangeFilter,
+        PostgresChangeFilterType,
+        AuthState,
+        AuthChangeEvent,
+        User,
+        Session,
+        PostgrestException,
+        AuthException,
+        UserAttributes;
+
 /// Provider singleton SupabaseClient.
 ///
 /// Dipanggil di `main.dart` semua apps via `ProviderScope` overrides.

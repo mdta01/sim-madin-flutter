@@ -46,10 +46,14 @@ export 'chat_pagination.dart';
 export 'supabase_rpc.dart';
 export 'notification_service.dart';
 export 'storage_service.dart';
+export 'supabase_write.dart';
+export 'table_columns.dart';
+export 'wali_admin_provisioning.dart';
+export 'role_gate.dart';
+export 'realtime_coordinator.dart';
 
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared/shared.dart';
@@ -206,7 +210,10 @@ Future<bool> verifyUserRole(
     throw Exception('Sesi tidak ditemukan. Silakan login ulang.');
   }
   try {
-    final res = await client.rpc('has_role', params: {'role_code': roleCode});
+    final res = await client.rpc<dynamic>(
+      'has_role',
+      params: {'role_code': roleCode},
+    );
     return res == true;
   } catch (e) {
     // Fallback: kalau RPC gagal (mis. function belum di-migrate),

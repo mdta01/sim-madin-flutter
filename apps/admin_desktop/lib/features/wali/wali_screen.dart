@@ -59,6 +59,7 @@ class _WaliScreenState extends ConsumerState<WaliScreen> {
               DataCell(StatusChip(label: w.activationStatus, color: w.activationStatus == WaliActivationStatus.active ? AppColors.success : AppColors.warning, bg: w.activationStatus == WaliActivationStatus.active ? AppColors.successLight : AppColors.warningLight, icon: w.activationStatus == WaliActivationStatus.active ? Icons.check_circle : Icons.cancel, compact: true)),
               DataCell(Row(children: [
                 IconButton(icon: const Icon(Icons.link, size: 18), color: AppColors.info, tooltip: 'Link Santri', onPressed: () => _showLinkSantriDialog(context, w)),
+                IconButton(icon: const Icon(Icons.verified_user_outlined, size: 18), color: AppColors.primary, tooltip: 'Cek Akses & Provision Akun', onPressed: () => _showAccessDialog(context, w)),
                 IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _showDialog(context, wali: w)),
                 IconButton(icon: const Icon(Icons.delete, size: 18), color: AppColors.danger, onPressed: () async { if (await showConfirmDialog(context, title: 'Hapus Wali', message: 'Yakin hapus "${w.name}"?', destructive: true)) { try { await adminSoftDeleteWali(ref, w.id); _toast('✅ Wali dihapus'); } catch (e) { _toast('Gagal: ${friendlyError(e)}', true); } } }),
               ])),
@@ -155,5 +156,159 @@ class _WaliScreenState extends ConsumerState<WaliScreen> {
       ],
     )));
   }
+  /// Cek kesehatan rantai akses wali, dan tawarkan perbaikan otomatis.
+  ///
+  /// Ini yang membedakan "wali bisa login" dengan "wali bisa MELIHAT data".
+  /// Kalau User.firebaseUid / UserRole(WALI) / Wali.userId putus, dashboard
+  /// wali akan kosong tanpa pesan error (RLS menyaring semua baris).
+  Future<void> _showAccessDialog(BuildContext context, WaliModel wali) async {
+    List<WaliLinkCheck> checks = const [];
+    String? error;
+    var loading = true;
+    var provisioning = false;
+
+    Future<void> load(StateSetter setInner) async {
+      setInner(() {
+        loading = true;
+        error = null;
+      });
+      try {
+        final result = await checkWaliLink(ref, wali.id);
+        setInner(() {
+          checks = result;
+          loading = false;
+        });
+      } catch (e) {
+        setInner(() {
+          error = friendlyError(e);
+          loading = false;
+        });
+      }
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setInner) {
+          if (loading && checks.isEmpty && error == null) {
+            // Muat sekali saat dialog dibuka.
+            load(setInner);
+          }
+          final failed = checks.where((c) => !c.ok).toList();
+
+          return AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.verified_user_outlined,
+                    color: AppColors.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(child: Text('Akses Wali — ${wali.name}')),
+              ],
+            ),
+            content: SizedBox(
+              width: 560,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (loading)
+                      const Padding(
+                        padding: EdgeInsets.all(AppSpacing.lg),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    if (error != null)
+                      Text('Gagal memeriksa: $error',
+                          style: const TextStyle(color: AppColors.danger)),
+                    if (checks.isNotEmpty)
+                      ...checks.map((c) => ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(
+                              c.ok ? Icons.check_circle : Icons.error,
+                              size: 18,
+                              color: c.ok
+                                  ? AppColors.success
+                                  : AppColors.danger,
+                            ),
+                            title: Text(c.checkName,
+                                style: AppTextStyles.body2),
+                            subtitle: Text(c.detail,
+                                style: AppTextStyles.body3.copyWith(
+                                    color: AppColors.textMuted)),
+                          )),
+                    if (checks.isNotEmpty && failed.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: AppColors.warningLight,
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: Text(
+                          '${failed.length} pemeriksaan gagal. Dashboard wali '
+                          'akan tampil kosong sampai ini diperbaiki. Klik '
+                          '"Perbaiki Akses" untuk link otomatis.',
+                          style: AppTextStyles.body3
+                              .copyWith(color: AppColors.warning),
+                        ),
+                      ),
+                    ],
+                    if (checks.isNotEmpty && failed.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.sm),
+                        child: Text(
+                          '✅ Semua pemeriksaan lolos — akun wali siap dipakai.',
+                          style: AppTextStyles.body3
+                              .copyWith(color: AppColors.success),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: provisioning ? null : () => Navigator.of(ctx).pop(),
+                child: const Text('Tutup'),
+              ),
+              TextButton(
+                onPressed: provisioning ? null : () => load(setInner),
+                child: const Text('Periksa Ulang'),
+              ),
+              FilledButton.icon(
+                onPressed: provisioning
+                    ? null
+                    : () async {
+                        setInner(() => provisioning = true);
+                        try {
+                          final msg = await provisionWaliAuth(ref, wali.id);
+                          if (!context.mounted) return;
+                          _toast('✅ $msg');
+                          await load(setInner);
+                        } catch (e) {
+                          if (context.mounted) {
+                            _toast('Gagal: ${friendlyError(e)}', true);
+                          }
+                        } finally {
+                          setInner(() => provisioning = false);
+                        }
+                      },
+                icon: provisioning
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.build, size: 18),
+                label: const Text('Perbaiki Akses'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   void _toast(String msg, [bool isError = false]) { if (!mounted) return; ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: isError ? AppColors.danger : AppColors.success)); }
 }

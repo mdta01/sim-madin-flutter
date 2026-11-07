@@ -13,6 +13,7 @@ import 'package:shared/shared.dart';
 import 'package:supabase_client/supabase_client.dart';
 
 import 'query_providers.dart';
+import 'supabase_write.dart';
 
 // ===========================================================================
 // QUERY PROVIDERS
@@ -90,7 +91,6 @@ final santriWaliByWaliProvider =
       .eq('waliId', waliId);
   return (res as List).map((r) {
     final santri = (r as Map<String, dynamic>)['Santri'] as Map<String, dynamic>?;
-    final kelas = santri?['Kelas'] as Map<String, dynamic>?;
     return SantriWaliModel.fromJson({
       ...r,
       'santriName': santri?['name'],
@@ -136,9 +136,9 @@ Future<SantriModel> adminCreateSantri(
     if (tahunAjaranId != null) 'tahunAjaranId': tahunAjaranId,
     'status': status,
   };
-  final res = await client.from('Santri').insert(body).select().single();
+  final res = await client.from('Santri').insert(rowFor('Santri', body)).select().single();
   ref.invalidate(santriListProvider);
-  return SantriModel.fromJson(res as Map<String, dynamic>);
+  return SantriModel.fromJson(res);
 }
 
 Future<SantriModel> adminUpdateSantri(
@@ -174,7 +174,7 @@ Future<SantriModel> adminUpdateSantri(
   };
   final res = await client.from('Santri').update(body).eq('id', santriId).select().single();
   ref.invalidate(santriListProvider);
-  return SantriModel.fromJson(res as Map<String, dynamic>);
+  return SantriModel.fromJson(res);
 }
 
 Future<void> adminSoftDeleteSantri(WidgetRef ref, String santriId) async {
@@ -222,9 +222,9 @@ Future<GuruModel> adminCreateGuru(
     if (specialization != null) 'specialization': specialization,
     'status': status,
   };
-  final res = await client.from('Guru').insert(body).select().single();
+  final res = await client.from('Guru').insert(rowFor('Guru', body)).select().single();
   ref.invalidate(guruListAdminProvider);
-  return GuruModel.fromJson(res as Map<String, dynamic>);
+  return GuruModel.fromJson(res);
 }
 
 Future<GuruModel> adminUpdateGuru(
@@ -260,7 +260,7 @@ Future<GuruModel> adminUpdateGuru(
   };
   final res = await client.from('Guru').update(body).eq('id', guruId).select().single();
   ref.invalidate(guruListAdminProvider);
-  return GuruModel.fromJson(res as Map<String, dynamic>);
+  return GuruModel.fromJson(res);
 }
 
 Future<void> adminSoftDeleteGuru(WidgetRef ref, String guruId) async {
@@ -300,9 +300,9 @@ Future<WaliModel> adminCreateWali(
     'activationStatus': activationStatus,
     if (pinHash != null) 'pinHash': pinHash,
   };
-  final res = await client.from('Wali').insert(body).select().single();
+  final res = await client.from('Wali').insert(rowFor('Wali', body)).select().single();
   ref.invalidate(waliListAdminProvider);
-  return WaliModel.fromJson(res as Map<String, dynamic>);
+  return WaliModel.fromJson(res);
 }
 
 Future<WaliModel> adminUpdateWali(
@@ -332,7 +332,7 @@ Future<WaliModel> adminUpdateWali(
   };
   final res = await client.from('Wali').update(body).eq('id', waliId).select().single();
   ref.invalidate(waliListAdminProvider);
-  return WaliModel.fromJson(res as Map<String, dynamic>);
+  return WaliModel.fromJson(res);
 }
 
 Future<void> adminSoftDeleteWali(WidgetRef ref, String waliId) async {
@@ -353,13 +353,13 @@ Future<void> adminLinkWaliSantri(
   bool canAccess = true,
 }) async {
   final client = ref.read(supabaseClientProvider);
-  await client.from('SantriWali').insert({
+  await client.from('SantriWali').insert(rowFor('SantriWali', {
     'waliId': waliId,
     'santriId': santriId,
     'relationship': relationship,
     'isPrimary': isPrimary,
     'canAccess': canAccess,
-  });
+  }));
   ref.invalidate(santriWaliByWaliProvider(waliId));
 }
 
@@ -398,9 +398,9 @@ Future<KelasModel> adminCreateKelas(
     'sortOrder': sortOrder,
     if (waliKelasId != null) 'waliKelasId': waliKelasId,
   };
-  final res = await client.from('Kelas').insert(body).select().single();
+  final res = await client.from('Kelas').insert(rowFor('Kelas', body)).select().single();
   ref.invalidate(kelasListProvider);
-  return KelasModel.fromJson(res as Map<String, dynamic>);
+  return KelasModel.fromJson(res);
 }
 
 Future<KelasModel> adminUpdateKelas(
@@ -428,7 +428,7 @@ Future<KelasModel> adminUpdateKelas(
   };
   final res = await client.from('Kelas').update(body).eq('id', kelasId).select().single();
   ref.invalidate(kelasListProvider);
-  return KelasModel.fromJson(res as Map<String, dynamic>);
+  return KelasModel.fromJson(res);
 }
 
 Future<void> adminSoftDeleteKelas(WidgetRef ref, String kelasId) async {
@@ -464,9 +464,9 @@ Future<MataPelajaranModel> adminCreateMapel(
     'durationMnt': durationMnt,
     'sortOrder': sortOrder,
   };
-  final res = await client.from('MataPelajaran').insert(body).select().single();
+  final res = await client.from('MataPelajaran').insert(rowFor('MataPelajaran', body)).select().single();
   ref.invalidate(mapelListProvider);
-  return MataPelajaranModel.fromJson(res as Map<String, dynamic>);
+  return MataPelajaranModel.fromJson(res);
 }
 
 Future<MataPelajaranModel> adminUpdateMapel(
@@ -494,7 +494,7 @@ Future<MataPelajaranModel> adminUpdateMapel(
   };
   final res = await client.from('MataPelajaran').update(body).eq('id', mapelId).select().single();
   ref.invalidate(mapelListProvider);
-  return MataPelajaranModel.fromJson(res as Map<String, dynamic>);
+  return MataPelajaranModel.fromJson(res);
 }
 
 Future<void> adminSoftDeleteMapel(WidgetRef ref, String mapelId) async {
@@ -525,10 +525,10 @@ Future<TahunAjaranModel> adminCreateTahunAjaran(
     'endDate': endDate.toIso8601String(),
     'isActive': false,
   };
-  final res = await client.from('TahunAjaran').insert(body).select().single();
+  final res = await client.from('TahunAjaran').insert(rowFor('TahunAjaran', body)).select().single();
   ref.invalidate(tahunAjaranListProvider);
   ref.invalidate(tahunAjaranActiveProvider);
-  return TahunAjaranModel.fromJson(res as Map<String, dynamic>);
+  return TahunAjaranModel.fromJson(res);
 }
 
 Future<TahunAjaranModel> adminUpdateTahunAjaran(
@@ -548,7 +548,7 @@ Future<TahunAjaranModel> adminUpdateTahunAjaran(
   };
   final res = await client.from('TahunAjaran').update(body).eq('id', taId).select().single();
   ref.invalidate(tahunAjaranListProvider);
-  return TahunAjaranModel.fromJson(res as Map<String, dynamic>);
+  return TahunAjaranModel.fromJson(res);
 }
 
 /// Activate tahun ajaran (deactivate all others first).
@@ -590,7 +590,7 @@ Future<SemesterModel> adminCreateSemester(
     'endDate': endDate.toIso8601String(),
     'isActive': false,
   };
-  final res = await client.from('Semester').insert(body).select().single();
+  final res = await client.from('Semester').insert(rowFor('Semester', body)).select().single();
   ref.invalidate(semesterListProvider);
-  return SemesterModel.fromJson(res as Map<String, dynamic>);
+  return SemesterModel.fromJson(res);
 }
