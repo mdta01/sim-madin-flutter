@@ -105,6 +105,11 @@ jobs:
           WARNINGS=$(grep -c '^WARNING|' analyze-report.txt || true)
           echo "Total: $ERRORS error, $WARNINGS warning."
 
+          # Ringkasan ke log (artifact/job log bisa diunduh manual).
+          echo "::group::Daftar lengkap ($ERRORS error, $WARNINGS warning)"
+          grep -E '^(ERROR|WARNING)\|' analyze-report.txt || true
+          echo "::endgroup::"
+
           grep '^ERROR|' analyze-report.txt | while IFS='|' read -r sev type code file line col len msg; do
             echo "::error file=$file,line=$line,col=$col::$code: $msg"
           done
