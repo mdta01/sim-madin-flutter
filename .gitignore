@@ -73,3 +73,7 @@ android-keys/
 **/android/app/google-services.json
 **/ios/Runner/GoogleService-Info.plist
 **/firebase_options.dart
+
+# Python tooling artifacts (tool/*.py)
+__pycache__/
+*.pyc
