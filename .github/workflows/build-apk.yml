@@ -12,7 +12,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [mobile_wali, mobile_bendahara, mobile_guru, mobile_kepala]
+        # admin_desktop ikut dibangun sebagai APK agar bisa dipakai dari HP
+        # (tidak semua pengelola punya laptop/desktop).
+        app: [mobile_wali, mobile_bendahara, mobile_guru, mobile_kepala, admin_desktop]
     steps:
       - uses: actions/checkout@v4
 
@@ -62,6 +64,12 @@ jobs:
           GOOGLE_SERVICES_BASE64: ${{ secrets.GOOGLE_SERVICES_BASE64 }}
         run: |
           APP_DIR="apps/${{ matrix.app }}/android/app"
+          # admin_desktop tidak memakai Firebase (tidak ada FCM), jadi
+          # google-services.json memang tidak diperlukan.
+          if [ "${{ matrix.app }}" = "admin_desktop" ]; then
+            echo "✓ admin_desktop: Firebase tidak dipakai, dilewati"
+            exit 0
+          fi
           if [ -f "$APP_DIR/google-services.json" ]; then
             echo "✓ google-services.json ditemukan (ter-commit di repo)"
           elif [ -n "$GOOGLE_SERVICES_BASE64" ]; then

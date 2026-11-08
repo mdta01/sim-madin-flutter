@@ -30,7 +30,8 @@ import zlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-APPS = ["mobile_wali", "mobile_guru", "mobile_kepala", "mobile_bendahara"]
+APPS = ["mobile_wali", "mobile_guru", "mobile_kepala", "mobile_bendahara",
+        "admin_desktop"]
 
 # Kerapatan -> ukuran canvas adaptive icon (108dp)
 DENSITIES = {

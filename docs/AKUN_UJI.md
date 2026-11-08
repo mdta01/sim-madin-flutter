@@ -15,6 +15,42 @@ Jalankan di **Supabase SQL Editor** (butuh hak pemilik database, bukan anon):
 SELECT * FROM public.seed_all_demo();
 ```
 
+### Kalau akun sudah ter-seed tetapi login tetap gagal
+
+Ini kasus paling sering: baris `User` dan peran sudah ada, tetapi **akun login
+di `auth.users` tidak terbentuk**, sehingga Supabase Auth menjawab
+`Invalid login credentials`. Perbaiki dengan:
+
+```sql
+-- 1. lihat kondisi tiap akun
+SELECT * FROM public.demo_account_status();
+
+-- 2. perbaiki semuanya sekaligus
+SELECT * FROM public.repair_demo_logins();
+
+-- 3. pastikan kolom siap_login = true untuk semua baris
+SELECT * FROM public.demo_account_status();
+```
+
+Bila masih gagal, telusuri satu akun langkah demi langkah:
+
+```sql
+SELECT * FROM public.diagnose_login('mdta@madrasah.com');
+```
+
+**Penyebab umum yang ditunjukkan fungsi di atas:**
+
+| Langkah yang `ok = false` | Artinya |
+|---|---|
+| `1_auth_users` | akun login belum dibuat → jalankan `repair_demo_logins()` |
+| `2_password_bcrypt` | password tersimpan bukan bcrypt → jalankan ulang repair |
+| `3_email_confirmed` | email belum dikonfirmasi → matikan *Confirm email* di Supabase, atau repair |
+| `5_auth_identities` | GoTrue tidak bisa menemukan user → repair |
+| `7_peran` | akun bisa login tapi semua layar kosong |
+
+> **Catatan:** Supabase Auth bisa menolak login walau data sudah benar bila
+> **Confirm email** aktif. Matikan di *Authentication → Providers → Email*.
+
 Fungsi ini menjalankan seluruh rantai dalam urutan yang benar:
 
 | Langkah | Isi |
@@ -32,7 +68,19 @@ Aman dijalankan berulang — setiap langkah memeriksa data yang sudah ada.
 
 ## Kredensial
 
-### Admin desktop
+### Admin — bisa dipakai dari HP atau laptop
+
+Admin tersedia dalam **dua bentuk**, keduanya memakai akun yang sama:
+
+| Bentuk | Cara pakai |
+|---|---|
+| **APK `admin_desktop.apk`** | unduh dari halaman rilis, pasang di HP seperti aplikasi biasa |
+| **Web (browser)** | buka URL hosting Flutter web, login di browser HP/laptop |
+
+APK sengaja disediakan karena tidak semua pengelola madrasah punya laptop.
+Di layar HP, menu samping otomatis berubah menjadi tombol ☰ (drawer).
+
+### Akun admin
 
 | Email | Password | Peran |
 |---|---|---|
