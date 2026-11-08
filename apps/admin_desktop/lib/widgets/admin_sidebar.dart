@@ -33,7 +33,6 @@ class AdminSidebar extends StatelessWidget {
     return Container(
       width: width,
       decoration: const BoxDecoration(gradient: AppColors.brandGradient),
-  decoration: const BoxDecoration(gradient: AppColors.brandGradient),
   child: Column(
     children: [
       // Logo + app name (header card)
