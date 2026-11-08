@@ -214,6 +214,118 @@ class OtpRequestResult {
   final String? debugOtp;
 }
 
+/// Hasil pemeriksaan nomor pada alur aktivasi pertama.
+class WaliRegistrationCheck {
+  const WaliRegistrationCheck({
+    required this.registered,
+    required this.message,
+    this.name,
+    this.phone,
+    this.status,
+    this.needsPin = false,
+    this.anak = const [],
+  });
+
+  final bool registered;
+  final String message;
+  final String? name;
+  final String? phone;
+  final String? status;
+
+  /// `true` bila wali belum pernah membuat PIN -> tampilkan langkah buat PIN.
+  final bool needsPin;
+
+  /// Daftar anak yang terhubung, untuk konfirmasi sebelum membuat PIN.
+  final List<WaliChildInfo> anak;
+
+  factory WaliRegistrationCheck.fromJson(Map<String, dynamic> j) {
+    final raw = (j['anak'] as List?) ?? const [];
+    return WaliRegistrationCheck(
+      registered: j['registered'] == true,
+      message: (j['message'] as String?) ?? '',
+      name: j['name'] as String?,
+      phone: j['phone'] as String?,
+      status: j['status'] as String?,
+      needsPin: j['needsPin'] == true,
+      anak: raw
+          .map((e) => WaliChildInfo.fromJson((e as Map).cast<String, dynamic>()))
+          .toList(),
+    );
+  }
+}
+
+/// Satu anak pada konfirmasi aktivasi.
+class WaliChildInfo {
+  const WaliChildInfo({
+    required this.id,
+    required this.name,
+    this.nis,
+    this.kelasName,
+  });
+
+  final String id;
+  final String name;
+  final String? nis;
+  final String? kelasName;
+
+  factory WaliChildInfo.fromJson(Map<String, dynamic> j) => WaliChildInfo(
+        id: (j['id'] ?? '') as String,
+        name: (j['name'] ?? '') as String,
+        nis: j['nis'] as String?,
+        kelasName: j['kelasName'] as String?,
+      );
+}
+
+/// Periksa apakah [phone] terdaftar oleh admin (tanpa mengubah data).
+///
+/// Dipakai pada langkah pertama aktivasi: nomor dimasukkan, lalu aplikasi
+/// menampilkan nama wali + nama anak sebagai konfirmasi sebelum PIN dibuat.
+/// RPC ini tidak mengembalikan data sensitif apa pun.
+Future<WaliRegistrationCheck> checkWaliRegistration(
+  WidgetRef ref, {
+  required String phone,
+}) async {
+  _validatePhone(phone);
+  final client = ref.read(supabaseClientProvider);
+
+  final res = await client.rpc<dynamic>('wali_check_registration', params: {
+    'p_phone': normalizeWhatsApp(phone) ?? phone,
+  });
+
+  final map = (res as Map?)?.cast<String, dynamic>() ?? const {};
+  return WaliRegistrationCheck.fromJson(map);
+}
+
+/// Aktivasi pertama: buat PIN baru sekaligus konfirmasi.
+///
+/// Server menolak bila PIN tidak 6 digit, tidak sama dengan konfirmasi,
+/// terlalu mudah ditebak, atau bila wali sudah punya PIN (harus lewat OTP).
+Future<String> activateWali(
+  WidgetRef ref, {
+  required String phone,
+  required String pin,
+  required String pinConfirm,
+}) async {
+  _validatePhone(phone);
+  _validatePin(pin);
+  if (pin != pinConfirm) {
+    throw Exception('Konfirmasi PIN tidak sama');
+  }
+
+  final client = ref.read(supabaseClientProvider);
+  final res = await client.rpc<dynamic>('wali_activate', params: {
+    'p_phone': normalizeWhatsApp(phone) ?? phone,
+    'p_pin': pin,
+    'p_pin_confirm': pinConfirm,
+  });
+
+  final map = (res as Map?)?.cast<String, dynamic>() ?? const {};
+  if (map['success'] != true) {
+    throw Exception(map['message'] ?? 'Aktivasi gagal');
+  }
+  return (map['message'] as String?) ?? 'Aktivasi berhasil.';
+}
+
 /// Minta kode OTP reset PIN untuk [phone].
 ///
 /// Tidak melempar exception untuk nomor yang tidak terdaftar — server sengaja

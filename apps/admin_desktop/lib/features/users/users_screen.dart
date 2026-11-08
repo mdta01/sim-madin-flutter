@@ -52,6 +52,12 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
               ),
               const SizedBox(width: AppSpacing.sm),
               FilledButton.icon(
+                onPressed: () => _showCreateStaffDialog(context),
+                icon: const Icon(Icons.person_add_alt_1, size: 18),
+                label: const Text('Tambah Akun Staf'),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              OutlinedButton.icon(
                 onPressed: () => _showCreateEditDialog(context),
                 icon: const Icon(Icons.person_add, size: 18),
                 label: const Text('Tambah User'),
@@ -159,6 +165,228 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
         ],
       ),
     );
+  }
+
+  // -------------------------------------------------------------------
+  // Tambah akun staf (email + password) — didaftarkan admin
+  // -------------------------------------------------------------------
+  // Ini alur produksi: admin mendaftarkan kepala/bendahara/guru dengan email
+  // dan password, lalu staf tersebut login di aplikasi mobile masing-masing.
+  // Berbeda dari "Tambah User" biasa yang hanya menulis tabel User.
+  Future<void> _showCreateStaffDialog(BuildContext context) async {
+    final emailCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final nipCtrl = TextEditingController();
+    final specCtrl = TextEditingController();
+
+    // Peran yang bisa diberikan. SUPER_ADMIN hanya untuk admin utama.
+    const roleOptions = <String, String>{
+      'KEPALA': 'Kepala Madrasah',
+      'BENDAHARA': 'Bendahara',
+      'GURU': 'Guru',
+      'ADMIN': 'Admin',
+    };
+    final selected = <String>{};
+    bool saving = false;
+    bool showPassword = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setInner) => AlertDialog(
+          title: const Text('Tambah Akun Staf'),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.infoLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Akun ini dipakai untuk login di aplikasi mobile. '
+                      'Email & password dibuat di sini, lalu diberikan kepada '
+                      'staf yang bersangkutan.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  FormFieldLabel(
+                    label: 'Email *',
+                    child: TextField(
+                      controller: emailCtrl,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                        hintText: 'nama@madrasah.com',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  FormFieldLabel(
+                    label: 'Password *',
+                    hint: 'Minimal 6 karakter. Berikan ke staf, minta segera diganti.',
+                    child: TextField(
+                      controller: passwordCtrl,
+                      obscureText: !showPassword,
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        suffixIcon: IconButton(
+                          icon: Icon(showPassword
+                              ? Icons.visibility_off
+                              : Icons.visibility),
+                          onPressed: () =>
+                              setInner(() => showPassword = !showPassword),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  FormFieldLabel(
+                    label: 'Nama Lengkap *',
+                    child: TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(
+                          border: OutlineInputBorder(), isDense: true),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  FormFieldLabel(
+                    label: 'No. WhatsApp',
+                    child: TextField(
+                      controller: phoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                          border: OutlineInputBorder(), isDense: true),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  const Text('Peran *',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  ...roleOptions.entries.map((e) => CheckboxListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(e.value),
+                        subtitle: Text(e.key,
+                            style: const TextStyle(fontSize: 11)),
+                        value: selected.contains(e.key),
+                        onChanged: (v) => setInner(() {
+                          if (v == true) {
+                            selected.add(e.key);
+                          } else {
+                            selected.remove(e.key);
+                          }
+                        }),
+                      )),
+                  if (selected.contains('GURU')) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    FormFieldLabel(
+                      label: 'NIP Guru (opsional)',
+                      child: TextField(
+                        controller: nipCtrl,
+                        decoration: const InputDecoration(
+                            border: OutlineInputBorder(), isDense: true),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    FormFieldLabel(
+                      label: 'Bidang / Spesialisasi (opsional)',
+                      hint: 'Mis. Al-Qur\'an, Fiqih, Matematika',
+                      child: TextField(
+                        controller: specCtrl,
+                        decoration: const InputDecoration(
+                            border: OutlineInputBorder(), isDense: true),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Akun guru otomatis dibuatkan profil Guru. '
+                      'Tambahkan jadwal di menu Jadwal agar data kelas muncul.',
+                      style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Batal')),
+            ElevatedButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (emailCtrl.text.trim().isEmpty ||
+                          nameCtrl.text.trim().isEmpty) {
+                        _snack('Email dan Nama wajib diisi', error: true);
+                        return;
+                      }
+                      if (passwordCtrl.text.length < 6) {
+                        _snack('Password minimal 6 karakter', error: true);
+                        return;
+                      }
+                      if (selected.isEmpty) {
+                        _snack('Pilih minimal satu peran', error: true);
+                        return;
+                      }
+                      setInner(() => saving = true);
+                      try {
+                        final result = await adminCreateStaffAccount(
+                          ref,
+                          email: emailCtrl.text.trim(),
+                          password: passwordCtrl.text,
+                          name: nameCtrl.text.trim(),
+                          roles: selected.toList(),
+                          phone: phoneCtrl.text.trim().isEmpty
+                              ? null
+                              : phoneCtrl.text.trim(),
+                          guruNip: nipCtrl.text.trim().isEmpty
+                              ? null
+                              : nipCtrl.text.trim(),
+                          specialization: specCtrl.text.trim().isEmpty
+                              ? null
+                              : specCtrl.text.trim(),
+                        );
+                        if (!ctx.mounted) return;
+                        Navigator.of(ctx).pop();
+                        _snack('✅ ${result.message}');
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          _snack('Gagal: ${friendlyError(e)}', error: true);
+                        }
+                      } finally {
+                        if (ctx.mounted) setInner(() => saving = false);
+                      }
+                    },
+              child: saving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Buat Akun'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _snack(String msg, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: error ? AppColors.danger : AppColors.success,
+    ));
   }
 
   Future<void> _showCreateEditDialog(BuildContext context,
@@ -387,32 +615,89 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
     );
   }
 
+  // -------------------------------------------------------------------
+  // Hapus akun — kredensial login ikut dihapus
+  // -------------------------------------------------------------------
+  // Soft delete biasa (deletedAt + isActive=false) TIDAK cukup: baris
+  // auth.users masih ada, sehingga orangnya masih bisa login ke aplikasi
+  // mobile. RPC admin_delete_account menghapus auth.users juga, jadi akses
+  // benar-benar dicabut.
   Future<void> _confirmDelete(BuildContext context, UserModel user) async {
-    final confirmed = await showConfirmDialog(
-      context,
-      title: 'Hapus User',
-      message: 'Yakin ingin menghapus user "${user.name}" (${user.email})?\n\n'
-          'User akan di-soft delete (deletedAt set, isActive=false). '
-          'Data historis tetap utuh.',
-      confirmText: 'Hapus',
-      destructive: true,
+    bool hardDelete = false;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setInner) => AlertDialog(
+          title: const Text('Hapus Akun'),
+          content: SizedBox(
+            width: 440,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Hapus akun "${user.name}" (${user.email})?',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.dangerLight,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'Akun ini akan langsung tidak bisa login ke aplikasi '
+                    'mobile. Kredensial login (Supabase Auth) dihapus, '
+                    'peran dinonaktifkan, dan PIN wali dicabut.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  value: hardDelete,
+                  onChanged: (v) => setInner(() => hardDelete = v == true),
+                  title: const Text('Hapus permanen dari database',
+                      style: TextStyle(fontSize: 13)),
+                  subtitle: const Text(
+                    'Baris User ikut dihapus. Ditolak otomatis bila akun '
+                    'punya data historis (guru/wali/santri) agar riwayat '
+                    'absensi & pembayaran tidak rusak.',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Batal')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.danger),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Hapus Akun'),
+            ),
+          ],
+        ),
+      ),
     );
-    if (!confirmed) return;
+
+    if (confirmed != true) return;
+
     try {
-      await softDeleteUser(ref, user.id);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('✅ User dihapus (soft delete)'),
-            backgroundColor: AppColors.success),
+      final result = await adminDeleteAccount(
+        ref,
+        email: user.email,
+        hardDelete: hardDelete,
       );
+      _snack('✅ ${result.message}');
     } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Gagal: ${friendlyError(e)}'),
-            backgroundColor: AppColors.danger),
-      );
+      _snack('Gagal: ${friendlyError(e)}', error: true);
     }
   }
 }

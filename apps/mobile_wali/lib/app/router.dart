@@ -22,6 +22,7 @@ import 'package:go_router/go_router.dart';
 import '../features/chat/chat_detail_screen.dart';
 import '../features/chat/chat_list_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
+import '../features/activate/activate_account_screen.dart';
 import '../features/forgot_pin/forgot_pin_screen.dart';
 import '../features/login/login_screen.dart';
 import '../features/profile/profile_screen.dart';
@@ -104,6 +105,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           path: '/login',
           name: 'login',
           builder: (c, s) => const LoginScreen()),
+      GoRoute(
+          path: '/activate',
+          name: 'activate',
+          builder: (c, s) => const ActivateAccountScreen()),
       GoRoute(
           path: '/forgot-pin',
           name: 'forgot-pin',
