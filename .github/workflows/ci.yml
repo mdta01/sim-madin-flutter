@@ -57,6 +57,14 @@ jobs:
       - name: Check SQL block balance (PL/pgSQL)
         run: python3 tool/sql_block_check.py
 
+      - name: Verify schema_reconcile.sql is up to date
+        run: |
+          python3 tool/gen_schema_reconcile.py
+          if ! git diff --quiet -- supabase/migrations/20240101000033_schema_reconcile.sql; then
+            echo "::error::schema_reconcile.sql sudah usang. Jalankan: python3 tool/gen_schema_reconcile.py lalu commit."
+            exit 1
+          fi
+
       - name: Verify SETUP_ALL.sql is up to date
         run: |
           python3 tool/build_setup_sql.py
