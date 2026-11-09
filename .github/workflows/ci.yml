@@ -54,8 +54,19 @@ jobs:
       - name: Check schema / code consistency
         run: python3 tool/ci_checks.py
 
+      - name: Audit struktur repo (build safety)
+        run: python3 tool/audit_repo.py
+
       - name: Check SQL block balance (PL/pgSQL)
         run: python3 tool/sql_block_check.py
+
+      - name: Verify schema_reconcile.sql is up to date
+        run: |
+          python3 tool/gen_schema_reconcile.py
+          if ! git diff --quiet -- supabase/migrations/20240101000033_schema_reconcile.sql; then
+            echo "::error::schema_reconcile.sql sudah usang. Jalankan: python3 tool/gen_schema_reconcile.py lalu commit."
+            exit 1
+          fi
 
       - name: Verify SETUP_ALL.sql is up to date
         run: |

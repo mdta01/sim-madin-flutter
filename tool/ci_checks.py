@@ -61,12 +61,20 @@ def load_schema() -> dict[str, dict[str, tuple[str, bool, bool]]]:
             cols[cm.group(1)] = (cm.group(2).strip(), bool(cm.group(3)), "DEFAULT" in line)
         tables[name] = cols
 
+    # Migrasi rekonsiliasi menambahkan SEMUA kolom secara buta (dengan
+    # IF NOT EXISTS) untuk menyelaraskan database lama. Ia tidak boleh
+    # dipakai sebagai sumber kebenaran skema, karena justru mengandalkan
+    # daftar kolom dari baseline.
+    RECONCILE_MARKER = "Rekonsiliasi skema"
+
     # Kolom yang ditambahkan / diubah oleh migrasi setelah baseline.
     added: dict[str, set[str]] = {}
     for path in sorted(glob.glob(os.path.join(MIGRATIONS, "*.sql"))):
         if os.path.basename(path) == os.path.basename(BASELINE):
             continue
         sql = open(path, encoding="utf-8").read()
+        if RECONCILE_MARKER in sql[:600]:
+            continue
         for m in re.finditer(
             r'ALTER TABLE\s+"?([A-Za-z]\w*)"?\s+ADD COLUMN\s+(?:IF NOT EXISTS\s+)?"?(\w+)"?',
             sql,
@@ -82,6 +90,8 @@ def load_schema() -> dict[str, dict[str, tuple[str, bool, bool]]]:
     # setelah baseline (mis. Wali.authPassword, User.fcmToken).
     for path in sorted(glob.glob(os.path.join(MIGRATIONS, "*.sql"))):
         sql = open(path, encoding="utf-8").read()
+        if RECONCILE_MARKER in sql[:600]:
+            continue
         for m in re.finditer(
             r'ALTER TABLE\s+"?(\w+)"?\s+ADD COLUMN\s+(?:IF NOT EXISTS\s+)?'
             r'"?([A-Za-z]\w*)"?\s+([\w \(\),]+)',
@@ -97,6 +107,8 @@ def load_schema() -> dict[str, dict[str, tuple[str, bool, bool]]]:
         if os.path.basename(path) == os.path.basename(BASELINE):
             continue
         sql = open(path, encoding="utf-8").read()
+        if RECONCILE_MARKER in sql[:600]:
+            continue
         for m in re.finditer(
             r'CREATE TABLE IF NOT EXISTS\s+"?(\w+)"?\s*\((.*?)\n\);', sql, re.S | re.I
         ):

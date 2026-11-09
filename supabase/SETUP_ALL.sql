@@ -18,7 +18,7 @@
 --   * Setelah selesai, verifikasi dengan file terpisah:
 --         docs/sql/cek_login.sql  (kecil, untuk troubleshooting)
 --
--- ISI: 34 file migrasi
+-- ISI: 35 file migrasi
 -- ============================================================================
 
 
@@ -7781,6 +7781,700 @@ REVOKE ALL ON FUNCTION public.provision_login_account(TEXT, TEXT, TEXT) FROM PUB
 REVOKE ALL ON FUNCTION public.admin_create_staff_account(TEXT, TEXT, TEXT, TEXT[], TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.repair_demo_logins() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.demo_account_status() FROM PUBLIC, anon, authenticated;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ==========================================================================
+-- FILE: 20240101000033_schema_reconcile.sql
+-- ==========================================================================
+
+
+ALTER TABLE "Absensi" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "Absensi" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "Absensi" ADD COLUMN IF NOT EXISTS "kelasId" text;
+ALTER TABLE "Absensi" ADD COLUMN IF NOT EXISTS "date" timestamp(3) with time zone;
+ALTER TABLE "Absensi" ADD COLUMN IF NOT EXISTS "status" text;
+ALTER TABLE "Absensi" ADD COLUMN IF NOT EXISTS "note" text;
+ALTER TABLE "Absensi" ADD COLUMN IF NOT EXISTS "recordedByGuruId" text;
+ALTER TABLE "Absensi" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Absensi" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "semesterId" text;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "guruId" text;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "adabGuru" double precision DEFAULT 0;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "adabOrangTua" double precision DEFAULT 0;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "adabTeman" double precision DEFAULT 0;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "kedisiplinan" double precision DEFAULT 0;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "kebersihan" double precision DEFAULT 0;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "tanggungJawab" double precision DEFAULT 0;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "rataRata" double precision DEFAULT 0;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "predikat" text;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "catatan" text;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "periode" text;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "periodeDate" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "AkhlakPenilaian" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "tahunLulus" integer;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "tahunAjaranLulusId" text;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "statusKelulusan" text DEFAULT 'LULUS';
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "nilaiAkhir" double precision;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "predikatAkhir" text;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "syaratNilaiLengkap" boolean DEFAULT false;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "syaratAbsensiCukup" boolean DEFAULT false;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "syaratTagihanLunas" boolean DEFAULT false;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "syaratUjianAkhir" boolean DEFAULT false;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "syaratLainnya" text;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "suratKeteranganLulus" boolean DEFAULT false;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "sertifikat" boolean DEFAULT false;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "piagam" boolean DEFAULT false;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "beritaAcaraId" text;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "pendidikanLanjutan" text;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "pekerjaan" text;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "telepon" text;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "email" text;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "domisiliKota" text;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "domisiliAlamat" text;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "aktivitasAlumni" text;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "catatan" text;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "tanggalLulus" timestamp(3) with time zone;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "createdById" text;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Alumni" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "Announcement" ADD COLUMN IF NOT EXISTS "title" text;
+ALTER TABLE "Announcement" ADD COLUMN IF NOT EXISTS "content" text;
+ALTER TABLE "Announcement" ADD COLUMN IF NOT EXISTS "audience" text;
+ALTER TABLE "Announcement" ADD COLUMN IF NOT EXISTS "kelasId" text;
+ALTER TABLE "Announcement" ADD COLUMN IF NOT EXISTS "priority" text DEFAULT 'NORMAL';
+ALTER TABLE "Announcement" ADD COLUMN IF NOT EXISTS "isPublished" boolean DEFAULT true;
+ALTER TABLE "Announcement" ADD COLUMN IF NOT EXISTS "publishedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Announcement" ADD COLUMN IF NOT EXISTS "expiresAt" timestamp(3) with time zone;
+ALTER TABLE "Announcement" ADD COLUMN IF NOT EXISTS "createdById" text;
+ALTER TABLE "Announcement" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Announcement" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+ALTER TABLE "Announcement" ADD COLUMN IF NOT EXISTS "filePath" TEXT;
+ALTER TABLE "Announcement" ADD COLUMN IF NOT EXISTS "fileUrl" TEXT;
+
+ALTER TABLE "AuditLog" ADD COLUMN IF NOT EXISTS "userId" text;
+ALTER TABLE "AuditLog" ADD COLUMN IF NOT EXISTS "action" text;
+ALTER TABLE "AuditLog" ADD COLUMN IF NOT EXISTS "module" text;
+ALTER TABLE "AuditLog" ADD COLUMN IF NOT EXISTS "entityId" text;
+ALTER TABLE "AuditLog" ADD COLUMN IF NOT EXISTS "entityType" text;
+ALTER TABLE "AuditLog" ADD COLUMN IF NOT EXISTS "changes" text;
+ALTER TABLE "AuditLog" ADD COLUMN IF NOT EXISTS "ip" text;
+ALTER TABLE "AuditLog" ADD COLUMN IF NOT EXISTS "userAgent" text;
+ALTER TABLE "AuditLog" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "mapelId" text;
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "guruId" text;
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "code" text;
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "question" text;
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "options" text;
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "correctAnswer" text;
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "answerKey" text;
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "bobot" double precision DEFAULT 1;
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "difficulty" text DEFAULT 'SEDANG';
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "kompetensiId" text;
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "tags" text;
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "isActive" boolean DEFAULT true;
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "BankSoal" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "CatatanWaliKelas" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "CatatanWaliKelas" ADD COLUMN IF NOT EXISTS "semesterId" text;
+ALTER TABLE "CatatanWaliKelas" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "CatatanWaliKelas" ADD COLUMN IF NOT EXISTS "waliKelasId" text;
+ALTER TABLE "CatatanWaliKelas" ADD COLUMN IF NOT EXISTS "periode" text;
+ALTER TABLE "CatatanWaliKelas" ADD COLUMN IF NOT EXISTS "periodeDate" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "CatatanWaliKelas" ADD COLUMN IF NOT EXISTS "catatan" text;
+ALTER TABLE "CatatanWaliKelas" ADD COLUMN IF NOT EXISTS "rekomendasi" text;
+ALTER TABLE "CatatanWaliKelas" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "CatatanWaliKelas" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "ChatMessage" ADD COLUMN IF NOT EXISTS "chatRoomId" text;
+ALTER TABLE "ChatMessage" ADD COLUMN IF NOT EXISTS "senderType" text;
+ALTER TABLE "ChatMessage" ADD COLUMN IF NOT EXISTS "senderWaliId" text;
+ALTER TABLE "ChatMessage" ADD COLUMN IF NOT EXISTS "senderGuruId" text;
+ALTER TABLE "ChatMessage" ADD COLUMN IF NOT EXISTS "senderUserId" text;
+ALTER TABLE "ChatMessage" ADD COLUMN IF NOT EXISTS "message" text;
+ALTER TABLE "ChatMessage" ADD COLUMN IF NOT EXISTS "attachments" text;
+ALTER TABLE "ChatMessage" ADD COLUMN IF NOT EXISTS "isRead" boolean DEFAULT false;
+ALTER TABLE "ChatMessage" ADD COLUMN IF NOT EXISTS "readAt" timestamp(3) with time zone;
+ALTER TABLE "ChatMessage" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE "ChatRoom" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "ChatRoom" ADD COLUMN IF NOT EXISTS "waliId" text;
+ALTER TABLE "ChatRoom" ADD COLUMN IF NOT EXISTS "guruId" text;
+ALTER TABLE "ChatRoom" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "ChatRoom" ADD COLUMN IF NOT EXISTS "title" text;
+ALTER TABLE "ChatRoom" ADD COLUMN IF NOT EXISTS "lastMessageAt" timestamp(3) with time zone;
+ALTER TABLE "ChatRoom" ADD COLUMN IF NOT EXISTS "lastMessage" text;
+ALTER TABLE "ChatRoom" ADD COLUMN IF NOT EXISTS "isActive" boolean DEFAULT true;
+ALTER TABLE "ChatRoom" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "ChatRoom" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "userId" text;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "nip" text;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "nuptk" text;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "gender" text;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "birthPlace" text;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "birthDate" timestamp(3) with time zone;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "address" text;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "phone" text;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "email" text;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "photoUrl" text;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "joinDate" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "specialization" text;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'AKTIF';
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+ALTER TABLE "Guru" ADD COLUMN IF NOT EXISTS "deletedAt" timestamp(3) with time zone;
+
+ALTER TABLE "HafalanKitab" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "HafalanKitab" ADD COLUMN IF NOT EXISTS "semesterId" text;
+ALTER TABLE "HafalanKitab" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "HafalanKitab" ADD COLUMN IF NOT EXISTS "guruId" text;
+ALTER TABLE "HafalanKitab" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "HafalanKitab" ADD COLUMN IF NOT EXISTS "kitabName" text;
+ALTER TABLE "HafalanKitab" ADD COLUMN IF NOT EXISTS "halaman" text;
+ALTER TABLE "HafalanKitab" ADD COLUMN IF NOT EXISTS "score" double precision;
+ALTER TABLE "HafalanKitab" ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'PROGRESS';
+ALTER TABLE "HafalanKitab" ADD COLUMN IF NOT EXISTS "target" text;
+ALTER TABLE "HafalanKitab" ADD COLUMN IF NOT EXISTS "catatan" text;
+ALTER TABLE "HafalanKitab" ADD COLUMN IF NOT EXISTS "pertemuanDate" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "HafalanKitab" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "HafalanKitab" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "semesterId" text;
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "guruId" text;
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "periode" text;
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "periodeLabel" text;
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "honorMengajar" double precision DEFAULT 0;
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "insentif" double precision DEFAULT 0;
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "tunjangan" double precision DEFAULT 0;
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "potongan" double precision DEFAULT 0;
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "totalHonor" double precision DEFAULT 0;
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'DRAFT';
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "paidAt" timestamp(3) with time zone;
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "kasId" text;
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "catatan" text;
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "HonorGuru" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "Jadwal" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "Jadwal" ADD COLUMN IF NOT EXISTS "semesterId" text;
+ALTER TABLE "Jadwal" ADD COLUMN IF NOT EXISTS "kelasId" text;
+ALTER TABLE "Jadwal" ADD COLUMN IF NOT EXISTS "mapelId" text;
+ALTER TABLE "Jadwal" ADD COLUMN IF NOT EXISTS "guruId" text;
+ALTER TABLE "Jadwal" ADD COLUMN IF NOT EXISTS "dayOfWeek" integer;
+ALTER TABLE "Jadwal" ADD COLUMN IF NOT EXISTS "startTime" text;
+ALTER TABLE "Jadwal" ADD COLUMN IF NOT EXISTS "endTime" text;
+ALTER TABLE "Jadwal" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Jadwal" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "JenisTagihan" ADD COLUMN IF NOT EXISTS "code" text;
+ALTER TABLE "JenisTagihan" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "JenisTagihan" ADD COLUMN IF NOT EXISTS "description" text;
+ALTER TABLE "JenisTagihan" ADD COLUMN IF NOT EXISTS "defaultAmount" integer;
+ALTER TABLE "JenisTagihan" ADD COLUMN IF NOT EXISTS "category" text;
+ALTER TABLE "JenisTagihan" ADD COLUMN IF NOT EXISTS "isActive" boolean DEFAULT true;
+ALTER TABLE "JenisTagihan" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "JenisTagihan" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "Kas" ADD COLUMN IF NOT EXISTS "code" text;
+ALTER TABLE "Kas" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "Kas" ADD COLUMN IF NOT EXISTS "accountNumber" text;
+ALTER TABLE "Kas" ADD COLUMN IF NOT EXISTS "bankName" text;
+ALTER TABLE "Kas" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "Kas" ADD COLUMN IF NOT EXISTS "balance" double precision DEFAULT 0;
+ALTER TABLE "Kas" ADD COLUMN IF NOT EXISTS "isActive" boolean DEFAULT true;
+ALTER TABLE "Kas" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Kas" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "Kelas" ADD COLUMN IF NOT EXISTS "code" text;
+ALTER TABLE "Kelas" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "Kelas" ADD COLUMN IF NOT EXISTS "level" text;
+ALTER TABLE "Kelas" ADD COLUMN IF NOT EXISTS "description" text;
+ALTER TABLE "Kelas" ADD COLUMN IF NOT EXISTS "capacity" integer DEFAULT 30;
+ALTER TABLE "Kelas" ADD COLUMN IF NOT EXISTS "sortOrder" integer DEFAULT 0;
+ALTER TABLE "Kelas" ADD COLUMN IF NOT EXISTS "isActive" boolean DEFAULT true;
+ALTER TABLE "Kelas" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Kelas" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+ALTER TABLE "Kelas" ADD COLUMN IF NOT EXISTS "deletedAt" timestamp(3) with time zone;
+ALTER TABLE "Kelas" ADD COLUMN IF NOT EXISTS "waliKelasId" text;
+
+ALTER TABLE "Kompetensi" ADD COLUMN IF NOT EXISTS "mapelId" text;
+ALTER TABLE "Kompetensi" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "Kompetensi" ADD COLUMN IF NOT EXISTS "code" text;
+ALTER TABLE "Kompetensi" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "Kompetensi" ADD COLUMN IF NOT EXISTS "description" text;
+ALTER TABLE "Kompetensi" ADD COLUMN IF NOT EXISTS "category" text DEFAULT 'UMUM';
+ALTER TABLE "Kompetensi" ADD COLUMN IF NOT EXISTS "sortOrder" integer DEFAULT 0;
+ALTER TABLE "Kompetensi" ADD COLUMN IF NOT EXISTS "isActive" boolean DEFAULT true;
+ALTER TABLE "Kompetensi" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Kompetensi" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "MataPelajaran" ADD COLUMN IF NOT EXISTS "code" text;
+ALTER TABLE "MataPelajaran" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "MataPelajaran" ADD COLUMN IF NOT EXISTS "category" text;
+ALTER TABLE "MataPelajaran" ADD COLUMN IF NOT EXISTS "description" text;
+ALTER TABLE "MataPelajaran" ADD COLUMN IF NOT EXISTS "kkm" double precision DEFAULT 70;
+ALTER TABLE "MataPelajaran" ADD COLUMN IF NOT EXISTS "durationMnt" integer DEFAULT 90;
+ALTER TABLE "MataPelajaran" ADD COLUMN IF NOT EXISTS "sortOrder" integer DEFAULT 0;
+ALTER TABLE "MataPelajaran" ADD COLUMN IF NOT EXISTS "isActive" boolean DEFAULT true;
+ALTER TABLE "MataPelajaran" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "MataPelajaran" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+ALTER TABLE "MataPelajaran" ADD COLUMN IF NOT EXISTS "deletedAt" timestamp(3) with time zone;
+
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "semesterId" text;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "mapelId" text;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "kelasId" text;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "guruId" text;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "title" text;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "description" text;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "type" text DEFAULT 'DOKUMEN';
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "fileUrl" text;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "externalUrl" text;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "pertemuan" integer;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "sortOrder" integer DEFAULT 0;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "isPublished" boolean DEFAULT true;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "publishedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "createdById" text;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "deletedAt" timestamp(3) with time zone;
+ALTER TABLE "Materi" ADD COLUMN IF NOT EXISTS "filePath" TEXT;
+
+ALTER TABLE "Nilai" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "Nilai" ADD COLUMN IF NOT EXISTS "semesterId" text;
+ALTER TABLE "Nilai" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "Nilai" ADD COLUMN IF NOT EXISTS "kelasId" text;
+ALTER TABLE "Nilai" ADD COLUMN IF NOT EXISTS "mapelId" text;
+ALTER TABLE "Nilai" ADD COLUMN IF NOT EXISTS "guruId" text;
+ALTER TABLE "Nilai" ADD COLUMN IF NOT EXISTS "kompetensiId" text;
+ALTER TABLE "Nilai" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "Nilai" ADD COLUMN IF NOT EXISTS "score" double precision;
+ALTER TABLE "Nilai" ADD COLUMN IF NOT EXISTS "notes" text;
+ALTER TABLE "Nilai" ADD COLUMN IF NOT EXISTS "assessmentDate" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Nilai" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Nilai" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "Notifikasi" ADD COLUMN IF NOT EXISTS "waliId" text;
+ALTER TABLE "Notifikasi" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "Notifikasi" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "Notifikasi" ADD COLUMN IF NOT EXISTS "title" text;
+ALTER TABLE "Notifikasi" ADD COLUMN IF NOT EXISTS "message" text;
+ALTER TABLE "Notifikasi" ADD COLUMN IF NOT EXISTS "priority" text DEFAULT 'NORMAL';
+ALTER TABLE "Notifikasi" ADD COLUMN IF NOT EXISTS "isRead" boolean DEFAULT false;
+ALTER TABLE "Notifikasi" ADD COLUMN IF NOT EXISTS "readAt" timestamp(3) with time zone;
+ALTER TABLE "Notifikasi" ADD COLUMN IF NOT EXISTS "entityType" text;
+ALTER TABLE "Notifikasi" ADD COLUMN IF NOT EXISTS "entityId" text;
+ALTER TABLE "Notifikasi" ADD COLUMN IF NOT EXISTS "isEmailSent" boolean DEFAULT false;
+ALTER TABLE "Notifikasi" ADD COLUMN IF NOT EXISTS "isPushSent" boolean DEFAULT false;
+ALTER TABLE "Notifikasi" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Notifikasi" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMPTZ;
+
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "invoiceNo" text;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "tagihanId" text;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "amount" double precision;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "paymentMethod" text;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "paymentDate" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'VERIFIED';
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "note" text;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "proofUrl" text;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "recordedById" text;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "kasId" text;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "semesterId" text;
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "guruId" text;
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "category" text;
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "title" text;
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "description" text;
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "severity" text DEFAULT 'RINGAN';
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "tindakan" text;
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'OPEN';
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "resolvedAt" timestamp(3) with time zone;
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "resolvedById" text;
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Pembinaan" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "PengumpulanTugas" ADD COLUMN IF NOT EXISTS "tugasId" text;
+ALTER TABLE "PengumpulanTugas" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "PengumpulanTugas" ADD COLUMN IF NOT EXISTS "fileUrl" text;
+ALTER TABLE "PengumpulanTugas" ADD COLUMN IF NOT EXISTS "textAnswer" text;
+ALTER TABLE "PengumpulanTugas" ADD COLUMN IF NOT EXISTS "submittedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "PengumpulanTugas" ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'SUBMITTED';
+ALTER TABLE "PengumpulanTugas" ADD COLUMN IF NOT EXISTS "score" double precision;
+ALTER TABLE "PengumpulanTugas" ADD COLUMN IF NOT EXISTS "feedback" text;
+ALTER TABLE "PengumpulanTugas" ADD COLUMN IF NOT EXISTS "gradedAt" timestamp(3) with time zone;
+ALTER TABLE "PengumpulanTugas" ADD COLUMN IF NOT EXISTS "gradedById" text;
+ALTER TABLE "PengumpulanTugas" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "PengumpulanTugas" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "semesterId" text;
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "guruId" text;
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "surah" text;
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "juz" integer;
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "ayatFrom" integer;
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "ayatTo" integer;
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "score" double precision;
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'PROGRESS';
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "target" text;
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "catatan" text;
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "pertemuanDate" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "PerkembanganQuran" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "Permission" ADD COLUMN IF NOT EXISTS "code" text;
+ALTER TABLE "Permission" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "Permission" ADD COLUMN IF NOT EXISTS "module" text;
+ALTER TABLE "Permission" ADD COLUMN IF NOT EXISTS "description" text;
+ALTER TABLE "Permission" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE "Pertemuan" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "Pertemuan" ADD COLUMN IF NOT EXISTS "semesterId" text;
+ALTER TABLE "Pertemuan" ADD COLUMN IF NOT EXISTS "kelasId" text;
+ALTER TABLE "Pertemuan" ADD COLUMN IF NOT EXISTS "mapelId" text;
+ALTER TABLE "Pertemuan" ADD COLUMN IF NOT EXISTS "guruId" text;
+ALTER TABLE "Pertemuan" ADD COLUMN IF NOT EXISTS "pertemuanKe" integer;
+ALTER TABLE "Pertemuan" ADD COLUMN IF NOT EXISTS "date" timestamp(3) with time zone;
+ALTER TABLE "Pertemuan" ADD COLUMN IF NOT EXISTS "topic" text;
+ALTER TABLE "Pertemuan" ADD COLUMN IF NOT EXISTS "description" text;
+ALTER TABLE "Pertemuan" ADD COLUMN IF NOT EXISTS "isCompleted" boolean DEFAULT false;
+ALTER TABLE "Pertemuan" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Pertemuan" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "PhoneChangeLog" ADD COLUMN IF NOT EXISTS "waliId" text;
+ALTER TABLE "PhoneChangeLog" ADD COLUMN IF NOT EXISTS "oldPhone" text;
+ALTER TABLE "PhoneChangeLog" ADD COLUMN IF NOT EXISTS "newPhone" text;
+ALTER TABLE "PhoneChangeLog" ADD COLUMN IF NOT EXISTS "changedById" text;
+ALTER TABLE "PhoneChangeLog" ADD COLUMN IF NOT EXISTS "changedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "PhoneChangeLog" ADD COLUMN IF NOT EXISTS "reason" text;
+
+ALTER TABLE "QRScan" ADD COLUMN IF NOT EXISTS "qrType" text;
+ALTER TABLE "QRScan" ADD COLUMN IF NOT EXISTS "entityId" text;
+ALTER TABLE "QRScan" ADD COLUMN IF NOT EXISTS "scanType" text;
+ALTER TABLE "QRScan" ADD COLUMN IF NOT EXISTS "scannedById" text;
+ALTER TABLE "QRScan" ADD COLUMN IF NOT EXISTS "deviceInfo" text;
+ALTER TABLE "QRScan" ADD COLUMN IF NOT EXISTS "location" text;
+ALTER TABLE "QRScan" ADD COLUMN IF NOT EXISTS "result" text DEFAULT 'SUCCESS';
+ALTER TABLE "QRScan" ADD COLUMN IF NOT EXISTS "message" text;
+ALTER TABLE "QRScan" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE "Rapor" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "Rapor" ADD COLUMN IF NOT EXISTS "semesterId" text;
+ALTER TABLE "Rapor" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "Rapor" ADD COLUMN IF NOT EXISTS "kelasId" text;
+ALTER TABLE "Rapor" ADD COLUMN IF NOT EXISTS "notes" text;
+ALTER TABLE "Rapor" ADD COLUMN IF NOT EXISTS "absensiHadir" integer DEFAULT 0;
+ALTER TABLE "Rapor" ADD COLUMN IF NOT EXISTS "absensiSakit" integer DEFAULT 0;
+ALTER TABLE "Rapor" ADD COLUMN IF NOT EXISTS "absensiIzin" integer DEFAULT 0;
+ALTER TABLE "Rapor" ADD COLUMN IF NOT EXISTS "absensiAlfa" integer DEFAULT 0;
+ALTER TABLE "Rapor" ADD COLUMN IF NOT EXISTS "published" boolean DEFAULT false;
+ALTER TABLE "Rapor" ADD COLUMN IF NOT EXISTS "publishedAt" timestamp(3) with time zone;
+ALTER TABLE "Rapor" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Rapor" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "RaporCatatan" ADD COLUMN IF NOT EXISTS "raporId" text;
+ALTER TABLE "RaporCatatan" ADD COLUMN IF NOT EXISTS "catatanWaliKelas" text;
+ALTER TABLE "RaporCatatan" ADD COLUMN IF NOT EXISTS "prestasi" text;
+ALTER TABLE "RaporCatatan" ADD COLUMN IF NOT EXISTS "akhlak" text;
+ALTER TABLE "RaporCatatan" ADD COLUMN IF NOT EXISTS "kehadiran" text;
+ALTER TABLE "RaporCatatan" ADD COLUMN IF NOT EXISTS "saran" text;
+ALTER TABLE "RaporCatatan" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "RaporCatatan" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "RaporMapel" ADD COLUMN IF NOT EXISTS "raporId" text;
+ALTER TABLE "RaporMapel" ADD COLUMN IF NOT EXISTS "mapelId" text;
+ALTER TABLE "RaporMapel" ADD COLUMN IF NOT EXISTS "nilaiAkhir" double precision;
+ALTER TABLE "RaporMapel" ADD COLUMN IF NOT EXISTS "predikat" text;
+ALTER TABLE "RaporMapel" ADD COLUMN IF NOT EXISTS "deskripsi" text;
+ALTER TABLE "RaporMapel" ADD COLUMN IF NOT EXISTS "kkm" double precision DEFAULT 70;
+ALTER TABLE "RaporMapel" ADD COLUMN IF NOT EXISTS "isTuntas" boolean DEFAULT false;
+ALTER TABLE "RaporMapel" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "RaporMapel" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "Role" ADD COLUMN IF NOT EXISTS "code" text;
+ALTER TABLE "Role" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "Role" ADD COLUMN IF NOT EXISTS "description" text;
+ALTER TABLE "Role" ADD COLUMN IF NOT EXISTS "sortOrder" integer DEFAULT 0;
+ALTER TABLE "Role" ADD COLUMN IF NOT EXISTS "isSystem" boolean DEFAULT false;
+ALTER TABLE "Role" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Role" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "RolePermission" ADD COLUMN IF NOT EXISTS "roleId" text;
+ALTER TABLE "RolePermission" ADD COLUMN IF NOT EXISTS "permissionId" text;
+ALTER TABLE "RolePermission" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "nis" text;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "nisn" text;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "gender" text;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "birthPlace" text;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "birthDate" timestamp(3) with time zone;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "address" text;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "phone" text;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "photoUrl" text;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "entryDate" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'AKTIF';
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "waliId" text;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "kelasId" text;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "userId" text;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+ALTER TABLE "Santri" ADD COLUMN IF NOT EXISTS "deletedAt" timestamp(3) with time zone;
+
+ALTER TABLE "SantriWali" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "SantriWali" ADD COLUMN IF NOT EXISTS "waliId" text;
+ALTER TABLE "SantriWali" ADD COLUMN IF NOT EXISTS "relationship" text;
+ALTER TABLE "SantriWali" ADD COLUMN IF NOT EXISTS "isPrimary" boolean DEFAULT false;
+ALTER TABLE "SantriWali" ADD COLUMN IF NOT EXISTS "canAccess" boolean DEFAULT true;
+ALTER TABLE "SantriWali" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE "Semester" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "Semester" ADD COLUMN IF NOT EXISTS "code" text;
+ALTER TABLE "Semester" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "Semester" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "Semester" ADD COLUMN IF NOT EXISTS "startDate" timestamp(3) with time zone;
+ALTER TABLE "Semester" ADD COLUMN IF NOT EXISTS "endDate" timestamp(3) with time zone;
+ALTER TABLE "Semester" ADD COLUMN IF NOT EXISTS "isActive" boolean DEFAULT false;
+ALTER TABLE "Semester" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Semester" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "nomorSurat" text;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "title" text;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "guruId" text;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "content" text;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "periodeMulai" timestamp(3) with time zone;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "periodeSelesai" timestamp(3) with time zone;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "tempat" text;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "tanggalSurat" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'DRAFT';
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "signedBy" text;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "signedAt" timestamp(3) with time zone;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "createdById" text;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "filePath" TEXT;
+ALTER TABLE "Surat" ADD COLUMN IF NOT EXISTS "fileUrl" TEXT;
+
+ALTER TABLE "SystemSetting" ADD COLUMN IF NOT EXISTS "key" text;
+ALTER TABLE "SystemSetting" ADD COLUMN IF NOT EXISTS "value" text;
+ALTER TABLE "SystemSetting" ADD COLUMN IF NOT EXISTS "type" text DEFAULT 'STRING';
+ALTER TABLE "SystemSetting" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+ALTER TABLE "SystemSetting" ADD COLUMN IF NOT EXISTS "updatedBy" text;
+ALTER TABLE "SystemSetting" ADD COLUMN IF NOT EXISTS "description" TEXT;
+ALTER TABLE "SystemSetting" ADD COLUMN IF NOT EXISTS "isPublic" BOOLEAN DEFAULT false;
+
+ALTER TABLE "Tagihan" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "Tagihan" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "Tagihan" ADD COLUMN IF NOT EXISTS "kelasId" text;
+ALTER TABLE "Tagihan" ADD COLUMN IF NOT EXISTS "jenisTagihanId" text;
+ALTER TABLE "Tagihan" ADD COLUMN IF NOT EXISTS "amount" double precision;
+ALTER TABLE "Tagihan" ADD COLUMN IF NOT EXISTS "paidAmount" double precision DEFAULT 0;
+ALTER TABLE "Tagihan" ADD COLUMN IF NOT EXISTS "description" text;
+ALTER TABLE "Tagihan" ADD COLUMN IF NOT EXISTS "dueDate" timestamp(3) with time zone;
+ALTER TABLE "Tagihan" ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'BELUM_BAYAR';
+ALTER TABLE "Tagihan" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Tagihan" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "TahunAjaran" ADD COLUMN IF NOT EXISTS "code" text;
+ALTER TABLE "TahunAjaran" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "TahunAjaran" ADD COLUMN IF NOT EXISTS "startDate" timestamp(3) with time zone;
+ALTER TABLE "TahunAjaran" ADD COLUMN IF NOT EXISTS "endDate" timestamp(3) with time zone;
+ALTER TABLE "TahunAjaran" ADD COLUMN IF NOT EXISTS "isActive" boolean DEFAULT false;
+ALTER TABLE "TahunAjaran" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "TahunAjaran" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "TransaksiKas" ADD COLUMN IF NOT EXISTS "kasId" text;
+ALTER TABLE "TransaksiKas" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "TransaksiKas" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "TransaksiKas" ADD COLUMN IF NOT EXISTS "category" text;
+ALTER TABLE "TransaksiKas" ADD COLUMN IF NOT EXISTS "amount" double precision;
+ALTER TABLE "TransaksiKas" ADD COLUMN IF NOT EXISTS "description" text;
+ALTER TABLE "TransaksiKas" ADD COLUMN IF NOT EXISTS "reference" text;
+ALTER TABLE "TransaksiKas" ADD COLUMN IF NOT EXISTS "paymentId" text;
+ALTER TABLE "TransaksiKas" ADD COLUMN IF NOT EXISTS "honorGuruId" text;
+ALTER TABLE "TransaksiKas" ADD COLUMN IF NOT EXISTS "transaksiDate" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "TransaksiKas" ADD COLUMN IF NOT EXISTS "recordedById" text;
+ALTER TABLE "TransaksiKas" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "TransaksiKas" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "semesterId" text;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "mapelId" text;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "kelasId" text;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "guruId" text;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "materiId" text;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "title" text;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "description" text;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "type" text DEFAULT 'INDIVIDU';
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "fileUrl" text;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "maxScore" double precision DEFAULT 100;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "dueDate" timestamp(3) with time zone;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "isPublished" boolean DEFAULT true;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "publishedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "createdById" text;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "deletedAt" timestamp(3) with time zone;
+ALTER TABLE "Tugas" ADD COLUMN IF NOT EXISTS "filePath" TEXT;
+
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "tahunAjaranId" text;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "semesterId" text;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "mapelId" text;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "kelasId" text;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "guruId" text;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "title" text;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "description" text;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "startTime" timestamp(3) with time zone;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "endTime" timestamp(3) with time zone;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "durationMnt" integer DEFAULT 90;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "ruang" text;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "pengawas" text;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "isPublished" boolean DEFAULT false;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "maxScore" double precision DEFAULT 100;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "passingScore" double precision;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "deletedAt" timestamp(3) with time zone;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "filePath" TEXT;
+ALTER TABLE "Ujian" ADD COLUMN IF NOT EXISTS "fileUrl" TEXT;
+
+ALTER TABLE "UjianJawaban" ADD COLUMN IF NOT EXISTS "sesiId" text;
+ALTER TABLE "UjianJawaban" ADD COLUMN IF NOT EXISTS "ujianSoalId" text;
+ALTER TABLE "UjianJawaban" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "UjianJawaban" ADD COLUMN IF NOT EXISTS "answer" text;
+ALTER TABLE "UjianJawaban" ADD COLUMN IF NOT EXISTS "optionOrder" text;
+ALTER TABLE "UjianJawaban" ADD COLUMN IF NOT EXISTS "isCorrect" boolean;
+ALTER TABLE "UjianJawaban" ADD COLUMN IF NOT EXISTS "score" double precision;
+ALTER TABLE "UjianJawaban" ADD COLUMN IF NOT EXISTS "isAutoCorrected" boolean DEFAULT false;
+ALTER TABLE "UjianJawaban" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "UjianJawaban" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "UjianNilai" ADD COLUMN IF NOT EXISTS "ujianId" text;
+ALTER TABLE "UjianNilai" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "UjianNilai" ADD COLUMN IF NOT EXISTS "score" double precision;
+ALTER TABLE "UjianNilai" ADD COLUMN IF NOT EXISTS "scoreUts" double precision;
+ALTER TABLE "UjianNilai" ADD COLUMN IF NOT EXISTS "scoreUas" double precision;
+ALTER TABLE "UjianNilai" ADD COLUMN IF NOT EXISTS "scorePraktik" double precision;
+ALTER TABLE "UjianNilai" ADD COLUMN IF NOT EXISTS "notes" text;
+ALTER TABLE "UjianNilai" ADD COLUMN IF NOT EXISTS "gradedById" text;
+ALTER TABLE "UjianNilai" ADD COLUMN IF NOT EXISTS "gradedAt" timestamp(3) with time zone;
+ALTER TABLE "UjianNilai" ADD COLUMN IF NOT EXISTS "isAutoCorrect" boolean DEFAULT false;
+ALTER TABLE "UjianNilai" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "UjianNilai" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "UjianPeserta" ADD COLUMN IF NOT EXISTS "ujianId" text;
+ALTER TABLE "UjianPeserta" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "UjianPeserta" ADD COLUMN IF NOT EXISTS "ruang" text;
+ALTER TABLE "UjianPeserta" ADD COLUMN IF NOT EXISTS "pengawas" text;
+ALTER TABLE "UjianPeserta" ADD COLUMN IF NOT EXISTS "isHadir" boolean DEFAULT true;
+ALTER TABLE "UjianPeserta" ADD COLUMN IF NOT EXISTS "catatan" text;
+ALTER TABLE "UjianPeserta" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE "UjianSesi" ADD COLUMN IF NOT EXISTS "ujianId" text;
+ALTER TABLE "UjianSesi" ADD COLUMN IF NOT EXISTS "santriId" text;
+ALTER TABLE "UjianSesi" ADD COLUMN IF NOT EXISTS "startTime" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "UjianSesi" ADD COLUMN IF NOT EXISTS "endTime" timestamp(3) with time zone;
+ALTER TABLE "UjianSesi" ADD COLUMN IF NOT EXISTS "durationUsed" integer;
+ALTER TABLE "UjianSesi" ADD COLUMN IF NOT EXISTS "score" double precision;
+ALTER TABLE "UjianSesi" ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'NOT_STARTED';
+ALTER TABLE "UjianSesi" ADD COLUMN IF NOT EXISTS "soalOrder" text;
+ALTER TABLE "UjianSesi" ADD COLUMN IF NOT EXISTS "isAutoCorrected" boolean DEFAULT false;
+ALTER TABLE "UjianSesi" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "UjianSesi" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+
+ALTER TABLE "UjianSoal" ADD COLUMN IF NOT EXISTS "ujianId" text;
+ALTER TABLE "UjianSoal" ADD COLUMN IF NOT EXISTS "bankSoalId" text;
+ALTER TABLE "UjianSoal" ADD COLUMN IF NOT EXISTS "urutan" integer;
+ALTER TABLE "UjianSoal" ADD COLUMN IF NOT EXISTS "bobot" double precision DEFAULT 1;
+ALTER TABLE "UjianSoal" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "email" text;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "username" text;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "passwordHash" text;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "phone" text;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "avatarUrl" text;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "firebaseUid" text;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "isActive" boolean DEFAULT true;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lastLoginAt" timestamp(3) with time zone;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "deletedAt" timestamp(3) with time zone;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "fcmToken" TEXT;
+
+ALTER TABLE "UserRole" ADD COLUMN IF NOT EXISTS "userId" text;
+ALTER TABLE "UserRole" ADD COLUMN IF NOT EXISTS "roleId" text;
+ALTER TABLE "UserRole" ADD COLUMN IF NOT EXISTS "isActive" boolean DEFAULT true;
+ALTER TABLE "UserRole" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "userId" text;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "nik" text;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "phone" text;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "email" text;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "occupation" text;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "address" text;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "relationship" text DEFAULT 'WALI';
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "activationStatus" text DEFAULT 'PENDING';
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "pinHash" text;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "otpCode" text;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "otpExpiresAt" timestamp(3) with time zone;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "otpAttempts" integer DEFAULT 0;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "otpRequestCount" integer DEFAULT 0;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "otpRequestResetAt" timestamp(3) with time zone;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "failedLoginAttempts" integer DEFAULT 0;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "lockedUntil" timestamp(3) with time zone;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "lastLoginAt" timestamp(3) with time zone;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp(3) with time zone;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "deletedAt" timestamp(3) with time zone;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "photoUrl" TEXT;
+ALTER TABLE "Wali" ADD COLUMN IF NOT EXISTS "authPassword" TEXT;
+
+ALTER TABLE "WaliActivation" ADD COLUMN IF NOT EXISTS "waliId" text;
+ALTER TABLE "WaliActivation" ADD COLUMN IF NOT EXISTS "token" text;
+ALTER TABLE "WaliActivation" ADD COLUMN IF NOT EXISTS "otpCode" text;
+ALTER TABLE "WaliActivation" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "WaliActivation" ADD COLUMN IF NOT EXISTS "expiresAt" timestamp(3) with time zone;
+ALTER TABLE "WaliActivation" ADD COLUMN IF NOT EXISTS "usedAt" timestamp(3) with time zone;
+ALTER TABLE "WaliActivation" ADD COLUMN IF NOT EXISTS "attempts" integer DEFAULT 0;
+ALTER TABLE "WaliActivation" ADD COLUMN IF NOT EXISTS "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE "WaliPinReset" ADD COLUMN IF NOT EXISTS "waliId" TEXT;
+ALTER TABLE "WaliPinReset" ADD COLUMN IF NOT EXISTS "otpHash" TEXT;
+ALTER TABLE "WaliPinReset" ADD COLUMN IF NOT EXISTS "expiresAt" TIMESTAMPTZ;
+ALTER TABLE "WaliPinReset" ADD COLUMN IF NOT EXISTS "attempts" INTEGER DEFAULT 0;
+ALTER TABLE "WaliPinReset" ADD COLUMN IF NOT EXISTS "consumedAt" TIMESTAMPTZ;
+ALTER TABLE "WaliPinReset" ADD COLUMN IF NOT EXISTS "resetTokenHash" TEXT;
+ALTER TABLE "WaliPinReset" ADD COLUMN IF NOT EXISTS "resetTokenExpiresAt" TIMESTAMPTZ;
+ALTER TABLE "WaliPinReset" ADD COLUMN IF NOT EXISTS "requestedIp" TEXT;
+ALTER TABLE "WaliPinReset" ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMPTZ DEFAULT now();
 
 NOTIFY pgrst, 'reload schema';
 

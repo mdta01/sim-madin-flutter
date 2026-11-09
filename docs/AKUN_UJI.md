@@ -15,6 +15,39 @@ Jalankan di **Supabase SQL Editor** (butuh hak pemilik database, bukan anon):
 SELECT * FROM public.seed_all_demo();
 ```
 
+### Kalau muncul "column ... does not exist"
+
+Contoh: `ERROR: 42703: column "isPublished" does not exist`.
+
+**Penyebab:** baseline memakai `CREATE TABLE IF NOT EXISTS`. Kalau tabelnya
+**sudah ada** — misalnya database dibuat dari skema versi lama, atau baseline
+dijalankan sebagian — perintah itu tidak melakukan apa pun, sehingga kolom baru
+tidak pernah ditambahkan.
+
+**Perbaikan:** jalankan migrasi rekonsiliasi, yang menambahkan setiap kolom
+yang belum ada:
+
+```
+supabase/migrations/20240101000033_schema_reconcile.sql
+```
+
+Isinya 633 perintah `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` untuk 54 tabel.
+Aman: hanya menambah kolom, kolom yang sudah ada dilewati sepenuhnya.
+
+Untuk kasus cepat (hanya kolom `isPublished`), pakai file kecil:
+
+```
+docs/sql/cek_dan_perbaiki_skema.sql   (5 KB)
+```
+
+Setelah itu jalankan ulang seed:
+
+```sql
+SELECT * FROM public.seed_all_demo();
+```
+
+> **Jangan** membuat ulang tabel untuk memperbaiki ini — data lama bisa hilang.
+
 ### Kalau akun sudah ter-seed tetapi login tetap gagal
 
 Ini kasus paling sering: baris `User` dan peran sudah ada, tetapi **akun login
