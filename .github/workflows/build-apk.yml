@@ -68,6 +68,8 @@ jobs:
           # google-services.json memang tidak diperlukan.
           if [ "${{ matrix.app }}" = "admin_desktop" ]; then
             echo "✓ admin_desktop: Firebase tidak dipakai, dilewati"
+            # 'exit 0' menghentikan langkah ini dengan sukses; langkah
+            # berikutnya tetap berjalan karena tiap step terpisah.
             exit 0
           fi
           if [ -f "$APP_DIR/google-services.json" ]; then

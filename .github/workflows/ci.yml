@@ -57,6 +57,14 @@ jobs:
       - name: Check SQL block balance (PL/pgSQL)
         run: python3 tool/sql_block_check.py
 
+      - name: Verify SETUP_ALL.sql is up to date
+        run: |
+          python3 tool/build_setup_sql.py
+          if ! git diff --quiet -- supabase/SETUP_ALL.sql; then
+            echo "::error::supabase/SETUP_ALL.sql sudah usang. Jalankan: python3 tool/build_setup_sql.py lalu commit."
+            exit 1
+          fi
+
   # --------------------------------------------------------------------------
   # Analisis dan test Flutter.
   # --------------------------------------------------------------------------
